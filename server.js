@@ -640,7 +640,7 @@ async function ncmGetUrl(songOrId, name, artist) {
 async function resolveQueue(songs) {
   const useSpotify = spotify.hasUserToken()
   const spotifyQueue = []
-  const SPOTIFY_INTERVAL_MS = 200
+  const SPOTIFY_INTERVAL_MS = 800
 
   for (let index = 0; index < songs.length; index++) {
     const song = songs[index]
@@ -711,17 +711,12 @@ async function resolveDjSelection(input, options = {}) {
   const useSpotify = spotify.hasUserToken()
 
   if (result.play && result.play.length > 0) {
-    queue = await resolveQueue(result.play)
-    queue = filterQueueCandidates(queue, currentQueue, recentPlays, recentRecommended)
+    const rawResolved = await resolveQueue(result.play)
+    queue = filterQueueCandidates(rawResolved, currentQueue, recentPlays, recentRecommended)
     // Fallback when recent recommendations filter removes every candidate.
-    if (queue.length === 0 && result.play.length > 0) {
+    if (queue.length === 0 && rawResolved.length > 0) {
       console.log('[queue] 近期推荐全部命中，降级忽略 recentRecommended 过滤')
-      queue = filterQueueCandidates(
-        await resolveQueue(result.play),
-        currentQueue,
-        recentPlays,
-        new Set()
-      )
+      queue = filterQueueCandidates(rawResolved, currentQueue, recentPlays, new Set())
     }
 
     const refillAttempts = useSpotify ? 5 : 3
