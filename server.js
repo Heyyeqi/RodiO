@@ -89,7 +89,7 @@ const NCM_ID_MAP_HIT_TTL_MS = 72 * 60 * 60 * 1000
 const NCM_ID_MAP_PREF = 'ncm_id_map_v1'
 const MAX_NCM_ID_MAP_SIZE = 400
 const RECENT_RECOMMENDED_PREF = 'recent_recommended_keys_v1'
-const MAX_RECENT_RECOMMENDED_KEYS = 160
+const MAX_RECENT_RECOMMENDED_KEYS = 60
 
 function loadNcmIdMap() {
   try {
@@ -713,6 +713,16 @@ async function resolveDjSelection(input, options = {}) {
   if (result.play && result.play.length > 0) {
     queue = await resolveQueue(result.play)
     queue = filterQueueCandidates(queue, currentQueue, recentPlays, recentRecommended)
+    // Fallback when recent recommendations filter removes every candidate.
+    if (queue.length === 0 && result.play.length > 0) {
+      console.log('[queue] 近期推荐全部命中，降级忽略 recentRecommended 过滤')
+      queue = filterQueueCandidates(
+        await resolveQueue(result.play),
+        currentQueue,
+        recentPlays,
+        new Set()
+      )
+    }
 
     const refillAttempts = useSpotify ? 5 : 3
     for (let attempt = 0; queue.length < minQueueSize && attempt < refillAttempts; attempt++) {
@@ -726,6 +736,10 @@ async function resolveDjSelection(input, options = {}) {
       const refillQueue = await resolveQueue(refillResult.play || [])
       const mergedQueue = [...queue, ...refillQueue]
       queue = filterQueueCandidates(mergedQueue, currentQueue, recentPlays, recentRecommended)
+      if (queue.length === 0 && mergedQueue.length > 0) {
+        console.log('[queue] refill 近期推荐全部命中，降级忽略 recentRecommended 过滤')
+        queue = filterQueueCandidates(mergedQueue, currentQueue, recentPlays, new Set())
+      }
     }
 
     queue = queue.slice(0, maxQueueSize)
