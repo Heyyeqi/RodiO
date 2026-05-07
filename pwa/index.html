@@ -1758,6 +1758,12 @@
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'feedback failed')
       state.currentFeedback = data.feedback || null
+      if (action === 'like' || action === 'dislike') {
+        setTimeout(() => {
+          state.currentFeedback = null
+          renderControls()
+        }, 3000)
+      }
       renderControls()
       if (action === 'dislike') {
         appendDj(`记下了，${state.currentTrack.name} 之后不再推荐。`)
@@ -2196,8 +2202,9 @@
         if ((data.type === 'playlist-ready' || data.type === 'chat-ready') && data.say) {
           const signature = JSON.stringify({
             say: data.say,
-            say_audio: data.say_audio || null,
-            queue: Array.isArray(data.queue) ? data.queue.map((item) => item.song_info && item.song_info.id ? item.song_info.id : (item.play_url || '')) : [],
+            queue: Array.isArray(data.queue)
+              ? data.queue.map(item => item.song_info?.id || item.play_url || '')
+              : [],
           })
           if (lastPlaylistSignature !== signature) {
             lastPlaylistSignature = signature
@@ -2289,6 +2296,7 @@
       if (requestToken !== activeExplainToken) return
       if (requestedTrackKey !== makeTrackKey(state.currentTrack)) return
       state.heroCommentary = data.explain_text || ''
+      console.log('[explain] 设置 heroCommentary:', state.heroCommentary)
       renderHero()
       appendCommentary(data.explain_text, data.say_audio || null)
       if (data.say_audio) playVoice(data.say_audio, true)
@@ -2303,7 +2311,6 @@
   function maybeAutoExplain(item) {
     if (!hasUnlockedAudio || state.isExplaining || !item || !item.song_info) return
     const role = item.queue_meta && item.queue_meta.batch_role
-    if (role !== 'first' && role !== 'last') return
 
     const explainKey = makeTrackExplainKey(item)
     if (!explainKey || autoExplainedTracks.has(explainKey)) return
@@ -2323,6 +2330,16 @@
     }
 
     setTimeout(() => {
+      const cached = prefetchCache.get(explainKey)
+      if (cached) {
+        state.heroCommentary = cached.explain_text || ''
+        console.log('[explain] 设置 heroCommentary:', state.heroCommentary)
+        renderHero()
+        appendCommentary(cached.explain_text, cached.say_audio || null)
+        if (cached.say_audio) playVoice(cached.say_audio, true)
+        prefetchCache.delete(explainKey)
+        return
+      }
       explainTrack(item.song_info, {
         userInput,
         suppressFailureBubble: true,

@@ -936,7 +936,10 @@ async function bootstrapStation() {
   try {
     recentRecommendedKeys = []
     state.setPref(RECENT_RECOMMENDED_PREF, JSON.stringify([]))
-    await context.fetchWeatherByCity()
+    const coords = context.getStoredCoordinates()
+    await (coords
+      ? context.fetchWeatherByCoords(coords.lat, coords.lon)
+      : context.fetchWeatherByCity())
     const prewarmQueue = await buildReadyPoolMultiRound('startup-prewarm', {
       baseQueue: [],
       targetSize: 3,
