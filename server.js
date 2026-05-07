@@ -939,8 +939,8 @@ async function bootstrapStation() {
     await context.fetchWeatherByCity()
     const prewarmQueue = await buildReadyPoolMultiRound('startup-prewarm', {
       baseQueue: [],
-      targetSize: STARTUP_POOL_SIZE,
-      maxDurationMs: STARTUP_PREWARM_TIMEOUT_MS,
+      targetSize: 3,
+      maxDurationMs: 12 * 1000,
     })
     suppressQueueBroadcasts = true
     queueManager.replace(prewarmQueue, 'startup-prewarm-ready')
@@ -955,7 +955,7 @@ async function bootstrapStation() {
       delay(0).then(async () => {
         suppressQueueBroadcasts = true
         try {
-          await replenishQueueSilently('startup-post-timeout')
+          await replenishQueueSilently('startup-background')
         } finally {
           suppressQueueBroadcasts = false
         }
@@ -1071,34 +1071,39 @@ app.post('/api/chat', async (req, res) => {
   const input = req.body.input
   if (!input) return res.status(400).json({ error: 'input 不能为空' })
 
-  try {
+  res.json({ ok: true, say: '正在为你选曲…', say_audio: null, queue: [] })
+
+  delay(0).then(async () => {
     const emotionSignal = extractEmotionFromInput(input)
-    const payload = await resolveDjSelection(input, {
-      currentQueue: queueManager.getSnapshot(),
-      includeSpeech: true,
-      emotionSignal,
-    })
+    try {
+      const payload = await resolveDjSelection(input, {
+        currentQueue: queueManager.getSnapshot(),
+        includeSpeech: true,
+        emotionSignal,
+      })
 
-    state.addMessage('user', input)
-    state.addMessage('assistant', JSON.stringify(payload))
+      state.addMessage('user', input)
+      state.addMessage('assistant', JSON.stringify(payload))
 
-    if (payload.queue.length > 0) {
-      if (payload.replace_pool) {
-        queueManager.replace(payload.queue, 'chat-replace-pool')
-      } else {
-        queueManager.prepend(payload.queue, 'chat-prepend-pool')
+      if (payload.queue.length > 0) {
+        if (payload.replace_pool) {
+          queueManager.replace(payload.queue, 'chat-replace-pool')
+        } else {
+          queueManager.prepend(payload.queue, 'chat-prepend-pool')
+        }
+        rememberRecentRecommendedQueue(payload.queue)
+        scheduler.incrementCount()
       }
-      rememberRecentRecommendedQueue(payload.queue)
-      scheduler.incrementCount()
-    }
 
-    const queue = queueManager.getSnapshot()
-    broadcastPlaylistReady(payload, queue)
-    return res.json({ ...payload, queue })
-  } catch (e) {
-    console.error('[/api/chat]', e)
-    return res.status(500).json({ error: e.message })
-  }
+      scheduler.broadcast({
+        type: 'playlist-ready',
+        ...payload,
+        queue: queueManager.getSnapshot(),
+      })
+    } catch (e) {
+      console.error('[/api/chat]', e)
+    }
+  })
 })
 
 app.post('/api/explain', async (req, res) => {
@@ -1441,5 +1446,6 @@ server.listen(PORT, async () => {
     ? '[claudio] 已加载网易云 Cookie'
     : '[claudio] 提示：未登录网易云，运行 node scripts/ncm-login.js')
   scheduler.setResolveQueue(resolveQueue)
+  scheduler.setAppendToQueue((items) => queueManager.append(items, 'scheduler-cron'))
   bootstrapStation()
 })

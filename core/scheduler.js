@@ -5,6 +5,7 @@ const claude = require('./claude')
 let wsClients = []
 let todayCount = 0
 let resolveQueueFn = null
+let appendToQueueFn = null
 
 function setWsClients(clients) {
   wsClients = clients
@@ -12,6 +13,10 @@ function setWsClients(clients) {
 
 function setResolveQueue(fn) {
   resolveQueueFn = fn
+}
+
+function setAppendToQueue(fn) {
+  appendToQueueFn = fn
 }
 
 function broadcast(data) {
@@ -54,6 +59,9 @@ cron.schedule('0 9-22 * * *', async () => {
     if (resolveQueueFn && Array.isArray(result.play) && result.play.length > 0) {
       queue = await resolveQueueFn(result.play)
     }
+    if (appendToQueueFn && queue.length > 0) {
+      queue = await appendToQueueFn(queue)
+    }
     broadcast({ type: 'scheduled', hour: h, ...result, queue })
     incrementCount()
   } catch (e) {
@@ -61,4 +69,11 @@ cron.schedule('0 9-22 * * *', async () => {
   }
 })
 
-module.exports = { setWsClients, setResolveQueue, broadcast, getTodayCount, incrementCount }
+module.exports = {
+  setWsClients,
+  setResolveQueue,
+  setAppendToQueue,
+  broadcast,
+  getTodayCount,
+  incrementCount,
+}

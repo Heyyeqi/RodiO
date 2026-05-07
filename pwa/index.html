@@ -1991,40 +1991,42 @@
 
   async function prefetchNextExplain() {
     if (localQueue.length === 0) return
-    const next = localQueue[0]
-    if (!next?.song_info) return
-    const key = next.song_info.name + '::' + next.song_info.artist
-    const cached = prefetchCache.get(key)
-    // 缓存超过 30 分钟丢弃，避免时段变化后用旧文字
-    if (cached && Date.now() - cached.cachedAt < PREFETCH_TTL_MS) return
-    if (cached) prefetchCache.delete(key)
-    try {
-      const res = await fetch('/api/explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: next.song_info.name,
-          artist: next.song_info.artist,
-          user_input: '无',
-          theme_name: state.themeKey || '深夜',
-        }),
-      })
-      const data = await res.json()
-      if (data.explain_text) {
-        prefetchCache.set(key, {
-          explain_text: data.explain_text,
-          say_audio: data.say_audio || null,
-          cachedAt: Date.now(),
+    const upcoming = localQueue.slice(0, 2)
+    for (const next of upcoming) {
+      if (!next?.song_info) continue
+      const key = next.song_info.name + '::' + next.song_info.artist
+      const cached = prefetchCache.get(key)
+      // 缓存超过 30 分钟丢弃，避免时段变化后用旧文字
+      if (cached && Date.now() - cached.cachedAt < PREFETCH_TTL_MS) continue
+      if (cached) prefetchCache.delete(key)
+      try {
+        const res = await fetch('/api/explain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: next.song_info.name,
+            artist: next.song_info.artist,
+            user_input: '无',
+            theme_name: state.themeKey || '深夜',
+          }),
         })
-      }
-    } catch {}
+        const data = await res.json()
+        if (data.explain_text) {
+          prefetchCache.set(key, {
+            explain_text: data.explain_text,
+            say_audio: data.say_audio || null,
+            cachedAt: Date.now(),
+          })
+        }
+      } catch {}
+    }
   }
 
   async function advanceToNext() {
     hasUnlockedAudio = true
 
-    // 本地队列低于 2 首时就提前让后端补货
-    if (localQueue.length < 2) {
+    // 本地队列低于 3 首时就提前让后端补货
+    if (localQueue.length < 3) {
       requestQueuePrefetch()
     }
 
@@ -2032,7 +2034,7 @@
       const next = localQueue.shift()
       state.queue = localQueue.slice()
       renderQueue()
-      if (localQueue.length < 2) {
+      if (localQueue.length < 3) {
         requestQueuePrefetch()
       }
       playSong(next)
@@ -2176,7 +2178,7 @@
           appendDj(`天气变了，外面开始${toLabel}了。`)
           return
         }
-        if (data.type === 'playlist-ready') {
+        if (data.type === 'playlist-ready' || data.type === 'chat-ready') {
           stationPayload = data
           if (hasUnlockedAudio && !state.showStartOverlay) {
             if (pendingTuneInAutoplay) {
@@ -2191,7 +2193,7 @@
             renderOverlay()
           }
         }
-        if (data.type === 'playlist-ready' && data.say) {
+        if ((data.type === 'playlist-ready' || data.type === 'chat-ready') && data.say) {
           const signature = JSON.stringify({
             say: data.say,
             say_audio: data.say_audio || null,
@@ -2232,6 +2234,7 @@
       const data = await response.json()
       if (Array.isArray(data.queue)) setLocalQueue(data.queue)
       if (data.say) appendDj(data.say, data.say_audio || null)
+      if (Array.isArray(data.queue) && data.queue.length === 0 && data.say) return
       ensurePrimaryPlayback()
       if (data.say_audio) {
         setTimeout(() => playVoice(data.say_audio, true), audio.src ? 180 : 260)
