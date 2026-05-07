@@ -82,6 +82,9 @@ const READY_POOL_ROUND_SIZE = 15
 const READY_POOL_MAX_ROUNDS = 8
 const READY_POOL_PARALLEL_ROUNDS = 2
 const STARTUP_PREWARM_TIMEOUT_MS = 30 * 1000
+const SPOTIFY_MIN_INTERVAL_MS = 300
+const QUEUE_HEARTBEAT_INTERVAL = 4 * 60 * 1000
+const HEARTBEAT_REPLENISH_COOLDOWN = 10 * 60 * 1000
 const ncmSearchCache = new Map()
 const SEARCH_CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const SEARCH_CACHE_MISS_TTL_MS = 30 * 60 * 1000
@@ -106,9 +109,13 @@ let ncmIdMap = loadNcmIdMap()
 let recentRecommendedKeys = loadRecentRecommendedKeys()
 let lastWeatherMain = null
 let weatherPollTimer = null
+let queueHeartbeatTimer = null
 const WEATHER_POLL_INTERVAL = 5 * 60 * 1000 // 5分钟
 let shouldAutoplayAfterRefill = false
 let suppressQueueBroadcasts = false
+let _spotifyLastCallAt = 0
+let _spotifyChain = Promise.resolve()
+let _lastHeartbeatReplenishAt = 0
 
 const queueManager = createQueueManager({
   targetSize: READY_POOL_TARGET_SIZE,
@@ -338,6 +345,16 @@ function broadcastPlaylistReady(payload, queue = queueManager.getSnapshot()) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function spotifyThrottled(fn) {
+  _spotifyChain = _spotifyChain.then(async () => {
+    const wait = SPOTIFY_MIN_INTERVAL_MS - (Date.now() - _spotifyLastCallAt)
+    if (wait > 0) await delay(wait)
+    _spotifyLastCallAt = Date.now()
+    return fn()
+  })
+  return _spotifyChain
 }
 
 function dedupeQueueItems(items) {
@@ -640,16 +657,14 @@ async function ncmGetUrl(songOrId, name, artist) {
 async function resolveQueue(songs) {
   const useSpotify = spotify.hasUserToken()
   const spotifyQueue = []
-  const SPOTIFY_INTERVAL_MS = 800
 
   for (let index = 0; index < songs.length; index++) {
     const song = songs[index]
     try {
       if (useSpotify) {
-        if (index > 0) await new Promise(r => setTimeout(r, SPOTIFY_INTERVAL_MS))
         let match = null
         try {
-          match = await spotify.searchTrack(song)
+          match = await spotifyThrottled(() => spotify.searchTrack(song))
         } catch (e) {
           console.error(`[spotify] 搜索失败 "${song.name} / ${song.artist}"，回退 NCM:`, e.message)
         }
@@ -955,6 +970,20 @@ async function bootstrapStation() {
     // 启动天气轮询
     if (weatherPollTimer) clearInterval(weatherPollTimer)
     weatherPollTimer = setInterval(checkWeatherChange, WEATHER_POLL_INTERVAL)
+
+    // 后端独立补货心跳，不依赖前端在线
+    if (queueHeartbeatTimer) clearInterval(queueHeartbeatTimer)
+    queueHeartbeatTimer = setInterval(async () => {
+      const now = Date.now()
+      if (
+        queueManager.size() < LOW_WATER_MARK &&
+        now - _lastHeartbeatReplenishAt > HEARTBEAT_REPLENISH_COOLDOWN
+      ) {
+        _lastHeartbeatReplenishAt = now
+        console.log(`[heartbeat] 队列低于水位(${queueManager.size()})，触发静默补货`)
+        replenishQueueSilently('heartbeat').catch(() => {})
+      }
+    }, QUEUE_HEARTBEAT_INTERVAL)
   } catch (e) {
     suppressQueueBroadcasts = false
     console.error('[claudio] 开机自动选曲失败:', e.message)
