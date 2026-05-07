@@ -1588,6 +1588,7 @@
       : ''
     heroCommentary.textContent = state.heroCommentary || ''
     heroCommentary.classList.toggle('visible', Boolean(state.heroCommentary))
+    console.log('[hero] heroCommentary element:', heroCommentary.className, heroCommentary.textContent.slice(0, 20))
   }
 
   function renderThemePreview() {
@@ -2064,6 +2065,11 @@
       if (localQueue.length < 3) {
         requestQueuePrefetch()
       }
+      if (spotifyPlayer && spotifyReady) {
+        await spotifyPlayer.pause().catch(() => {})
+      }
+      spotifyCurrentUri = null
+      clearInterval(spotifyProgressTimer)
       playSong(next)
       syncServerAdvance().catch(() => {})
       return
@@ -2074,6 +2080,11 @@
       const data = await syncServerAdvance()
       if (data && (data.play_url || data.spotify_uri)) {
         waitingForServerTrack = false
+        if (spotifyPlayer && spotifyReady) {
+          await spotifyPlayer.pause().catch(() => {})
+        }
+        spotifyCurrentUri = null
+        clearInterval(spotifyProgressTimer)
         playSong(data)
       } else {
         appendDj('换一批了，稍等…')
@@ -2316,6 +2327,7 @@
       if (!response.ok) throw new Error(data.error || 'Explain failed')
       if (requestToken !== activeExplainToken) return
       if (requestedTrackKey !== makeTrackKey(state.currentTrack)) return
+      console.log('[explain] 即将设置 heroCommentary:', data.explain_text)
       state.heroCommentary = data.explain_text || ''
       console.log('[explain] 设置 heroCommentary:', state.heroCommentary)
       renderHero()
