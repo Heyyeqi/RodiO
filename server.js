@@ -948,6 +948,8 @@ async function bootstrapStation() {
   try {
     recentRecommendedKeys = []
     state.setPref(RECENT_RECOMMENDED_PREF, JSON.stringify([]))
+    // 每次启动清空播放历史，保证每次打开都是新鲜的选曲
+    state.clearPlays()
     const coords = context.getStoredCoordinates()
     await (coords
       ? context.fetchWeatherByCoords(coords.lat, coords.lon)

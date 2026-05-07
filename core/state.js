@@ -61,6 +61,10 @@ function getRecentPlays(n = 10) {
   ).all(n)
 }
 
+function clearPlays() {
+  db.prepare('DELETE FROM plays').run()
+}
+
 function getPref(key) {
   const row = db.prepare('SELECT value FROM prefs WHERE key = ?').get(key)
   return row ? row.value : null
@@ -108,6 +112,7 @@ module.exports = {
   addMessage,
   addPlay,
   getRecentPlays,
+  clearPlays,
   getPref,
   setPref,
   setSongFeedback,
