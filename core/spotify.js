@@ -20,21 +20,164 @@ const SPOTIFY_BAD_TITLE_KWS = [
   'live', 'remix', 'acoustic', 'instrumental', 'cover', 'tribute',
   'karaoke', 'piano', 'version', 'ver.', 'edit', 'mono', 'demo',
 ]
+const USER_PLAYLIST_CACHE_MS = 5 * 60 * 1000
+const USER_PLAYLIST_TRACKS_CACHE_MS = 10 * 60 * 1000
 
 let clientCredToken = null      // 用于搜索（不需要用户授权）
 let userAccessToken = null      // 用于播放（需要用户授权）
 let userRefreshToken = null
 let userTokenExpiresAt = 0
 let tokenInitPromise = null
+const searchTrackCache = new Map()
+let userPlaylistsCache = { items: [], fetchedAt: 0 }
+const playlistTracksCache = new Map()
+let playlistRotationIds = []
+let playlistRotationIndex = 0
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function parseRetryAfterMs(value) {
+  if (!value) return 0
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000
+  const retryAt = Date.parse(value)
+  if (Number.isFinite(retryAt)) return Math.max(0, retryAt - Date.now())
+  return 0
+}
+
+function shuffle(items) {
+  const copy = Array.isArray(items) ? items.slice() : []
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
 
 async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 8000) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await fetch(url, { ...options, signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
+  const maxRetries = 3
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal })
+      if (res.status !== 429 || attempt === maxRetries) return res
+
+      const retryAfterMs = parseRetryAfterMs(res.headers.get('retry-after'))
+      const backoffMs = 500 * (2 ** attempt)
+      await delay(Math.max(retryAfterMs, backoffMs))
+      continue
+    } finally {
+      clearTimeout(timer)
+    }
   }
+}
+
+async function spotifyUserJson(url, options = {}, allowRefresh = true) {
+  const token = await getUserToken()
+  if (!token) throw new Error('No Spotify user token')
+
+  const res = await fetchJsonWithTimeout(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (res.status === 401 && allowRefresh && userRefreshToken) {
+    await refreshUserToken()
+    return spotifyUserJson(url, options, false)
+  }
+
+  const data = res.status === 204 ? null : await res.json().catch(() => null)
+  if (!res.ok) {
+    const message = data?.error?.message || data?.message || `Spotify user API failed (${res.status})`
+    const error = new Error(message)
+    error.status = res.status
+    throw error
+  }
+  return data
+}
+
+async function paginateSpotifyUserItems(url, itemKey) {
+  const items = []
+  let nextUrl = url
+  while (nextUrl) {
+    const data = await spotifyUserJson(nextUrl)
+    items.push(...(Array.isArray(data?.[itemKey]) ? data[itemKey] : []))
+    nextUrl = data?.next || null
+  }
+  return items
+}
+
+function normalizePlaylistTrackItem(item, playlist) {
+  const track = item?.track
+  if (!track || item?.is_local || track?.is_local) return null
+  if (!track.uri || !track.name) return null
+  if (track?.is_playable === false) return null
+
+  const artists = Array.isArray(track.artists) ? track.artists.map(artist => artist?.name).filter(Boolean) : []
+  const artistName = artists.join('; ')
+  if (!artistName) return null
+
+  return {
+    song_info: {
+      id: track.id || null,
+      name: track.name,
+      artist: artistName,
+    },
+    requested_song_info: {
+      id: track.id || null,
+      name: track.name,
+      artist: artistName,
+    },
+    spotify_uri: track.uri,
+    spotify_track: {
+      id: track.id || null,
+      uri: track.uri,
+      name: track.name,
+      artists,
+      album: track.album?.name || null,
+    },
+    play_url: null,
+    source: 'spotify',
+    queue_meta: {
+      source_playlist_id: playlist?.id || null,
+      source_playlist_name: playlist?.name || null,
+    },
+  }
+}
+
+function syncPlaylistRotation(playlists) {
+  const playlistIds = playlists.map(playlist => playlist.id).filter(Boolean)
+  const rotationChanged =
+    playlistRotationIds.length !== playlistIds.length ||
+    playlistIds.some(id => !playlistRotationIds.includes(id))
+
+  if (rotationChanged || playlistRotationIndex >= playlistRotationIds.length) {
+    playlistRotationIds = shuffle(playlistIds)
+    playlistRotationIndex = 0
+  }
+}
+
+function nextRotatedPlaylists(playlists) {
+  if (!playlists.length) return []
+  syncPlaylistRotation(playlists)
+  const byId = new Map(playlists.map(playlist => [playlist.id, playlist]))
+  const ordered = []
+  for (let i = 0; i < playlistRotationIds.length; i++) {
+    const idx = (playlistRotationIndex + i) % playlistRotationIds.length
+    const playlist = byId.get(playlistRotationIds[idx])
+    if (playlist) ordered.push(playlist)
+  }
+  playlistRotationIndex = (playlistRotationIndex + ordered.length) % Math.max(ordered.length, 1)
+  if (playlistRotationIndex === 0) {
+    playlistRotationIds = shuffle(playlistRotationIds)
+  }
+  return ordered
 }
 
 function applyPersistedUserToken(parsed) {
@@ -353,9 +496,88 @@ function hasUserToken() {
   return !!userAccessToken || !!userRefreshToken
 }
 
+async function getUserPlaylists(options = {}) {
+  const forceRefresh = !!options.forceRefresh
+  if (!forceRefresh && userPlaylistsCache.fetchedAt > Date.now() - USER_PLAYLIST_CACHE_MS) {
+    return userPlaylistsCache.items.slice()
+  }
+
+  const items = await paginateSpotifyUserItems(
+    'https://api.spotify.com/v1/me/playlists?limit=50',
+    'items'
+  )
+  const playlists = items
+    .filter(item => item?.id && item?.tracks?.total)
+    .map(item => ({
+      id: item.id,
+      name: item.name || '',
+      tracksTotal: item.tracks?.total || 0,
+    }))
+
+  userPlaylistsCache = {
+    items: playlists,
+    fetchedAt: Date.now(),
+  }
+  syncPlaylistRotation(playlists)
+  return playlists.slice()
+}
+
+async function getPlaylistTracks(playlistId, options = {}) {
+  const forceRefresh = !!options.forceRefresh
+  const cached = playlistTracksCache.get(playlistId)
+  if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
+    return cached.items.slice()
+  }
+
+  const items = await paginateSpotifyUserItems(
+    `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=100&fields=items(is_local,track(id,uri,name,is_local,is_playable,artists(name),album(name))),next`,
+    'items'
+  )
+
+  playlistTracksCache.set(playlistId, {
+    items,
+    fetchedAt: Date.now(),
+  })
+  return items.slice()
+}
+
+async function getPlaylistQueueItems(options = {}) {
+  const limit = Math.max(1, Number(options.limit) || 1)
+  const excludeUris = new Set(Array.isArray(options.excludeUris) ? options.excludeUris.filter(Boolean) : [])
+  const excludeKeys = new Set(Array.isArray(options.excludeKeys) ? options.excludeKeys.map(key => String(key).toLowerCase()) : [])
+  const playlists = await getUserPlaylists(options)
+  if (!playlists.length) return []
+
+  const orderedPlaylists = nextRotatedPlaylists(playlists)
+  const queueItems = []
+
+  for (const playlist of orderedPlaylists) {
+    const rawTracks = await getPlaylistTracks(playlist.id, options)
+    const normalizedTracks = shuffle(rawTracks)
+      .map(item => normalizePlaylistTrackItem(item, playlist))
+      .filter(Boolean)
+
+    for (const item of normalizedTracks) {
+      const uri = item.spotify_uri
+      const key = `${item.song_info.name}::${item.song_info.artist}`.toLowerCase()
+      if (!uri || excludeUris.has(uri) || excludeKeys.has(key)) continue
+      excludeUris.add(uri)
+      excludeKeys.add(key)
+      queueItems.push(item)
+      if (queueItems.length >= limit) return queueItems
+    }
+  }
+
+  return queueItems
+}
+
 // ── 搜索曲目，返回 Spotify Track ID ─────────────────────────────
 async function searchTrack(songOrName, artist) {
   const song = makeSongSearchProfile(songOrName, artist)
+  const cacheKey = `${song.name || ''}::${song.artist || ''}`
+  if (searchTrackCache.has(cacheKey)) {
+    return searchTrackCache.get(cacheKey)
+  }
 
   for (const query of buildStructuredQueries(song)) {
     const tracks = await runSpotifySearch(query)
@@ -367,13 +589,15 @@ async function searchTrack(songOrName, artist) {
       .sort((a, b) => b.score - a.score)[0]
 
     if (best?.track) {
-      return {
+      const result = {
         uri: best.track.uri || null,
         id: best.track.id || null,
         name: best.track.name || song.name,
         artists: (best.track.artists || []).map(a => a.name).filter(Boolean),
         album: best.track.album?.name || null,
       }
+      searchTrackCache.set(cacheKey, result)
+      return result
     }
   }
 
@@ -387,16 +611,19 @@ async function searchTrack(songOrName, artist) {
       .sort((a, b) => b.score - a.score)[0]
 
     if (best?.track) {
-      return {
+      const result = {
         uri: best.track.uri || null,
         id: best.track.id || null,
         name: best.track.name || song.name,
         artists: (best.track.artists || []).map(a => a.name).filter(Boolean),
         album: best.track.album?.name || null,
       }
+      searchTrackCache.set(cacheKey, result)
+      return result
     }
   }
 
+  searchTrackCache.set(cacheKey, null)
   return null
 }
 
@@ -429,6 +656,9 @@ async function resolveSpotifyUris(songs) {
 module.exports = {
   getAuthUrl,
   exchangeCode,
+  getPlaylistQueueItems,
+  getPlaylistTracks,
+  getUserPlaylists,
   getUserToken,
   hasUserToken,
   initializeUserToken,

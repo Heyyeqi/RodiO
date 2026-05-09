@@ -94,7 +94,6 @@ const READY_POOL_ROUND_SIZE = 15
 const READY_POOL_MAX_ROUNDS = 8
 const READY_POOL_PARALLEL_ROUNDS = 2
 const STARTUP_PREWARM_TIMEOUT_MS = 30 * 1000
-const SPOTIFY_MIN_INTERVAL_MS = 300
 const QUEUE_HEARTBEAT_INTERVAL = 4 * 60 * 1000
 const HEARTBEAT_REPLENISH_COOLDOWN = 10 * 60 * 1000
 const ncmSearchCache = new Map()
@@ -105,6 +104,8 @@ const NCM_ID_MAP_PREF = 'ncm_id_map_v1'
 const MAX_NCM_ID_MAP_SIZE = 400
 const RECENT_RECOMMENDED_PREF = 'recent_recommended_keys_v1'
 const MAX_RECENT_RECOMMENDED_KEYS = 60
+const SPOTIFY_PHASE1_MIN_FILL = 12
+const QWEN_ENHANCER_TIMEOUT_MS = 20000
 
 function loadNcmIdMap() {
   try {
@@ -125,9 +126,9 @@ let queueHeartbeatTimer = null
 const WEATHER_POLL_INTERVAL = 5 * 60 * 1000 // 5分钟
 let shouldAutoplayAfterRefill = false
 let suppressQueueBroadcasts = false
-let _spotifyLastCallAt = 0
-let _spotifyChain = Promise.resolve()
 let _lastHeartbeatReplenishAt = 0
+const spotifyUriBlacklist = new Set()
+let qwenEnhancerPromise = null
 
 const queueManager = createQueueManager({
   targetSize: READY_POOL_TARGET_SIZE,
@@ -359,16 +360,6 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function spotifyThrottled(fn) {
-  _spotifyChain = _spotifyChain.then(async () => {
-    const wait = SPOTIFY_MIN_INTERVAL_MS - (Date.now() - _spotifyLastCallAt)
-    if (wait > 0) await delay(wait)
-    _spotifyLastCallAt = Date.now()
-    return fn()
-  })
-  return _spotifyChain
-}
-
 function dedupeQueueItems(items) {
   const seen = new Set()
   return items.filter(item => {
@@ -392,11 +383,30 @@ function markBatchEdges(items) {
   }))
 }
 
+function isBlacklistedSpotifyUri(uri) {
+  return !!uri && spotifyUriBlacklist.has(uri)
+}
+
+function blacklistSpotifyUri(uri, reason = '') {
+  if (!uri) return false
+  const existed = spotifyUriBlacklist.has(uri)
+  spotifyUriBlacklist.add(uri)
+  queueManager.remove(item => item?.spotify_uri === uri, 'spotify-blacklist-remove')
+  if (!existed) {
+    console.warn(`[spotify] 加入黑名单 ${uri}${reason ? ` (${reason})` : ''}`)
+  }
+  return !existed
+}
+
 function filterQueueCandidates(items, currentQueue, recentPlays, recentRecommended = new Set()) {
   const recentKeys = new Set(recentPlays.map(p => `${p.song_name}::${p.artist}`.toLowerCase()))
   const currentQueueKeys = new Set((currentQueue || []).map(queueKeyFromItem).filter(Boolean))
 
   return dedupeQueueItems(items.filter(item => {
+    if (item?.spotify_uri && isBlacklistedSpotifyUri(item.spotify_uri)) {
+      console.log(`[queue] 过滤黑名单 Spotify URI: ${item.spotify_uri}`)
+      return false
+    }
     const key = `${item.song_info.name}::${item.song_info.artist}`.toLowerCase()
     if (recentKeys.has(key)) {
       console.log(`[queue] 过滤重复: ${item.song_info.name} / ${item.song_info.artist}`)
@@ -665,7 +675,7 @@ async function ncmGetUrl(songOrId, name, artist) {
   return { url: null, id: null }
 }
 
-// 并行解析一批歌曲，返回有直链的条目
+// 顺序解析一批歌曲，返回有直链的条目
 async function resolveQueue(songs) {
   const useSpotify = spotify.hasUserToken()
   const spotifyQueue = []
@@ -676,11 +686,16 @@ async function resolveQueue(songs) {
       if (useSpotify) {
         let match = null
         try {
-          match = await spotifyThrottled(() => spotify.searchTrack(song))
+          if (index > 0) await delay(200)
+          match = await spotify.searchTrack(song)
         } catch (e) {
           console.error(`[spotify] 搜索失败 "${song.name} / ${song.artist}"，回退 NCM:`, e.message)
         }
         if (match?.uri) {
+          if (isBlacklistedSpotifyUri(match.uri)) {
+            console.log(`[spotify] 命中黑名单 "${song.name} / ${song.artist}" -> ${match.uri}，跳过`)
+            continue
+          }
           const actualArtists = Array.isArray(match.artists) ? match.artists.filter(Boolean).join('; ') : song.artist
           console.log(`[spotify] 命中 "${song.name} / ${song.artist}" -> ${match.uri}`)
           spotifyQueue[index] = {
@@ -713,6 +728,91 @@ async function resolveQueue(songs) {
     }
   }
   return spotifyQueue.filter(Boolean)
+}
+
+async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager.getSnapshot(), needed = READY_POOL_TARGET_SIZE) {
+  if (!spotify.hasUserToken()) return []
+
+  const recentPlays = state.getRecentPlays(120)
+  const recentRecommended = getRecentRecommendedKeySet()
+  const targetCount = Math.max(SPOTIFY_PHASE1_MIN_FILL, Number(needed) || 0)
+  const collected = []
+  let attempts = 0
+
+  while (collected.length < targetCount && attempts < 3) {
+    attempts += 1
+    const baseItems = [...(currentQueue || []), ...collected]
+    const excludeUris = [
+      ...spotifyUriBlacklist,
+      ...baseItems.map(item => item?.spotify_uri).filter(Boolean),
+    ]
+    const excludeKeys = baseItems.map(queueKeyFromItem).filter(Boolean)
+    const pulled = await spotify.getPlaylistQueueItems({
+      limit: Math.max(targetCount - collected.length, READY_POOL_ROUND_SIZE),
+      excludeUris,
+      excludeKeys,
+    })
+    if (!pulled.length) break
+
+    const filtered = filterQueueCandidates(pulled, [...(currentQueue || []), ...collected], recentPlays, recentRecommended)
+    if (!filtered.length) break
+    collected.push(...filtered)
+  }
+
+  if (collected.length > 0) {
+    console.log(`[spotify] Phase 1(${reason}) 从用户歌单补入 ${collected.length} 首`)
+  }
+  return collected
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs)),
+  ])
+}
+
+function triggerQwenEnhancer(reason = 'background') {
+  if (qwenEnhancerPromise) return qwenEnhancerPromise
+
+  const baseQueue = queueManager.getSnapshot()
+  if (!baseQueue.length) return Promise.resolve([])
+
+  qwenEnhancerPromise = (async () => {
+    try {
+      const prompt = makeReadyPoolPrompt(`enhancer-${reason}`, READY_POOL_ROUND_SIZE)
+      const items = await withTimeout(
+        buildReadyPoolBatch(prompt, {
+          currentQueue: baseQueue,
+          buildLabel: `enhancer:${reason}`,
+        }),
+        QWEN_ENHANCER_TIMEOUT_MS,
+        `enhancer:${reason}`
+      )
+      if (!Array.isArray(items) || items.length === 0) return []
+
+      const filtered = filterQueueCandidates(
+        items,
+        queueManager.getSnapshot(),
+        state.getRecentPlays(120),
+        getRecentRecommendedKeySet()
+      )
+      if (!filtered.length) return []
+
+      const prepended = queueManager.prepend(filtered, `qwen-enhancer:${reason}`)
+      const actuallyPrepended = prepended.slice(0, filtered.length)
+      rememberRecentRecommendedQueue(filtered)
+      console.log(`[queue] Phase 2(${reason}) 前插 ${filtered.length} 首 Qwen 选曲`)
+      return actuallyPrepended
+    } catch (error) {
+      console.warn(`[queue] Phase 2(${reason}) 跳过: ${error.message}`)
+      return []
+    } finally {
+      qwenEnhancerPromise = null
+    }
+  })()
+
+  return qwenEnhancerPromise
 }
 
 async function resolveDjSelection(input, options = {}) {
@@ -855,7 +955,11 @@ async function buildDjResponse(input, options = {}) {
 
 async function replenishQueueSilently(trigger = 'auto') {
   try {
+    const beforeSize = queueManager.size()
     await queueManager.ensureFilled(trigger)
+    if (spotify.hasUserToken() && queueManager.size() > beforeSize) {
+      triggerQwenEnhancer(trigger).catch(() => {})
+    }
   } catch (e) {
     console.error(`[queue] 静默补货失败(${trigger}):`, e.message)
   }
@@ -938,6 +1042,18 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force }) =>
   const targetSize = force
     ? READY_POOL_TARGET_SIZE
     : Math.max(READY_POOL_TARGET_SIZE, (currentQueue?.length || 0) + needed)
+  try {
+    const spotifyItems = await fillQueueFromSpotifyPlaylists(
+      reason,
+      currentQueue,
+      Math.max(0, targetSize - (currentQueue?.length || 0))
+    )
+    if (spotifyItems.length > 0 || spotify.hasUserToken()) {
+      return spotifyItems
+    }
+  } catch (error) {
+    console.error(`[spotify] Phase 1(${reason}) 失败，回退 Qwen:`, error.message)
+  }
   return buildReadyPoolMultiRound(reason, {
     baseQueue: currentQueue,
     targetSize,
@@ -954,20 +1070,27 @@ async function bootstrapStation() {
     await (coords
       ? context.fetchWeatherByCoords(coords.lat, coords.lon)
       : context.fetchWeatherByCity())
-    const prewarmQueue = await buildReadyPoolMultiRound('startup-prewarm', {
-      baseQueue: [],
-      targetSize: 3,
-      maxDurationMs: 12 * 1000,
-    })
+    let prewarmQueue = []
+    try {
+      prewarmQueue = await fillQueueFromSpotifyPlaylists('startup-prewarm', [], READY_POOL_TARGET_SIZE)
+    } catch (error) {
+      console.error('[spotify] Phase 1(startup-prewarm) 失败，回退 Qwen:', error.message)
+    }
+    const fallbackQueue = prewarmQueue.length > 0
+      ? prewarmQueue
+      : await buildReadyPoolMultiRound('startup-prewarm', {
+          baseQueue: [],
+          targetSize: 3,
+          maxDurationMs: 12 * 1000,
+        })
     suppressQueueBroadcasts = true
-    queueManager.replace(prewarmQueue, 'startup-prewarm-ready')
-    const result = await resolveDjSelection('根据当前时间为这一整池歌做一个开场介绍', {
-      currentQueue: queueManager.getSnapshot(),
-      includeSpeech: true,
-    })
+    queueManager.replace(fallbackQueue, 'startup-prewarm-ready')
     suppressQueueBroadcasts = false
-    broadcastPlaylistReady(result, queueManager.getSnapshot())
+    broadcastPlaylistReady({ say: null, say_audio: null, reason: 'startup-prewarm', segue: '' }, queueManager.getSnapshot())
     console.log(`[claudio] 启动预热完成，readyPool=${queueManager.size()} 首`)
+    if (prewarmQueue.length > 0) {
+      triggerQwenEnhancer('startup-prewarm').catch(() => {})
+    }
     if (queueManager.size() < READY_POOL_TARGET_SIZE) {
       delay(0).then(async () => {
         suppressQueueBroadcasts = true
@@ -1345,6 +1468,16 @@ app.post('/api/now-playing', (req, res) => {
 
   scheduler.broadcast({ type: 'now-playing', ...payload })
   return res.json({ ok: true })
+})
+
+app.post('/api/spotify/playback-failed', (req, res) => {
+  const uri = String(req.body?.spotify_uri || req.body?.uri || '').trim()
+  const reason = String(req.body?.reason || req.body?.message || '').trim()
+  const status = req.body?.status
+  if (!uri) return res.status(400).json({ ok: false, error: 'spotify_uri 不能为空' })
+
+  blacklistSpotifyUri(uri, [status, reason].filter(Boolean).join(' '))
+  return res.json({ ok: true, blacklisted: true })
 })
 
 // GET /api/next — 弹出队列下一首（前端歌曲结束时调用）

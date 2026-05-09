@@ -949,6 +949,25 @@
   let pendingSpotifyItem = null
   let spotifyPlayRetryCount = 0
 
+  async function reportSpotifyPlaybackFailure(uri, reason, status) {
+    if (!uri) return
+    try {
+      await fetch('/api/spotify/playback-failed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          spotify_uri: uri,
+          reason: reason || '',
+          status: typeof status === 'number' ? status : null,
+        }),
+      })
+    } catch (error) {
+      console.warn('[spotify] report failure failed:', error)
+    }
+  }
+
   // 获取最新 Spotify access token；失败时只警告，不中断页面逻辑
   async function fetchSpotifyAccessToken() {
     try {
@@ -1109,6 +1128,9 @@
         setTimeout(() => spotifyPlay(spotifyCurrentUri).catch(() => {}), 1200)
         return
       }
+      if (spotifyCurrentUri) {
+        reportSpotifyPlaybackFailure(spotifyCurrentUri, message || 'playback_error').catch(() => {})
+      }
       spotifyPlayRetryCount = 0
       advanceToNext()
     })
@@ -1138,7 +1160,10 @@
         }
         return false
       }
-      if (!res.ok) return false
+      if (!res.ok) {
+        await reportSpotifyPlaybackFailure(uri, 'spotify play api failed', res.status)
+        return false
+      }
       spotifyCurrentUri = uri
       spotifyPlayRetryCount = 0
       // 启动进度轮询
