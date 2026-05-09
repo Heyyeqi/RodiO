@@ -418,6 +418,8 @@ async function getClientCredToken() {
 // ── Authorization URL（引导用户授权）────────────────────────────
 function getAuthUrl(state = '') {
   const scopes = [
+    'playlist-read-private',
+    'playlist-read-collaborative',
     'streaming',
     'user-read-email',
     'user-read-private',
