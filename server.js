@@ -744,23 +744,37 @@ async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager
     freshPlaylistFetchAttempted: false,
   }
 
-  while (collected.length < targetCount && attempts < 3) {
-    attempts += 1
-    const baseItems = [...(currentQueue || []), ...collected]
+  async function pullPlaylistItems(baseItems, options = {}) {
     const blacklistedUris = [...spotifyUriBlacklist]
     const excludeUris = [
       ...blacklistedUris,
       ...baseItems.map(item => item?.spotify_uri).filter(Boolean),
     ]
     const excludeKeys = baseItems.map(queueKeyFromItem).filter(Boolean)
-    const { items: pulled, meta } = await spotify.getPlaylistQueueItems({
+    const { items, meta } = await spotify.getPlaylistQueueItems({
       limit: Math.max(targetCount - collected.length, READY_POOL_ROUND_SIZE),
       includeMeta: true,
       blacklistedUris,
       excludeUris,
       excludeKeys,
+      ...options,
     })
     if (meta) lastPhase1Meta = meta
+    return items
+  }
+
+  while (collected.length < targetCount && attempts < 3) {
+    attempts += 1
+    const baseItems = [...(currentQueue || []), ...collected]
+    let pulled = await pullPlaylistItems(baseItems)
+    if (
+      pulled.length === 0 &&
+      lastPhase1Meta.cachedTrackCount === 0 &&
+      !lastPhase1Meta.freshPlaylistFetchAttempted
+    ) {
+      console.log(`[spotify] Phase 1(${reason}) cache 为空，强制 fresh fetch playlist tracks`)
+      pulled = await pullPlaylistItems(baseItems, { forceRefresh: true })
+    }
     if (!pulled.length) break
 
     const filtered = filterQueueCandidates(pulled, [...(currentQueue || []), ...collected], recentPlays, recentRecommended)
