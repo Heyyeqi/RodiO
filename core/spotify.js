@@ -556,6 +556,14 @@ async function getUserPlaylists(options = {}) {
   return playlists.slice()
 }
 
+function getPlaylistCacheTrackCount() {
+  let total = 0
+  for (const cached of playlistTracksCache.values()) {
+    total += Array.isArray(cached?.items) ? cached.items.length : 0
+  }
+  return total
+}
+
 async function getPlaylistTracks(playlistId, options = {}) {
   const forceRefresh = !!options.forceRefresh
   const cached = playlistTracksCache.get(playlistId)
@@ -577,16 +585,29 @@ async function getPlaylistTracks(playlistId, options = {}) {
 
 async function getPlaylistQueueItems(options = {}) {
   const limit = Math.max(1, Number(options.limit) || 1)
+  const includeMeta = options.includeMeta === true
   const excludeUris = new Set(Array.isArray(options.excludeUris) ? options.excludeUris.filter(Boolean) : [])
+  const blacklistedUris = new Set(Array.isArray(options.blacklistedUris) ? options.blacklistedUris.filter(Boolean) : [])
   const excludeKeys = new Set(Array.isArray(options.excludeKeys) ? options.excludeKeys.map(key => String(key).toLowerCase()) : [])
+  const meta = {
+    cachedTrackCount: getPlaylistCacheTrackCount(),
+    blacklistSkipped: 0,
+    freshPlaylistFetchAttempted: false,
+  }
   const playlists = await getUserPlaylists(options)
-  if (!playlists.length) return []
+  meta.cachedTrackCount = getPlaylistCacheTrackCount()
+  if (!playlists.length) return includeMeta ? { items: [], meta } : []
 
   const orderedPlaylists = nextRotatedPlaylists(playlists)
   const queueItems = []
 
   for (const playlist of orderedPlaylists) {
+    const hadFreshPlaylistCache = playlistTracksCache.has(playlist.id)
     const rawTracks = await getPlaylistTracks(playlist.id, options)
+    if (!!options.forceRefresh || !hadFreshPlaylistCache) {
+      meta.freshPlaylistFetchAttempted = true
+      meta.cachedTrackCount = getPlaylistCacheTrackCount()
+    }
     const normalizedTracks = shuffle(rawTracks)
       .map(item => normalizePlaylistTrackItem(item, playlist))
       .filter(Boolean)
@@ -594,15 +615,22 @@ async function getPlaylistQueueItems(options = {}) {
     for (const item of normalizedTracks) {
       const uri = item.spotify_uri
       const key = `${item.song_info.name}::${item.song_info.artist}`.toLowerCase()
-      if (!uri || excludeUris.has(uri) || excludeKeys.has(key)) continue
+      if (!uri) continue
+      if (blacklistedUris.has(uri)) {
+        meta.blacklistSkipped += 1
+      }
+      if (excludeUris.has(uri)) {
+        continue
+      }
+      if (excludeKeys.has(key)) continue
       excludeUris.add(uri)
       excludeKeys.add(key)
       queueItems.push(item)
-      if (queueItems.length >= limit) return queueItems
+      if (queueItems.length >= limit) return includeMeta ? { items: queueItems, meta } : queueItems
     }
   }
 
-  return queueItems
+  return includeMeta ? { items: queueItems, meta } : queueItems
 }
 
 // ── 搜索曲目，返回 Spotify Track ID ─────────────────────────────

@@ -738,20 +738,29 @@ async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager
   const targetCount = Math.max(SPOTIFY_PHASE1_MIN_FILL, Number(needed) || 0)
   const collected = []
   let attempts = 0
+  let lastPhase1Meta = {
+    cachedTrackCount: 0,
+    blacklistSkipped: 0,
+    freshPlaylistFetchAttempted: false,
+  }
 
   while (collected.length < targetCount && attempts < 3) {
     attempts += 1
     const baseItems = [...(currentQueue || []), ...collected]
+    const blacklistedUris = [...spotifyUriBlacklist]
     const excludeUris = [
-      ...spotifyUriBlacklist,
+      ...blacklistedUris,
       ...baseItems.map(item => item?.spotify_uri).filter(Boolean),
     ]
     const excludeKeys = baseItems.map(queueKeyFromItem).filter(Boolean)
-    const pulled = await spotify.getPlaylistQueueItems({
+    const { items: pulled, meta } = await spotify.getPlaylistQueueItems({
       limit: Math.max(targetCount - collected.length, READY_POOL_ROUND_SIZE),
+      includeMeta: true,
+      blacklistedUris,
       excludeUris,
       excludeKeys,
     })
+    if (meta) lastPhase1Meta = meta
     if (!pulled.length) break
 
     const filtered = filterQueueCandidates(pulled, [...(currentQueue || []), ...collected], recentPlays, recentRecommended)
@@ -761,6 +770,10 @@ async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager
 
   if (collected.length > 0) {
     console.log(`[spotify] Phase 1(${reason}) 从用户歌单补入 ${collected.length} 首`)
+  } else {
+    console.log(
+      `[spotify] Phase 1(${reason}) 未补入新歌: cache_tracks=${lastPhase1Meta.cachedTrackCount}, blacklist_filtered=${lastPhase1Meta.blacklistSkipped}, fresh_fetch_attempted=${lastPhase1Meta.freshPlaylistFetchAttempted}`
+    )
   }
   return collected
 }
