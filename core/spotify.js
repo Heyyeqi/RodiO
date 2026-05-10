@@ -589,14 +589,22 @@ async function getPlaylistQueueItems(options = {}) {
   const excludeUris = new Set(Array.isArray(options.excludeUris) ? options.excludeUris.filter(Boolean) : [])
   const blacklistedUris = new Set(Array.isArray(options.blacklistedUris) ? options.blacklistedUris.filter(Boolean) : [])
   const excludeKeys = new Set(Array.isArray(options.excludeKeys) ? options.excludeKeys.map(key => String(key).toLowerCase()) : [])
+  let totalTracksLoaded = 0
   const meta = {
     cachedTrackCount: getPlaylistCacheTrackCount(),
     blacklistSkipped: 0,
     freshPlaylistFetchAttempted: false,
   }
+  console.log('[spotify] getPlaylistQueueItems start:', {
+    hasUserAccessToken: !!userAccessToken,
+  })
   const playlists = await getUserPlaylists(options)
+  console.log('[spotify] getPlaylistQueueItems playlists fetched:', playlists.length)
   meta.cachedTrackCount = getPlaylistCacheTrackCount()
-  if (!playlists.length) return includeMeta ? { items: [], meta } : []
+  if (!playlists.length) {
+    console.log('[spotify] getPlaylistQueueItems total tracks loaded:', totalTracksLoaded)
+    return includeMeta ? { items: [], meta } : []
+  }
 
   const orderedPlaylists = nextRotatedPlaylists(playlists)
   const queueItems = []
@@ -604,6 +612,7 @@ async function getPlaylistQueueItems(options = {}) {
   for (const playlist of orderedPlaylists) {
     const hadFreshPlaylistCache = playlistTracksCache.has(playlist.id)
     const rawTracks = await getPlaylistTracks(playlist.id, options)
+    totalTracksLoaded += rawTracks.length
     if (!!options.forceRefresh || !hadFreshPlaylistCache) {
       meta.freshPlaylistFetchAttempted = true
       meta.cachedTrackCount = getPlaylistCacheTrackCount()
@@ -626,10 +635,14 @@ async function getPlaylistQueueItems(options = {}) {
       excludeUris.add(uri)
       excludeKeys.add(key)
       queueItems.push(item)
-      if (queueItems.length >= limit) return includeMeta ? { items: queueItems, meta } : queueItems
+      if (queueItems.length >= limit) {
+        console.log('[spotify] getPlaylistQueueItems total tracks loaded:', totalTracksLoaded)
+        return includeMeta ? { items: queueItems, meta } : queueItems
+      }
     }
   }
 
+  console.log('[spotify] getPlaylistQueueItems total tracks loaded:', totalTracksLoaded)
   return includeMeta ? { items: queueItems, meta } : queueItems
 }
 
