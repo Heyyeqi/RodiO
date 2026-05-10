@@ -4,6 +4,28 @@ const crypto = require('crypto')
 
 const CACHE_DIR = path.join(__dirname, '../cache/tts')
 const MINIMAX_URL = 'https://api.minimax.chat/v1/t2a_v2'
+const MINIMAX_MIN_GAP_MS = 2000
+let ttsQueue = Promise.resolve()
+let lastMiniMaxRequestAt = 0
+let queueLength = 0
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function enqueueTtsTask(task) {
+  queueLength += 1
+  const wrappedTask = async () => {
+    try {
+      return await task()
+    } finally {
+      queueLength = Math.max(0, queueLength - 1)
+    }
+  }
+  const next = ttsQueue.then(wrappedTask, wrappedTask)
+  ttsQueue = next.then(() => undefined, () => undefined)
+  return next
+}
 
 function normalizeTtsText(text) {
   const cleaned = String(text || '')
@@ -53,6 +75,13 @@ async function synthesizeWithOptions(text, options = {}) {
 
   console.log('[minimax-tts] request body:', JSON.stringify(requestBody))
 
+  const wait = MINIMAX_MIN_GAP_MS - (Date.now() - lastMiniMaxRequestAt)
+  if (wait > 0) {
+    await delay(wait)
+  }
+  console.log('[tts-queue] starting request, queue length:', queueLength)
+  lastMiniMaxRequestAt = Date.now()
+
   const response = await fetch(MINIMAX_URL, {
     method: 'POST',
     headers: {
@@ -88,11 +117,11 @@ async function synthesizeWithOptions(text, options = {}) {
 }
 
 async function synthesize(text) {
-  return synthesizeWithOptions(text)
+  return enqueueTtsTask(() => synthesizeWithOptions(text))
 }
 
 async function synthesizeSlow(text) {
-  return synthesizeWithOptions(text, { speed: 0.84, suffix: '_slow' })
+  return enqueueTtsTask(() => synthesizeWithOptions(text, { speed: 0.84, suffix: '_slow' }))
 }
 
 module.exports = { synthesize, synthesizeSlow }

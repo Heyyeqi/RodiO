@@ -1620,7 +1620,13 @@ app.get('/api/plan/today', (req, res) => {
 
 // ── Spotify OAuth ─────────────────────────────────────────────────
 // GET /auth/spotify — 跳转到 Spotify 授权页
-app.get('/auth/spotify', (req, res) => {
+app.get('/auth/spotify', async (req, res) => {
+  const force = String(req.query?.force || '').toLowerCase() === 'true'
+  if (force) {
+    await spotify.clearUserToken().catch(error => {
+      console.error('[spotify] force reauth 清 token 失败:', error.message)
+    })
+  }
   const url = spotify.getAuthUrl('rodiO')
   res.redirect(url)
 })

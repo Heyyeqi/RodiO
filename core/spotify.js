@@ -293,6 +293,38 @@ async function persistUserToken() {
   return true
 }
 
+async function clearUserToken() {
+  userAccessToken = null
+  userRefreshToken = null
+  userTokenExpiresAt = 0
+  tokenInitPromise = null
+  userPlaylistsCache = { items: [], fetchedAt: 0 }
+  playlistTracksCache.clear()
+  playlistRotationIds = []
+  playlistRotationIndex = 0
+
+  try {
+    state.setPref(SPOTIFY_TOKEN_PREF, JSON.stringify({
+      access_token: '',
+      refresh_token: '',
+      expires_at: '0',
+      updated_at: Date.now(),
+    }))
+  } catch (e) {
+    console.error('[spotify] 清除本地 token 失败:', e.message)
+  }
+
+  process.env.SPOTIFY_ACCESS_TOKEN = ''
+  process.env.SPOTIFY_REFRESH_TOKEN = ''
+  process.env.SPOTIFY_TOKEN_EXPIRES_AT = '0'
+
+  try {
+    await persistUserToken()
+  } catch (e) {
+    console.error('[spotify] 清除远端 token 失败:', e.message)
+  }
+}
+
 loadPersistedUserToken()
 
 async function initializeUserToken() {
@@ -656,6 +688,7 @@ async function resolveSpotifyUris(songs) {
 }
 
 module.exports = {
+  clearUserToken,
   getAuthUrl,
   exchangeCode,
   getPlaylistQueueItems,
