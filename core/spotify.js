@@ -530,23 +530,53 @@ function hasUserToken() {
   return !!userAccessToken || !!userRefreshToken
 }
 
+const CURATED_PLAYLIST_IDS = [
+  { id: process.env.SPOTIFY_PLAYLIST_MORNING, name: '清晨' },
+  { id: process.env.SPOTIFY_PLAYLIST_DAY,     name: '白天' },
+  { id: process.env.SPOTIFY_PLAYLIST_NIGHT,   name: '夜晚' },
+].filter(p => p.id)
+
 async function getUserPlaylists(options = {}) {
   const forceRefresh = !!options.forceRefresh
   if (!forceRefresh && userPlaylistsCache.fetchedAt > Date.now() - USER_PLAYLIST_CACHE_MS) {
     return userPlaylistsCache.items.slice()
   }
 
-  const items = await paginateSpotifyUserItems(
-    'https://api.spotify.com/v1/me/playlists?limit=50',
-    'items'
-  )
-  const playlists = items
-    .filter(item => item?.id && item?.tracks?.total)
-    .map(item => ({
-      id: item.id,
-      name: item.name || '',
-      tracksTotal: item.tracks?.total || 0,
-    }))
+  let playlists = []
+
+  if (CURATED_PLAYLIST_IDS.length > 0) {
+    // 优先读三个固定策划歌单，直接用 Playlist API 获取元信息
+    const results = await Promise.allSettled(
+      CURATED_PLAYLIST_IDS.map(({ id, name }) =>
+        spotifyUserJson(`https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?fields=id,name,tracks(total)`)
+          .then(data => ({
+            id: data?.id || id,
+            name: data?.name || name,
+            tracksTotal: data?.tracks?.total || 0,
+          }))
+          .catch(() => ({ id, name, tracksTotal: 1 })) // 即便拿不到元信息也保留ID
+      )
+    )
+    playlists = results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => r.value)
+      .filter(p => p.id)
+    console.log(`[spotify] 策划歌单加载: ${playlists.map(p => `${p.name}(${p.tracksTotal}首)`).join(', ')}`)
+  } else {
+    // fallback：从账号拉全量歌单
+    console.log('[spotify] 未配置策划歌单，回退到 /me/playlists')
+    const items = await paginateSpotifyUserItems(
+      'https://api.spotify.com/v1/me/playlists?limit=50',
+      'items'
+    )
+    playlists = items
+      .filter(item => item?.id && item?.tracks?.total)
+      .map(item => ({
+        id: item.id,
+        name: item.name || '',
+        tracksTotal: item.tracks?.total || 0,
+      }))
+  }
 
   userPlaylistsCache = {
     items: playlists,
