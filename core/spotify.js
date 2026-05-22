@@ -548,7 +548,12 @@ async function getUserPlaylists(options = {}) {
     // 优先读三个固定策划歌单，直接用 Playlist API 获取元信息
     const results = await Promise.allSettled(
       CURATED_PLAYLIST_IDS.map(({ id, name }) =>
-        spotifyUserJson(`https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?fields=id,name,tracks(total)`)
+        getClientCredToken().then(token =>
+          fetchJsonWithTimeout(
+            `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?fields=id,name,tracks(total)`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          ).then(res => res.json())
+        )
           .then(data => ({
             id: data?.id || id,
             name: data?.name || name,
@@ -594,6 +599,27 @@ function getPlaylistCacheTrackCount() {
   return total
 }
 
+async function paginateSpotifyPublicItems(url, itemKey) {
+  const items = []
+  let nextUrl = url
+  while (nextUrl) {
+    const token = await getClientCredToken()
+    const res = await fetchJsonWithTimeout(nextUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = res.status === 204 ? null : await res.json().catch(() => null)
+    if (!res.ok) {
+      const message = data?.error?.message || `Spotify public API failed (${res.status})`
+      const error = new Error(message)
+      error.status = res.status
+      throw error
+    }
+    items.push(...(Array.isArray(data?.[itemKey]) ? data[itemKey] : []))
+    nextUrl = data?.next || null
+  }
+  return items
+}
+
 async function getPlaylistTracks(playlistId, options = {}) {
   const forceRefresh = !!options.forceRefresh
   const cached = playlistTracksCache.get(playlistId)
@@ -601,7 +627,8 @@ async function getPlaylistTracks(playlistId, options = {}) {
     return cached.items.slice()
   }
 
-  const items = await paginateSpotifyUserItems(
+  // 公开歌单用 client credentials 读，不依赖 user token
+  const items = await paginateSpotifyPublicItems(
     `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=100&fields=items(is_local,track(id,uri,name,is_local,is_playable,artists(name),album(name))),next`,
     'items'
   )
