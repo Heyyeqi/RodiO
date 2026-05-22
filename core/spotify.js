@@ -21,6 +21,20 @@ const SPOTIFY_BAD_TITLE_KWS = [
   'karaoke', 'piano', 'version', 'ver.', 'edit', 'mono', 'demo',
 ]
 const USER_PLAYLIST_CACHE_MS = 5 * 60 * 1000
+
+// ── 静态策划曲库 ─────────────────────────────────────────────────
+let curatedLibrary = { morning: [], day: [], night: [] }
+try {
+  const fs = require('fs')
+  const path = require('path')
+  const libPath = path.join(__dirname, '..', 'curated_tracks.json')
+  const raw = JSON.parse(fs.readFileSync(libPath, 'utf-8'))
+  curatedLibrary = raw.playlists || curatedLibrary
+  const total = Object.values(curatedLibrary).reduce((s, arr) => s + arr.length, 0)
+  console.log(`[spotify] 静态曲库加载: 清晨${curatedLibrary.morning.length}首 白天${curatedLibrary.day.length}首 夜晚${curatedLibrary.night.length}首 共${total}首`)
+} catch (e) {
+  console.warn('[spotify] 静态曲库加载失败:', e.message)
+}
 const USER_PLAYLIST_TRACKS_CACHE_MS = 10 * 60 * 1000
 
 let clientCredToken = null      // 用于搜索（不需要用户授权）
@@ -545,7 +559,7 @@ async function getUserPlaylists(options = {}) {
   let playlists = []
 
   if (CURATED_PLAYLIST_IDS.length > 0) {
-    // 策划歌单：直接用固定ID，不拉取元信息（避免fields参数引发403）
+    // 策划歌单：用静态曲库，不调API
     playlists = CURATED_PLAYLIST_IDS.map(({ id, name }) => ({ id, name, tracksTotal: 0 }))
     console.log(`[spotify] 策划歌单已配置: ${playlists.map(p => p.name).join(', ')}`)
   } else {
@@ -601,14 +615,49 @@ async function paginateSpotifyPublicItems(url, itemKey) {
   return items
 }
 
+const CURATED_PERIOD_MAP = {
+  [process.env.SPOTIFY_PLAYLIST_MORNING]: 'morning',
+  [process.env.SPOTIFY_PLAYLIST_DAY]:     'day',
+  [process.env.SPOTIFY_PLAYLIST_NIGHT]:   'night',
+}
+
+function curatedTracksToQueueItems(tracks, playlistId, playlistName) {
+  return tracks.map(t => ({
+    is_local: false,
+    track: {
+      id: t.id,
+      uri: t.uri,
+      name: t.name,
+      is_local: false,
+      is_playable: true,
+      artists: t.artist.split('; ').map(a => ({ name: a })),
+      album: { name: t.album || null },
+    },
+  }))
+}
+
 async function getPlaylistTracks(playlistId, options = {}) {
   const forceRefresh = !!options.forceRefresh
+
+  // 策划歌单：直接从静态曲库返回，不调API
+  const period = CURATED_PERIOD_MAP[playlistId]
+  if (period && curatedLibrary[period]?.length) {
+    const cached = playlistTracksCache.get(playlistId)
+    if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
+      return cached.items.slice()
+    }
+    const items = curatedTracksToQueueItems(curatedLibrary[period], playlistId, period)
+    playlistTracksCache.set(playlistId, { items, fetchedAt: Date.now() })
+    console.log(`[spotify] 静态曲库 ${period}: ${items.length}首`)
+    return items.slice()
+  }
+
   const cached = playlistTracksCache.get(playlistId)
   if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
     return cached.items.slice()
   }
 
-  // 公开歌单用 client credentials 读，不依赖 user token
+  // 非策划歌单：用 client credentials 读公开歌单
   const items = await paginateSpotifyPublicItems(
     `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=100&fields=items(is_local,track(id,uri,name,is_local,is_playable,artists(name),album(name))),next`,
     'items'

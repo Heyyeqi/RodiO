@@ -1,0 +1,781 @@
+{
+  "generated_at": "2026-05-23T00:00:00Z",
+  "playlists": {
+    "morning": [
+      {
+        "id": "46IZ0fSY2mpAiktS3KOqds",
+        "uri": "spotify:track:46IZ0fSY2mpAiktS3KOqds",
+        "name": "Easy On Me",
+        "artist": "Adele",
+        "album": "30"
+      },
+      {
+        "id": "1wUnuiXMMvhudmzvcCtlZP",
+        "uri": "spotify:track:1wUnuiXMMvhudmzvcCtlZP",
+        "name": "Get Up",
+        "artist": "NewJeans",
+        "album": "NewJeans 2nd EP 'Get Up'"
+      },
+      {
+        "id": "2ivhjourUwztR3kmz575KV",
+        "uri": "spotify:track:2ivhjourUwztR3kmz575KV",
+        "name": "Like A Flower",
+        "artist": "IRENE",
+        "album": "Like A Flower - The 1st Mini Album"
+      },
+      {
+        "id": "6SkXH2YkrZ9C9e427JBPXd",
+        "uri": "spotify:track:6SkXH2YkrZ9C9e427JBPXd",
+        "name": "Dreamer",
+        "artist": "S-Tone Inc",
+        "album": "Luz Y Sombra"
+      },
+      {
+        "id": "6rdkCkjk6D12xRpdMXy0I2",
+        "uri": "spotify:track:6rdkCkjk6D12xRpdMXy0I2",
+        "name": "New Jeans",
+        "artist": "NewJeans",
+        "album": "NewJeans 'Super Shy'"
+      },
+      {
+        "id": "6dOtVTDdiauQNBQEDOtlAB",
+        "uri": "spotify:track:6dOtVTDdiauQNBQEDOtlAB",
+        "name": "BIRDS OF A FEATHER",
+        "artist": "Billie Eilish",
+        "album": "HIT ME HARD AND SOFT"
+      },
+      {
+        "id": "4i1edRqVVt9eRO9xeaPf6n",
+        "uri": "spotify:track:4i1edRqVVt9eRO9xeaPf6n",
+        "name": "新造的人",
+        "artist": "鄭宜農",
+        "album": "周處除三害（電影原聲帶）"
+      },
+      {
+        "id": "02IwNK07OWizFcCmQr6GXs",
+        "uri": "spotify:track:02IwNK07OWizFcCmQr6GXs",
+        "name": "breathe in... breathe out",
+        "artist": "林憶蓮",
+        "album": "0"
+      },
+      {
+        "id": "2MwWbH2zfNDQ2C9qCjT04V",
+        "uri": "spotify:track:2MwWbH2zfNDQ2C9qCjT04V",
+        "name": "早班火車 - 掀起連場音樂會",
+        "artist": "盧凱彤",
+        "album": "一個人回家"
+      },
+      {
+        "id": "7GA86Uo2jYbj8vIXe2nyWd",
+        "uri": "spotify:track:7GA86Uo2jYbj8vIXe2nyWd",
+        "name": "Snow On The Beach (feat. Lana Del Rey)",
+        "artist": "Taylor Swift;Lana Del Rey",
+        "album": "Midnights (The Til Dawn Edition)"
+      },
+      {
+        "id": "51oc6MEsXTpnPn6GOw5VuP",
+        "uri": "spotify:track:51oc6MEsXTpnPn6GOw5VuP",
+        "name": "きらり",
+        "artist": "Fujii Kaze",
+        "album": "Kirari Remixes (Asia Edition)"
+      },
+      {
+        "id": "4Yq07EKmSWig74pICwIxPh",
+        "uri": "spotify:track:4Yq07EKmSWig74pICwIxPh",
+        "name": "Coastal Love",
+        "artist": "HONNE",
+        "album": "Coastal Love EP"
+      },
+      {
+        "id": "0IkpTJJjbDa8e9Mn6BcqOx",
+        "uri": "spotify:track:0IkpTJJjbDa8e9Mn6BcqOx",
+        "name": "C'est La Vie",
+        "artist": "梁靜茹",
+        "album": "崇拜"
+      },
+      {
+        "id": "4LRPiXqCikLlN15c3yImP7",
+        "uri": "spotify:track:4LRPiXqCikLlN15c3yImP7",
+        "name": "As It Was",
+        "artist": "Harry Styles",
+        "album": "As It Was"
+      },
+      {
+        "id": "69bdhBcI3aTFA8KhooWBI3",
+        "uri": "spotify:track:69bdhBcI3aTFA8KhooWBI3",
+        "name": "關於我愛你",
+        "artist": "張懸",
+        "album": "城市"
+      },
+      {
+        "id": "4mQdLjgtk7Zdgn27NHtGAY",
+        "uri": "spotify:track:4mQdLjgtk7Zdgn27NHtGAY",
+        "name": "城市",
+        "artist": "張懸",
+        "album": "城市"
+      },
+      {
+        "id": "2UX3luvUkgBG0r3YIHTfHL",
+        "uri": "spotify:track:2UX3luvUkgBG0r3YIHTfHL",
+        "name": "海上花",
+        "artist": "雷光夏",
+        "album": "臉頰貼緊月球"
+      },
+      {
+        "id": "0m1h6onsz08efeHJoYwGey",
+        "uri": "spotify:track:0m1h6onsz08efeHJoYwGey",
+        "name": "Come into My World",
+        "artist": "Kylie Minogue",
+        "album": "Fever (Deluxe Edition)"
+      },
+      {
+        "id": "5IMckMdrKc1y6Pa1oUeFAI",
+        "uri": "spotify:track:5IMckMdrKc1y6Pa1oUeFAI",
+        "name": "Coastal Love",
+        "artist": "HONNE",
+        "album": "Warm on a Cold Night (Deluxe)"
+      },
+      {
+        "id": "5CM4UuQ9Gnd6K2YyKGPMoK",
+        "uri": "spotify:track:5CM4UuQ9Gnd6K2YyKGPMoK",
+        "name": "Bad Habit",
+        "artist": "Steve Lacy",
+        "album": "Bad Habit"
+      },
+      {
+        "id": "75iuvPXPaxKPkYZFNtMSpo",
+        "uri": "spotify:track:75iuvPXPaxKPkYZFNtMSpo",
+        "name": "花事了 - \"乘客\"廣東版",
+        "artist": "王菲",
+        "album": "將愛"
+      },
+      {
+        "id": "3WlbeuhfRSqU7ylK2Ui5U7",
+        "uri": "spotify:track:3WlbeuhfRSqU7ylK2Ui5U7",
+        "name": "Snowchild",
+        "artist": "The Weeknd",
+        "album": "After Hours"
+      },
+      {
+        "id": "06SYfhYSo9iY3txHE6W9Dl",
+        "uri": "spotify:track:06SYfhYSo9iY3txHE6W9Dl",
+        "name": "jazz is for ordinary people",
+        "artist": "berlioz",
+        "album": "jazz is for ordinary people"
+      },
+      {
+        "id": "1zOA78sKxnosYcQtYR0ZDv",
+        "uri": "spotify:track:1zOA78sKxnosYcQtYR0ZDv",
+        "name": "peace",
+        "artist": "berlioz",
+        "album": "open this wall"
+      },
+      {
+        "id": "6IoDmKMOqGMYwny9MjQ6dg",
+        "uri": "spotify:track:6IoDmKMOqGMYwny9MjQ6dg",
+        "name": "deep in it",
+        "artist": "berlioz;Ted Jasper",
+        "album": "deep in it"
+      },
+      {
+        "id": "4aptr0Era7aIdkX5gfsaFN",
+        "uri": "spotify:track:4aptr0Era7aIdkX5gfsaFN",
+        "name": "ode to rahsaan",
+        "artist": "berlioz",
+        "album": "open this wall"
+      },
+      {
+        "id": "4narDGRW69BFMIPpgCrh6b",
+        "uri": "spotify:track:4narDGRW69BFMIPpgCrh6b",
+        "name": "wash my sins away",
+        "artist": "berlioz",
+        "album": "wash my sins away"
+      },
+      {
+        "id": "1pgF9ARRXIBJlhzQ0XqYdK",
+        "uri": "spotify:track:1pgF9ARRXIBJlhzQ0XqYdK",
+        "name": "盛夏的果實",
+        "artist": "莫文蔚",
+        "album": "含情莫莫.莫文蔚全精選集"
+      },
+      {
+        "id": "6n7AgecevajL3RN3DkGAi0",
+        "uri": "spotify:track:6n7AgecevajL3RN3DkGAi0",
+        "name": "Flying for Thailand",
+        "artist": "坂本龍一",
+        "album": "Shining Boy & Little Randy (Original Motion Picture Soundtrack)"
+      },
+      {
+        "id": "6g3YS2tKIchyqDwSJDxkcU",
+        "uri": "spotify:track:6g3YS2tKIchyqDwSJDxkcU",
+        "name": "告訴我 (Live 版）",
+        "artist": "陳綺貞",
+        "album": "花的姿態演唱會經典實錄"
+      },
+      {
+        "id": "2ahydS3UcOoAF2usK3I1ph",
+        "uri": "spotify:track:2ahydS3UcOoAF2usK3I1ph",
+        "name": "美人魚",
+        "artist": "林俊傑",
+        "album": "第二天堂"
+      },
+      {
+        "id": "1VpHU8KcaoB2WVVV2KDWEn",
+        "uri": "spotify:track:1VpHU8KcaoB2WVVV2KDWEn",
+        "name": "廣島之戀",
+        "artist": "莫文蔚;張洪量",
+        "album": "做自己"
+      },
+      {
+        "id": "2PPyXCGmafgwoKXuY9xEJk",
+        "uri": "spotify:track:2PPyXCGmafgwoKXuY9xEJk",
+        "name": "一步成詩",
+        "artist": "王诗安",
+        "album": "詩"
+      }
+    ],
+    "day": [
+      {
+        "id": "3fEX9NgOeklq816Fw00uoo",
+        "uri": "spotify:track:3fEX9NgOeklq816Fw00uoo",
+        "name": "HYPNOTIZE",
+        "artist": "XG",
+        "album": "THE CORE - 核"
+      },
+      {
+        "id": "02wk5BttM0QL38ERjLPQJB",
+        "uri": "spotify:track:02wk5BttM0QL38ERjLPQJB",
+        "name": "Cool With You",
+        "artist": "NewJeans",
+        "album": "NewJeans 2nd EP 'Get Up'"
+      },
+      {
+        "id": "4X2wiu23tM9XTVOBhSN0Kx",
+        "uri": "spotify:track:4X2wiu23tM9XTVOBhSN0Kx",
+        "name": "The Jazzy View - DJ Ezasscul",
+        "artist": "DJ Ezasscul",
+        "album": "Jazz Meditation Trilogy (Deluxe Edition)"
+      },
+      {
+        "id": "3KwS5ClQ1ipUPUUHIIt8Pk",
+        "uri": "spotify:track:3KwS5ClQ1ipUPUUHIIt8Pk",
+        "name": "soso",
+        "artist": "OMAH LAY",
+        "album": "Boy Alone (Deluxe Edition)"
+      },
+      {
+        "id": "2tNp4xg5V42BuhNvUjcNx6",
+        "uri": "spotify:track:2tNp4xg5V42BuhNvUjcNx6",
+        "name": "反方向的鐘",
+        "artist": "周杰倫",
+        "album": "杰倫"
+      },
+      {
+        "id": "2ivhjourUwztR3kmz575KV",
+        "uri": "spotify:track:2ivhjourUwztR3kmz575KV",
+        "name": "Like A Flower",
+        "artist": "IRENE",
+        "album": "Like A Flower - The 1st Mini Album"
+      },
+      {
+        "id": "0JUWF44gfMszGNhjCF7Ufs",
+        "uri": "spotify:track:0JUWF44gfMszGNhjCF7Ufs",
+        "name": "Midnight Pretenders",
+        "artist": "亜蘭知子",
+        "album": "浮遊空間"
+      },
+      {
+        "id": "65FftemJ1DbbZ45DUfHJXE",
+        "uri": "spotify:track:65FftemJ1DbbZ45DUfHJXE",
+        "name": "OMG",
+        "artist": "NewJeans",
+        "album": "NewJeans 'OMG'"
+      },
+      {
+        "id": "58Q3FZFs1YXPpliWQB5kXB",
+        "uri": "spotify:track:58Q3FZFs1YXPpliWQB5kXB",
+        "name": "Right Now",
+        "artist": "NewJeans",
+        "album": "Supernatural"
+      },
+      {
+        "id": "6OWWZtNQORY1McaZmOrwhc",
+        "uri": "spotify:track:6OWWZtNQORY1McaZmOrwhc",
+        "name": "GO!",
+        "artist": "CORTIS",
+        "album": "COLOR OUTSIDE THE LINES"
+      },
+      {
+        "id": "2pIUpMhHL6L9Z5lnKxJJr9",
+        "uri": "spotify:track:2pIUpMhHL6L9Z5lnKxJJr9",
+        "name": "Attention",
+        "artist": "NewJeans",
+        "album": "NewJeans 1st EP 'New Jeans'"
+      },
+      {
+        "id": "7rU6Iebxzlvqy5t857bKFq",
+        "uri": "spotify:track:7rU6Iebxzlvqy5t857bKFq",
+        "name": "Plastic Love",
+        "artist": "Mariya Takeuchi",
+        "album": "Expressions"
+      },
+      {
+        "id": "24rDDbSlFY9OHrlJb48CRh",
+        "uri": "spotify:track:24rDDbSlFY9OHrlJb48CRh",
+        "name": "404 (New Era)",
+        "artist": "KiiiKiii",
+        "album": "Delulu Pack"
+      },
+      {
+        "id": "3RxL9p66oXKuSdXYeFcJeT",
+        "uri": "spotify:track:3RxL9p66oXKuSdXYeFcJeT",
+        "name": "SOMETHING AIN'T RIGHT",
+        "artist": "XG",
+        "album": "AWE"
+      },
+      {
+        "id": "3s2MyU2YCwNNwcSokt0jXD",
+        "uri": "spotify:track:3s2MyU2YCwNNwcSokt0jXD",
+        "name": "Girl",
+        "artist": "Destiny's Child",
+        "album": "Destiny Fulfilled"
+      },
+      {
+        "id": "2Q0JkTzFXrU2BbnQT7tzIR",
+        "uri": "spotify:track:2Q0JkTzFXrU2BbnQT7tzIR",
+        "name": "A No No",
+        "artist": "Mariah Carey",
+        "album": "Caution"
+      },
+      {
+        "id": "5GjXMhZsT6cdfRB7nurGu2",
+        "uri": "spotify:track:5GjXMhZsT6cdfRB7nurGu2",
+        "name": "GTFO",
+        "artist": "Mariah Carey",
+        "album": "Caution"
+      },
+      {
+        "id": "12SdfiD7MIRteeIXWdvxpl",
+        "uri": "spotify:track:12SdfiD7MIRteeIXWdvxpl",
+        "name": "yes, and? - extended mix",
+        "artist": "Ariana Grande",
+        "album": "yes, and?"
+      },
+      {
+        "id": "56v8WEnGzLByGsDAXDiv4d",
+        "uri": "spotify:track:56v8WEnGzLByGsDAXDiv4d",
+        "name": "ETA",
+        "artist": "NewJeans",
+        "album": "NewJeans 2nd EP 'Get Up'"
+      },
+      {
+        "id": "0ARK753YaiJbpLUk7z5yIM",
+        "uri": "spotify:track:0ARK753YaiJbpLUk7z5yIM",
+        "name": "Dilemma",
+        "artist": "Nelly;Kelly Rowland",
+        "album": "Nellyville"
+      },
+      {
+        "id": "4l9dvbccSQyVanHrdsY0sH",
+        "uri": "spotify:track:4l9dvbccSQyVanHrdsY0sH",
+        "name": "リンゴ追分 (蘋果花 日文版)",
+        "artist": "王若琳",
+        "album": "愛的呼喚"
+      },
+      {
+        "id": "0UHB9METy4VCXNgkcGqHqS",
+        "uri": "spotify:track:0UHB9METy4VCXNgkcGqHqS",
+        "name": "Kiss It Better",
+        "artist": "Rihanna",
+        "album": "ANTI (Deluxe)"
+      },
+      {
+        "id": "01GJom54rAMKNZZDipNFKv",
+        "uri": "spotify:track:01GJom54rAMKNZZDipNFKv",
+        "name": "Illusion - Live",
+        "artist": "Reinhardt Buhr",
+        "album": "Movement 2 (Live)"
+      },
+      {
+        "id": "3DZQ6mzUkAdHqZWzqxBKIK",
+        "uri": "spotify:track:3DZQ6mzUkAdHqZWzqxBKIK",
+        "name": "Loveeeeeee Song",
+        "artist": "Rihanna;Future",
+        "album": "Unapologetic (Deluxe)"
+      },
+      {
+        "id": "58ZdT5NQIAkeSWUxNneBg8",
+        "uri": "spotify:track:58ZdT5NQIAkeSWUxNneBg8",
+        "name": "November Rain",
+        "artist": "吳亦凡",
+        "album": "Antares"
+      },
+      {
+        "id": "1RMJOxR6GRPsBHL8qeC2ux",
+        "uri": "spotify:track:1RMJOxR6GRPsBHL8qeC2ux",
+        "name": "Best Part (feat. H.E.R.)",
+        "artist": "Daniel Caesar;H.E.R.",
+        "album": "Freudian"
+      },
+      {
+        "id": "7mS8RbJji2UZAaguRGsOCH",
+        "uri": "spotify:track:7mS8RbJji2UZAaguRGsOCH",
+        "name": "Me Against the Music (feat. Madonna) - LP Version / Video Mix",
+        "artist": "Britney Spears;Madonna",
+        "album": "In The Zone"
+      },
+      {
+        "id": "7pdF27mSDuPWhppnHAmWHa",
+        "uri": "spotify:track:7pdF27mSDuPWhppnHAmWHa",
+        "name": "whoa (mind in awe)",
+        "artist": "XXXTENTACION",
+        "album": "SKINS"
+      },
+      {
+        "id": "5CwegKIle8tGGr0Q00vybU",
+        "uri": "spotify:track:5CwegKIle8tGGr0Q00vybU",
+        "name": "為你我受冷風吹 - Live in Hong Kong/2011",
+        "artist": "林憶蓮",
+        "album": "Sandy Lam Concert Mmxi (Live in Hong Kong/ 2011)"
+      },
+      {
+        "id": "6brl7bwOHmGFkNw3MBqssT",
+        "uri": "spotify:track:6brl7bwOHmGFkNw3MBqssT",
+        "name": "So Sick",
+        "artist": "Ne-Yo",
+        "album": "In My Own Words"
+      },
+      {
+        "id": "6gdhHMWUv1pvkOHqCUGvCp",
+        "uri": "spotify:track:6gdhHMWUv1pvkOHqCUGvCp",
+        "name": "One In A Million",
+        "artist": "Aaliyah",
+        "album": "One In A Million"
+      },
+      {
+        "id": "0BTaaKT4RMbs5M73tOHX5Y",
+        "uri": "spotify:track:0BTaaKT4RMbs5M73tOHX5Y",
+        "name": "Alcohol-Free",
+        "artist": "TWICE",
+        "album": "Taste of Love"
+      },
+      {
+        "id": "0HZpNpDz65EcOggATQM0Y8",
+        "uri": "spotify:track:0HZpNpDz65EcOggATQM0Y8",
+        "name": "Let it roll",
+        "artist": "孫盛希",
+        "album": "希遊記 (藏金版)"
+      },
+      {
+        "id": "55CHeLEfn5iJ0IIkgaa4si",
+        "uri": "spotify:track:55CHeLEfn5iJ0IIkgaa4si",
+        "name": "Savage",
+        "artist": "Megan Thee Stallion",
+        "album": "Suga"
+      },
+      {
+        "id": "47TqCyvtFAyqPe8jooMakz",
+        "uri": "spotify:track:47TqCyvtFAyqPe8jooMakz",
+        "name": "H.A.T.E.U.",
+        "artist": "Mariah Carey",
+        "album": "Memoirs of an imperfect Angel"
+      },
+      {
+        "id": "5X8kkUaUlAyAUr9TYqDFTH",
+        "uri": "spotify:track:5X8kkUaUlAyAUr9TYqDFTH",
+        "name": "All For You",
+        "artist": "Janet Jackson",
+        "album": "All For You"
+      },
+      {
+        "id": "2RIfVB8KERaQiygx5tMNNU",
+        "uri": "spotify:track:2RIfVB8KERaQiygx5tMNNU",
+        "name": "Shadows",
+        "artist": "Roosevelt",
+        "album": "Young Romance"
+      },
+      {
+        "id": "0uVUqI6ZSBWI66Vqsmf9pa",
+        "uri": "spotify:track:0uVUqI6ZSBWI66Vqsmf9pa",
+        "name": "One Day - Live",
+        "artist": "OMA;Shing02;Uyama Hiroto;SPIN MASTER A-1;Troy Everett",
+        "album": "Luv(Sic) Hexalogy [OMA and Shing02 Live at Liquidroom]"
+      }
+    ],
+    "night": [
+      {
+        "id": "3cmR9cq9lEvSR1UPJ66pDT",
+        "uri": "spotify:track:3cmR9cq9lEvSR1UPJ66pDT",
+        "name": "反覆記號",
+        "artist": "JOLIN蔡依林",
+        "album": "野蠻遊戲"
+      },
+      {
+        "id": "6dOtVTDdiauQNBQEDOtlAB",
+        "uri": "spotify:track:6dOtVTDdiauQNBQEDOtlAB",
+        "name": "BIRDS OF A FEATHER",
+        "artist": "Billie Eilish",
+        "album": "HIT ME HARD AND SOFT"
+      },
+      {
+        "id": "2ei4PerelrjFqLJL8GPrAl",
+        "uri": "spotify:track:2ei4PerelrjFqLJL8GPrAl",
+        "name": "離人",
+        "artist": "張學友",
+        "album": "不後悔"
+      },
+      {
+        "id": "1bhXYLkHLt6ucYSCwzue3k",
+        "uri": "spotify:track:1bhXYLkHLt6ucYSCwzue3k",
+        "name": "我的愛",
+        "artist": "孙燕姿",
+        "album": "孫燕姿STEFANIE同名專輯"
+      },
+      {
+        "id": "2tNp4xg5V42BuhNvUjcNx6",
+        "uri": "spotify:track:2tNp4xg5V42BuhNvUjcNx6",
+        "name": "反方向的鐘",
+        "artist": "周杰倫",
+        "album": "杰倫"
+      },
+      {
+        "id": "7vDAYnB1WJglClYMAidnD8",
+        "uri": "spotify:track:7vDAYnB1WJglClYMAidnD8",
+        "name": "原諒",
+        "artist": "張玉華",
+        "album": "張玉華同名專輯"
+      },
+      {
+        "id": "3qPNcFmllGZNkBXQOH29lc",
+        "uri": "spotify:track:3qPNcFmllGZNkBXQOH29lc",
+        "name": "初恋 (F1RST S1GHT) INSTRUMENTAL - Instrumental",
+        "artist": "Shing02;Yakkle",
+        "album": "初恋 (F1RST S1GHT)"
+      },
+      {
+        "id": "6zkiTqLpmNOeCRHVOTQk2T",
+        "uri": "spotify:track:6zkiTqLpmNOeCRHVOTQk2T",
+        "name": "Castle In The Air",
+        "artist": "林俊傑",
+        "album": "重拾_快樂"
+      },
+      {
+        "id": "44PlbRDp798bduHjicZgE2",
+        "uri": "spotify:track:44PlbRDp798bduHjicZgE2",
+        "name": "蘇州河 - 慕容雪 - Mandarin Version",
+        "artist": "薛凱琪",
+        "album": "Read Me"
+      },
+      {
+        "id": "02wk5BttM0QL38ERjLPQJB",
+        "uri": "spotify:track:02wk5BttM0QL38ERjLPQJB",
+        "name": "Cool With You",
+        "artist": "NewJeans",
+        "album": "NewJeans 2nd EP 'Get Up'"
+      },
+      {
+        "id": "2YZa0dsV3xXGZ61XFYiRt8",
+        "uri": "spotify:track:2YZa0dsV3xXGZ61XFYiRt8",
+        "name": "Rewind",
+        "artist": "Wonder Girls",
+        "album": "REBOOT"
+      },
+      {
+        "id": "6GGtHZgBycCgGBUhZo81xe",
+        "uri": "spotify:track:6GGtHZgBycCgGBUhZo81xe",
+        "name": "Say Yes To Heaven",
+        "artist": "Lana Del Rey",
+        "album": "Say Yes To Heaven"
+      },
+      {
+        "id": "0ZkoOzNcWkxXaeWzuBFWPU",
+        "uri": "spotify:track:0ZkoOzNcWkxXaeWzuBFWPU",
+        "name": "三人遊",
+        "artist": "方大同",
+        "album": "橙月"
+      },
+      {
+        "id": "7HKVz7tl2HtwVgODe9Uo4q",
+        "uri": "spotify:track:7HKVz7tl2HtwVgODe9Uo4q",
+        "name": "討厭紅樓夢 - Live",
+        "artist": "陶喆",
+        "album": "Soul Power (Live Concert)"
+      },
+      {
+        "id": "2SLwbpExuoBDZBpjfefCtV",
+        "uri": "spotify:track:2SLwbpExuoBDZBpjfefCtV",
+        "name": "Out of Time",
+        "artist": "The Weeknd",
+        "album": "Dawn FM"
+      },
+      {
+        "id": "7uupMVckq9ta7ei9ghX8q0",
+        "uri": "spotify:track:7uupMVckq9ta7ei9ghX8q0",
+        "name": "這世界那麼多人 - 電影《我要我們在一起》主題曲",
+        "artist": "莫文蔚",
+        "album": "這世界那麼多人 (電影《我要我們在一起》主題曲)"
+      },
+      {
+        "id": "7bn27oLRtbI4toY02tRtDH",
+        "uri": "spotify:track:7bn27oLRtbI4toY02tRtDH",
+        "name": "空城",
+        "artist": "王菲",
+        "album": "將愛"
+      },
+      {
+        "id": "3yTJngiY0CkrMUm5gQLCbs",
+        "uri": "spotify:track:3yTJngiY0CkrMUm5gQLCbs",
+        "name": "月光愛人",
+        "artist": "Jorge Calandrelli;Tan Dun;李玟",
+        "album": "Crouching Tiger, Hidden Dragon (Original Motion Picture Soundtrack)"
+      },
+      {
+        "id": "5P1sy6uSr5K0vvauivV0tO",
+        "uri": "spotify:track:5P1sy6uSr5K0vvauivV0tO",
+        "name": "不如先慶祝能在一起",
+        "artist": "萧亚轩;陳偉",
+        "album": "Naked Truth赤裸真相"
+      },
+      {
+        "id": "25sQT3yCEgd1uE6LC9ivcs",
+        "uri": "spotify:track:25sQT3yCEgd1uE6LC9ivcs",
+        "name": "Forever Young",
+        "artist": "艾怡良",
+        "album": "垂直活著，水平留戀著。"
+      },
+      {
+        "id": "1iogTDW2wmPHtxRsHxBF3s",
+        "uri": "spotify:track:1iogTDW2wmPHtxRsHxBF3s",
+        "name": "Hero - Live at the Tokyo Dome",
+        "artist": "Mariah Carey",
+        "album": "The Rarities"
+      },
+      {
+        "id": "2Akkja14dkcr1Xe3qmbBWG",
+        "uri": "spotify:track:2Akkja14dkcr1Xe3qmbBWG",
+        "name": "3055",
+        "artist": "Ólafur Arnalds",
+        "album": "Eulogy for Evolution"
+      },
+      {
+        "id": "0sr9wJ9gQTla0XPQjyuDuw",
+        "uri": "spotify:track:0sr9wJ9gQTla0XPQjyuDuw",
+        "name": "天空之城",
+        "artist": "李志",
+        "album": "我愛南京"
+      },
+      {
+        "id": "3LmvfNUQtglbTrydsdIqFU",
+        "uri": "spotify:track:3LmvfNUQtglbTrydsdIqFU",
+        "name": "We Belong Together",
+        "artist": "Mariah Carey",
+        "album": "The Emancipation of Mimi"
+      },
+      {
+        "id": "5YZiRcaoXdqBQ8KvlAZuyb",
+        "uri": "spotify:track:5YZiRcaoXdqBQ8KvlAZuyb",
+        "name": "银泰",
+        "artist": "孙燕姿",
+        "album": "克卜勒"
+      },
+      {
+        "id": "0Me4L8eWzXf5hcofg9C1SJ",
+        "uri": "spotify:track:0Me4L8eWzXf5hcofg9C1SJ",
+        "name": "城裡的月光",
+        "artist": "許美靜",
+        "album": "遺憾"
+      },
+      {
+        "id": "5pJPgy2jGvvNUNfHPvG3Zp",
+        "uri": "spotify:track:5pJPgy2jGvvNUNfHPvG3Zp",
+        "name": "Warm on a Cold Night",
+        "artist": "HONNE",
+        "album": "Warm on a Cold Night (Deluxe)"
+      },
+      {
+        "id": "6C9w3NKP7yKqGLBP09iEL4",
+        "uri": "spotify:track:6C9w3NKP7yKqGLBP09iEL4",
+        "name": "最長的電影",
+        "artist": "周杰倫",
+        "album": "我很忙"
+      },
+      {
+        "id": "4sU7xg7LonX0VD1gfo9GQ8",
+        "uri": "spotify:track:4sU7xg7LonX0VD1gfo9GQ8",
+        "name": "心酸的浪漫 - Live",
+        "artist": "那英;Wang Chin-Yi",
+        "album": "那英全經典"
+      },
+      {
+        "id": "0G5W06i9g5bBTBYkfhnWJ4",
+        "uri": "spotify:track:0G5W06i9g5bBTBYkfhnWJ4",
+        "name": "時の流れに身をまかせ",
+        "artist": "鄧麗君",
+        "album": "鄧麗君東洋金曲賞03"
+      },
+      {
+        "id": "7ENQLO9IfR0WfztBqTZ7xZ",
+        "uri": "spotify:track:7ENQLO9IfR0WfztBqTZ7xZ",
+        "name": "迷失表参道",
+        "artist": "王菀之",
+        "album": "晴歌集"
+      },
+      {
+        "id": "31kKBUeeCGuMt9fPxDybde",
+        "uri": "spotify:track:31kKBUeeCGuMt9fPxDybde",
+        "name": "你快樂所以我快樂",
+        "artist": "王菲",
+        "album": "王菲97"
+      },
+      {
+        "id": "5aqU0FigrEAI9IEyIGZplR",
+        "uri": "spotify:track:5aqU0FigrEAI9IEyIGZplR",
+        "name": "地盡頭",
+        "artist": "關淑怡",
+        "album": "Shirley's Era"
+      },
+      {
+        "id": "5LCzuZv1gkHsXj6ZY1ugQ4",
+        "uri": "spotify:track:5LCzuZv1gkHsXj6ZY1ugQ4",
+        "name": "七月七日晴",
+        "artist": "許慧欣",
+        "album": "美麗的愛情"
+      },
+      {
+        "id": "0Id7swY6cWbvYLtVVF0wvq",
+        "uri": "spotify:track:0Id7swY6cWbvYLtVVF0wvq",
+        "name": "一場遊戲一場夢",
+        "artist": "王傑",
+        "album": "一場遊戲一場夢"
+      },
+      {
+        "id": "3MmsHzXxADOWJvowwDwUwG",
+        "uri": "spotify:track:3MmsHzXxADOWJvowwDwUwG",
+        "name": "愛",
+        "artist": "莫文蔚",
+        "album": "[i]"
+      },
+      {
+        "id": "6XQHlsNu6so4PdglFkJQRJ",
+        "uri": "spotify:track:6XQHlsNu6so4PdglFkJQRJ",
+        "name": "City Of Stars - From \"La La Land\" Soundtrack",
+        "artist": "Ryan Gosling;Emma Stone",
+        "album": "La La Land (Original Motion Picture Soundtrack)"
+      },
+      {
+        "id": "3BHlOb4aOdaMaIfJ4M13RP",
+        "uri": "spotify:track:3BHlOb4aOdaMaIfJ4M13RP",
+        "name": "III",
+        "artist": "Athletics",
+        "album": "Who You Are Is Not Enough"
+      },
+      {
+        "id": "1mK8mFtbE1oheaQxsnCeK5",
+        "uri": "spotify:track:1mK8mFtbE1oheaQxsnCeK5",
+        "name": "安可",
+        "artist": "莫文蔚",
+        "album": "拉活…莫文蔚"
+      }
+    ]
+  }
+}
