@@ -545,28 +545,9 @@ async function getUserPlaylists(options = {}) {
   let playlists = []
 
   if (CURATED_PLAYLIST_IDS.length > 0) {
-    // 优先读三个固定策划歌单，直接用 Playlist API 获取元信息
-    const results = await Promise.allSettled(
-      CURATED_PLAYLIST_IDS.map(({ id, name }) =>
-        getClientCredToken().then(token =>
-          fetchJsonWithTimeout(
-            `https://api.spotify.com/v1/playlists/${encodeURIComponent(id)}?fields=id,name,tracks(total)`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          ).then(res => res.json())
-        )
-          .then(data => ({
-            id: data?.id || id,
-            name: data?.name || name,
-            tracksTotal: data?.tracks?.total || 0,
-          }))
-          .catch(() => ({ id, name, tracksTotal: 1 })) // 即便拿不到元信息也保留ID
-      )
-    )
-    playlists = results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => r.value)
-      .filter(p => p.id)
-    console.log(`[spotify] 策划歌单加载: ${playlists.map(p => `${p.name}(${p.tracksTotal}首)`).join(', ')}`)
+    // 策划歌单：直接用固定ID，不拉取元信息（避免fields参数引发403）
+    playlists = CURATED_PLAYLIST_IDS.map(({ id, name }) => ({ id, name, tracksTotal: 0 }))
+    console.log(`[spotify] 策划歌单已配置: ${playlists.map(p => p.name).join(', ')}`)
   } else {
     // fallback：从账号拉全量歌单
     console.log('[spotify] 未配置策划歌单，回退到 /me/playlists')
