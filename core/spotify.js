@@ -23,15 +23,15 @@ const SPOTIFY_BAD_TITLE_KWS = [
 const USER_PLAYLIST_CACHE_MS = 5 * 60 * 1000
 
 // ── 静态策划曲库 ─────────────────────────────────────────────────
-let curatedLibrary = { morning: [], day: [], night: [] }
+let curatedLibrary = { playlists: {}, period_pools: { morning: [], day: [], night: [] } }
 try {
   const fs = require('fs')
   const path = require('path')
   const libPath = path.join(__dirname, '..', 'curated_tracks.json')
   const raw = JSON.parse(fs.readFileSync(libPath, 'utf-8'))
-  curatedLibrary = raw.playlists || curatedLibrary
-  const total = Object.values(curatedLibrary).reduce((s, arr) => s + arr.length, 0)
-  console.log(`[spotify] 静态曲库加载: 清晨${curatedLibrary.morning.length}首 白天${curatedLibrary.day.length}首 夜晚${curatedLibrary.night.length}首 共${total}首`)
+  curatedLibrary = raw
+  const pools = raw.period_pools || {}
+  console.log(`[spotify] 静态曲库加载: 清晨${(pools.morning || []).length}首 白天${(pools.day || []).length}首 夜晚${(pools.night || []).length}首 共${raw.total || 0}首`)
 } catch (e) {
   console.error('[spotify] 静态曲库加载失败:', e.message)
 }
@@ -678,14 +678,17 @@ async function getPlaylistTracks(playlistId, options = {}) {
 
   // 策划歌单：直接从静态曲库返回，不调API
   const period = getCuratedPeriod(playlistId)
-  if (period && curatedLibrary[period]?.length) {
+  if (period && curatedLibrary.period_pools?.[period]?.length) {
     const cached = playlistTracksCache.get(playlistId)
     if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
       return cached.items.slice()
     }
-    const items = curatedTracksToQueueItems(curatedLibrary[period], playlistId, period)
+    // 从候选池随机抽样，避免每次顺序相同
+    const pool = curatedLibrary.period_pools[period]
+    const shuffled = pool.slice().sort(() => Math.random() - 0.5)
+    const items = curatedTracksToQueueItems(shuffled, playlistId, period)
     playlistTracksCache.set(playlistId, { items, fetchedAt: Date.now() })
-    console.log(`[spotify] 静态曲库 ${period}: ${items.length}首`)
+    console.log(`[spotify] 静态曲库 ${period}: 候选池${pool.length}首，本次使用${items.length}首`)
     return items.slice()
   }
 
