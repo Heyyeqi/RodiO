@@ -730,7 +730,12 @@ async function resolveQueue(songs) {
   return spotifyQueue.filter(Boolean)
 }
 
-async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager.getSnapshot(), needed = READY_POOL_TARGET_SIZE) {
+async function fillQueueFromSpotifyPlaylists(
+  reason,
+  currentQueue = queueManager.getSnapshot(),
+  needed = READY_POOL_TARGET_SIZE,
+  period = null
+) {
   if (!spotify.hasUserToken()) return []
 
   const recentPlays = state.getRecentPlays(120)
@@ -757,6 +762,7 @@ async function fillQueueFromSpotifyPlaylists(reason, currentQueue = queueManager
       blacklistedUris,
       excludeUris,
       excludeKeys,
+      period,
       ...options,
     })
     if (meta) lastPhase1Meta = meta
@@ -980,10 +986,14 @@ async function buildDjResponse(input, options = {}) {
   return runSerializedBuildDjResponse(task)
 }
 
-async function replenishQueueSilently(trigger = 'auto') {
+async function replenishQueueSilently(trigger = 'auto', options = {}) {
   try {
     const beforeSize = queueManager.size()
-    await queueManager.ensureFilled(trigger)
+    await queueManager.ensureFilled(trigger, {
+      meta: {
+        period: options.period || null,
+      },
+    })
     if (spotify.hasUserToken() && queueManager.size() > beforeSize) {
       triggerQwenEnhancer(trigger).catch(() => {})
     }
@@ -1065,7 +1075,7 @@ async function buildReadyPoolMultiRound(reason, options = {}) {
   return collected.slice(0, Math.max(0, targetSize - baseQueue.length))
 }
 
-queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force }) => {
+queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta }) => {
   const targetSize = force
     ? READY_POOL_TARGET_SIZE
     : Math.max(READY_POOL_TARGET_SIZE, (currentQueue?.length || 0) + needed)
@@ -1073,7 +1083,8 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force }) =>
     const spotifyItems = await fillQueueFromSpotifyPlaylists(
       reason,
       currentQueue,
-      Math.max(0, targetSize - (currentQueue?.length || 0))
+      Math.max(0, targetSize - (currentQueue?.length || 0)),
+      meta?.period || null
     )
     if (spotifyItems.length > 0 || spotify.hasUserToken()) {
       return spotifyItems
@@ -1509,11 +1520,14 @@ app.post('/api/spotify/playback-failed', (req, res) => {
 
 // GET /api/next — 弹出队列下一首（前端歌曲结束时调用）
 app.get('/api/next', async (req, res) => {
+  const period = ['morning', 'day', 'night'].includes(req.query.period)
+    ? req.query.period
+    : null
   const isPeek = String(req.query?.peek || '') === '1' || String(req.query?.peek || '').toLowerCase() === 'true'
 
   if (isPeek) {
     if (queueManager.size() < LOW_WATER_MARK) {
-      replenishQueueSilently('peek').catch(() => {})
+      replenishQueueSilently('peek', { period }).catch(() => {})
     }
     const peekItem = queueManager.peek() || null
     if (peekItem) return res.json(peekItem)
@@ -1523,7 +1537,7 @@ app.get('/api/next', async (req, res) => {
   let item = queueManager.pop('api-next')
   if (!item) {
     shouldAutoplayAfterRefill = true
-    replenishQueueSilently('empty-next').catch(() => {})
+    replenishQueueSilently('empty-next', { period }).catch(() => {})
     return res.json({ song_info: null, play_url: null, spotify_uri: null, message: '稍等' })
   }
 
@@ -1537,7 +1551,7 @@ app.get('/api/next', async (req, res) => {
     })
     scheduler.broadcast({ type: 'now-playing', ...item, queue: queueManager.getSnapshot() })
     if (queueManager.size() < LOW_WATER_MARK) {
-      replenishQueueSilently('next').catch(() => {})
+      replenishQueueSilently('next', { period }).catch(() => {})
     }
     res.json(item)
   } else {

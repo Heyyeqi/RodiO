@@ -1433,6 +1433,7 @@
     heroCommentary: '',
     lat: 31.2304,  // 默认上海
     lon: 121.4737,
+    period: null,
     messages: [
       { id: makeId('dj'), from: 'dj', text: '跟我说说你想听什么，或者让我来决定。', time: ts() },
     ],
@@ -1461,6 +1462,32 @@
     const minutes = Math.floor(sec / 60)
     const seconds = Math.floor(sec % 60)
     return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
+
+  function getCurrentPeriod(date = new Date()) {
+    const hour = date.getHours()
+    if (hour >= 5 && hour < 10) return 'morning'
+    if (hour >= 10 && hour < 18) return 'day'
+    return 'night'
+  }
+
+  function getCurrentPeriodUTC8() {
+    const utc = Date.now() + new Date().getTimezoneOffset() * 60000
+    const cst = new Date(utc + 8 * 3600000)
+    return getCurrentPeriod(cst)
+  }
+
+  function getClientPeriod() {
+    return state.period || getCurrentPeriodUTC8()
+  }
+
+  function buildNextUrl(options = {}) {
+    const params = new URLSearchParams()
+    const period = getClientPeriod()
+    if (period) params.set('period', period)
+    if (options.peek) params.set('peek', '1')
+    const query = params.toString()
+    return `/api/next${query ? `?${query}` : ''}`
   }
 
   function hhmmToMinutes(text) {
@@ -2102,13 +2129,13 @@
   }
 
   async function syncServerAdvance() {
-    const response = await fetch('/api/next')
+    const response = await fetch(buildNextUrl())
     const data = await response.json()
     return response.ok ? data : null
   }
 
   function requestQueuePrefetch() {
-    fetch('/api/next?peek=1').catch(() => {})
+    fetch(buildNextUrl({ peek: true })).catch(() => {})
   }
 
   const prefetchCache = new Map()
@@ -4321,6 +4348,7 @@
         try {
           state.lat = position.coords.latitude
           state.lon = position.coords.longitude
+          state.period = getCurrentPeriod(new Date())
           await fetch('/api/location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4332,13 +4360,17 @@
           await refreshAmbientNow(true)
         } catch {}
       },
-      () => {},
+      () => {
+        state.period = getCurrentPeriodUTC8()
+      },
       {
         enableHighAccuracy: false,
         timeout: 8000,
         maximumAge: 15 * 60 * 1000,
       }
     )
+  } else {
+    state.period = getCurrentPeriodUTC8()
   }
 
   resizeCanvas()

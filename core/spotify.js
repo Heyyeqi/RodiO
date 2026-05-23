@@ -550,16 +550,29 @@ const CURATED_PLAYLIST_IDS = [
   { id: process.env.SPOTIFY_PLAYLIST_NIGHT,   name: '夜晚' },
 ].filter(p => p.id)
 
-function getCurrentPeriod() {
-  const hour = new Date().getHours()
+function getCurrentPeriodFromDate(date = new Date()) {
+  const hour = date.getHours()
   if (hour >= 5 && hour < 10) return 'morning'
   if (hour >= 10 && hour < 18) return 'day'
   return 'night'
 }
 
+function getCurrentPeriodUTC8() {
+  const utc = Date.now() + new Date().getTimezoneOffset() * 60000
+  const cst = new Date(utc + 8 * 3600000)
+  return getCurrentPeriodFromDate(cst)
+}
+
 async function getUserPlaylists(options = {}) {
   const forceRefresh = !!options.forceRefresh
-  if (!forceRefresh && userPlaylistsCache.fetchedAt > Date.now() - USER_PLAYLIST_CACHE_MS) {
+  const requestedPeriod = ['morning', 'day', 'night'].includes(options.period)
+    ? options.period
+    : getCurrentPeriodUTC8()
+  if (
+    !forceRefresh &&
+    userPlaylistsCache.fetchedAt > Date.now() - USER_PLAYLIST_CACHE_MS &&
+    userPlaylistsCache.period === requestedPeriod
+  ) {
     return userPlaylistsCache.items.slice()
   }
 
@@ -585,13 +598,12 @@ async function getUserPlaylists(options = {}) {
       }))
   }
 
-  const currentPeriod = getCurrentPeriod()
   const currentPlaylistIdByPeriod = {
     morning: process.env.SPOTIFY_PLAYLIST_MORNING,
     day: process.env.SPOTIFY_PLAYLIST_DAY,
     night: process.env.SPOTIFY_PLAYLIST_NIGHT,
   }
-  const prioritizedPlaylistId = currentPlaylistIdByPeriod[currentPeriod]
+  const prioritizedPlaylistId = currentPlaylistIdByPeriod[requestedPeriod]
   if (prioritizedPlaylistId) {
     const prioritized = playlists.find(playlist => playlist.id === prioritizedPlaylistId)
     const remaining = playlists.filter(playlist => playlist.id !== prioritizedPlaylistId)
@@ -600,6 +612,7 @@ async function getUserPlaylists(options = {}) {
 
   userPlaylistsCache = {
     items: playlists,
+    period: requestedPeriod,
     fetchedAt: Date.now(),
   }
   syncPlaylistRotation(playlists)

@@ -12,6 +12,33 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 // ── 播放队列（前端镜像）──────────────────────
 let localQueue = []   // [{song_info, play_url}, ...]
 let currentSong = null
+let clientPeriod = getCurrentPeriodUTC8()
+
+function getCurrentPeriod(date = new Date()) {
+  const hour = date.getHours()
+  if (hour >= 5 && hour < 10) return 'morning'
+  if (hour >= 10 && hour < 18) return 'day'
+  return 'night'
+}
+
+function getCurrentPeriodUTC8() {
+  const utc = Date.now() + new Date().getTimezoneOffset() * 60000
+  const cst = new Date(utc + 8 * 3600000)
+  return getCurrentPeriod(cst)
+}
+
+function getClientPeriod() {
+  return clientPeriod || getCurrentPeriodUTC8()
+}
+
+function buildNextUrl(options = {}) {
+  const params = new URLSearchParams()
+  const period = getClientPeriod()
+  if (period) params.set('period', period)
+  if (options.peek) params.set('peek', '1')
+  const query = params.toString()
+  return `/api/next${query ? `?${query}` : ''}`
+}
 
 function renderQueue() {
   const wrap = document.getElementById('queue-wrap')
@@ -64,7 +91,7 @@ audio.addEventListener('ended', async () => {
   } else {
     // 队列空了，问服务端（服务端也有镜像）
     try {
-      const res = await fetch('/api/next')
+      const res = await fetch(buildNextUrl())
       const data = await res.json()
       if (data.play_url) playSong(data)
       // 队列空时也可以不处理，让 DJ 闲置
