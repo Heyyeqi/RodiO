@@ -550,6 +550,13 @@ const CURATED_PLAYLIST_IDS = [
   { id: process.env.SPOTIFY_PLAYLIST_NIGHT,   name: '夜晚' },
 ].filter(p => p.id)
 
+function getCurrentPeriod() {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 10) return 'morning'
+  if (hour >= 10 && hour < 18) return 'day'
+  return 'night'
+}
+
 async function getUserPlaylists(options = {}) {
   const forceRefresh = !!options.forceRefresh
   if (!forceRefresh && userPlaylistsCache.fetchedAt > Date.now() - USER_PLAYLIST_CACHE_MS) {
@@ -576,6 +583,19 @@ async function getUserPlaylists(options = {}) {
         name: item.name || '',
         tracksTotal: item.tracks?.total || 0,
       }))
+  }
+
+  const currentPeriod = getCurrentPeriod()
+  const currentPlaylistIdByPeriod = {
+    morning: process.env.SPOTIFY_PLAYLIST_MORNING,
+    day: process.env.SPOTIFY_PLAYLIST_DAY,
+    night: process.env.SPOTIFY_PLAYLIST_NIGHT,
+  }
+  const prioritizedPlaylistId = currentPlaylistIdByPeriod[currentPeriod]
+  if (prioritizedPlaylistId) {
+    const prioritized = playlists.find(playlist => playlist.id === prioritizedPlaylistId)
+    const remaining = playlists.filter(playlist => playlist.id !== prioritizedPlaylistId)
+    if (prioritized) playlists = [prioritized, ...remaining]
   }
 
   userPlaylistsCache = {
@@ -617,10 +637,12 @@ async function paginateSpotifyPublicItems(url, itemKey) {
 
 function getCuratedPeriod(playlistId) {
   if (!playlistId) return null
-  if (playlistId === process.env.SPOTIFY_PLAYLIST_MORNING) return 'morning'
-  if (playlistId === process.env.SPOTIFY_PLAYLIST_DAY) return 'day'
-  if (playlistId === process.env.SPOTIFY_PLAYLIST_NIGHT) return 'night'
-  return null
+  const curatedPeriodByPlaylistId = new Map([
+    [process.env.SPOTIFY_PLAYLIST_MORNING, 'morning'],
+    [process.env.SPOTIFY_PLAYLIST_DAY, 'day'],
+    [process.env.SPOTIFY_PLAYLIST_NIGHT, 'night'],
+  ])
+  return curatedPeriodByPlaylistId.get(playlistId) || null
 }
 
 function curatedTracksToQueueItems(tracks, playlistId, playlistName) {
