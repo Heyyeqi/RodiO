@@ -563,6 +563,30 @@ function getCurrentPeriodUTC8() {
   return getCurrentPeriodFromDate(cst)
 }
 
+function loadDislikedTrackBlacklist() {
+  const fs = require('fs')
+  const path = require('path')
+  try {
+    const blacklistPath = path.join(__dirname, '..', 'disliked_tracks.json')
+    const parsed = JSON.parse(fs.readFileSync(blacklistPath, 'utf-8'))
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function getCuratedPool(period) {
+  const requestedPeriod = ['morning', 'day', 'night'].includes(period)
+    ? period
+    : getCurrentPeriodUTC8()
+  const blacklist = loadDislikedTrackBlacklist()
+  return (curatedLibrary.period_pools?.[requestedPeriod] || [])
+    .filter(track => {
+      const key = `${track.name}::${track.artist}`.toLowerCase()
+      return !blacklist.includes(key)
+    })
+}
+
 async function getUserPlaylists(options = {}) {
   const forceRefresh = !!options.forceRefresh
   const requestedPeriod = ['morning', 'day', 'night'].includes(options.period)
@@ -683,19 +707,8 @@ async function getPlaylistTracks(playlistId, options = {}) {
     if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
       return cached.items.slice()
     }
-    const fs = require('fs')
-    const path = require('path')
-    let blacklist = []
-    try {
-      const blacklistPath = path.join(__dirname, '..', 'disliked_tracks.json')
-      blacklist = JSON.parse(fs.readFileSync(blacklistPath, 'utf-8'))
-    } catch {}
     // 从候选池随机抽样，避免每次顺序相同
-    const pool = curatedLibrary.period_pools[period]
-      .filter(t => {
-        const key = `${t.name}::${t.artist}`.toLowerCase()
-        return !blacklist.includes(key)
-      })
+    const pool = getCuratedPool(period)
     const shuffled = pool.slice().sort(() => Math.random() - 0.5)
     const items = curatedTracksToQueueItems(shuffled, playlistId, period)
     playlistTracksCache.set(playlistId, { items, fetchedAt: Date.now() })
@@ -874,6 +887,7 @@ module.exports = {
   getPlaylistTracks,
   getUserPlaylists,
   getUserToken,
+  getCuratedPool,
   hasUserToken,
   initializeUserToken,
   refreshUserToken,

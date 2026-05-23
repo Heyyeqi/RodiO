@@ -106,6 +106,7 @@ const RECENT_RECOMMENDED_PREF = 'recent_recommended_keys_v1'
 const MAX_RECENT_RECOMMENDED_KEYS = 60
 const SPOTIFY_PHASE1_MIN_FILL = 12
 const QWEN_ENHANCER_TIMEOUT_MS = 20000
+const QWEN_CURATED_CANDIDATE_LIMIT = 50
 
 function loadNcmIdMap() {
   try {
@@ -370,6 +371,15 @@ function dedupeQueueItems(items) {
   })
 }
 
+function shuffleArray(items) {
+  const copy = Array.isArray(items) ? items.slice() : []
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
 function markBatchEdges(items) {
   return items.map((item, index) => ({
     ...item,
@@ -500,6 +510,57 @@ async function ncmFetch(url) {
 
 function normalizeNcmText(text) {
   return normalizeSongKey(text)
+}
+
+function isValidPeriod(period) {
+  return ['morning', 'day', 'night'].includes(period)
+}
+
+function makeCuratedTrackKey(name, artist) {
+  return `${normalizeNcmText(name)}::${normalizeNcmText(artist)}`
+}
+
+function curatedTrackToQueueItem(track) {
+  return {
+    song_info: {
+      id: track.id || null,
+      name: track.name,
+      artist: track.artist,
+    },
+    requested_song_info: {
+      id: track.id || null,
+      name: track.name,
+      artist: track.artist,
+    },
+    spotify_uri: track.uri,
+    spotify_track: {
+      id: track.id || null,
+      uri: track.uri,
+      name: track.name,
+      artists: String(track.artist || '').split('; ').filter(Boolean),
+      album: track.album || null,
+    },
+    play_url: null,
+    source: 'spotify',
+    _directFromLibrary: true,
+  }
+}
+
+function makeCuratedPoolPrompt(reason, needed, candidates) {
+  const candidateLines = candidates
+    .map(track => `${track.name} / ${track.artist}`)
+    .join('\n')
+
+  return [
+    makeReadyPoolPrompt(reason, needed),
+    '',
+    '【硬性限制】你只能从下面这份候选列表中选歌，不能推荐列表以外的任何歌曲。',
+    '返回的 play 数组里，name 和 artist 必须与候选列表完全一致；如果不确定，就不要写。',
+    `需要选择约 ${Math.min(READY_POOL_ROUND_SIZE, candidates.length)} 首。`,
+    '',
+    '【候选列表】',
+    candidateLines,
+  ].join('\n')
 }
 
 function normalizeSongCore(text) {
@@ -817,7 +878,7 @@ function withTimeout(promise, timeoutMs, label) {
   ])
 }
 
-function triggerQwenEnhancer(reason = 'background') {
+function triggerQwenEnhancer(reason = 'background', period = null) {
   if (qwenEnhancerPromise) return qwenEnhancerPromise
 
   const baseQueue = queueManager.getSnapshot()
@@ -825,11 +886,11 @@ function triggerQwenEnhancer(reason = 'background') {
 
   qwenEnhancerPromise = (async () => {
     try {
-      const prompt = makeReadyPoolPrompt(`enhancer-${reason}`, READY_POOL_ROUND_SIZE)
       const items = await withTimeout(
-        buildReadyPoolBatch(prompt, {
+        buildReadyPoolBatch('', {
           currentQueue: baseQueue,
           buildLabel: `enhancer:${reason}`,
+          period,
         }),
         QWEN_ENHANCER_TIMEOUT_MS,
         `enhancer:${reason}`
@@ -1007,7 +1068,7 @@ async function replenishQueueSilently(trigger = 'auto', options = {}) {
       },
     })
     if (spotify.hasUserToken() && queueManager.size() > beforeSize) {
-      triggerQwenEnhancer(trigger).catch(() => {})
+      triggerQwenEnhancer(trigger, options.period || null).catch(() => {})
     }
   } catch (e) {
     console.error(`[queue] 静默补货失败(${trigger}):`, e.message)
@@ -1015,14 +1076,44 @@ async function replenishQueueSilently(trigger = 'auto', options = {}) {
 }
 
 async function buildReadyPoolBatch(input, options = {}) {
-  const result = await resolveDjSelection(input, {
-    currentQueue: queueManager.getSnapshot(),
-    includeSpeech: false,
-    minQueueSize: READY_POOL_ROUND_SIZE,
-    maxQueueSize: READY_POOL_ROUND_SIZE,
-    ...options,
-  })
-  return result.queue || []
+  const currentQueue = Array.isArray(options.currentQueue) ? options.currentQueue.slice() : queueManager.getSnapshot()
+  const period = isValidPeriod(options.period) ? options.period : null
+  const curatedPool = shuffleArray(spotify.getCuratedPool(period))
+  if (!curatedPool.length) {
+    console.warn(`[queue] Phase 2(${options.buildLabel || 'batch'}) 跳过: curated pool 为空`)
+    return []
+  }
+
+  const candidates = curatedPool.slice(0, QWEN_CURATED_CANDIDATE_LIMIT)
+  const prompt = makeCuratedPoolPrompt(options.buildLabel || 'phase2', READY_POOL_ROUND_SIZE, candidates)
+  const ctx = await context.buildContext(prompt, { currentQueue })
+  const result = await claude.askClaude(ctx)
+
+  const candidateByKey = new Map(candidates.map(track => [makeCuratedTrackKey(track.name, track.artist), track]))
+  const selected = []
+  const selectedKeys = new Set()
+
+  for (const song of Array.isArray(result.play) ? result.play : []) {
+    const key = makeCuratedTrackKey(song?.name || '', song?.artist || '')
+    const match = candidateByKey.get(key)
+    if (!match || selectedKeys.has(key)) continue
+    selectedKeys.add(key)
+    console.log(`[spotify] 直接入队(Qwen选曲): ${match.name} / ${match.artist}`)
+    selected.push(curatedTrackToQueueItem(match))
+    if (selected.length >= READY_POOL_ROUND_SIZE) break
+  }
+
+  if (selected.length < READY_POOL_ROUND_SIZE) {
+    for (const track of candidates) {
+      const key = makeCuratedTrackKey(track.name, track.artist)
+      if (selectedKeys.has(key)) continue
+      selectedKeys.add(key)
+      selected.push(curatedTrackToQueueItem(track))
+      if (selected.length >= READY_POOL_ROUND_SIZE) break
+    }
+  }
+
+  return selected
 }
 
 function makeReadyPoolPrompt(reason, needed) {
@@ -1037,6 +1128,7 @@ async function buildReadyPoolMultiRound(reason, options = {}) {
   const targetSize = options.targetSize || READY_POOL_TARGET_SIZE
   const maxRounds = options.maxRounds || READY_POOL_MAX_ROUNDS
   const parallelRounds = options.parallelRounds || READY_POOL_PARALLEL_ROUNDS
+  const period = isValidPeriod(options.period) ? options.period : null
   const deadlineAt = options.maxDurationMs ? Date.now() + options.maxDurationMs : 0
   const recentPlays = state.getRecentPlays(50)
   const recentPlayQueueItems = recentPlays.map(play => ({
@@ -1059,11 +1151,11 @@ async function buildReadyPoolMultiRound(reason, options = {}) {
       Math.max(1, Math.ceil(deficit / READY_POOL_ROUND_SIZE))
     )
     const waveCurrentQueue = dedupeQueueItems([...baseQueue, ...collected, ...recentPlayQueueItems])
-    const prompt = makeReadyPoolPrompt(reason, deficit)
     const waveTasks = Array.from({ length: waveCount }, (_, index) =>
-      buildReadyPoolBatch(prompt, {
+      buildReadyPoolBatch('', {
         currentQueue: waveCurrentQueue,
         buildLabel: `refill:${reason}:round-${roundsUsed + index + 1}`,
+        period,
       }).catch(error => {
         console.error(`[queue] 预热轮次失败(${reason}#${roundsUsed + index + 1}):`, error.message)
         return []
@@ -1107,6 +1199,7 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta
   return buildReadyPoolMultiRound(reason, {
     baseQueue: currentQueue,
     targetSize,
+    period: meta?.period || null,
   })
 })
 
