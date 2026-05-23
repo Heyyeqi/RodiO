@@ -766,7 +766,19 @@ async function fillQueueFromSpotifyPlaylists(
       ...options,
     })
     if (meta) lastPhase1Meta = meta
-    return items
+    return items.map(item => {
+      // 如果已有有效的 spotify_uri，直接使用，跳过 search
+      if (item.spotify_uri && item.spotify_uri.startsWith('spotify:track:')) {
+        console.log(`[spotify] 直接入队(库): ${item.song_info?.name} / ${item.song_info?.artist}`)
+        return {
+          ...item,
+          play_url: null,
+          _directFromLibrary: true,
+        }
+      }
+      // 否则走原有的 search 路径
+      return item
+    })
   }
 
   while (collected.length < targetCount && attempts < 3) {
