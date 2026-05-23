@@ -683,8 +683,19 @@ async function getPlaylistTracks(playlistId, options = {}) {
     if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
       return cached.items.slice()
     }
+    const fs = require('fs')
+    const path = require('path')
+    let blacklist = []
+    try {
+      const blacklistPath = path.join(__dirname, '..', 'disliked_tracks.json')
+      blacklist = JSON.parse(fs.readFileSync(blacklistPath, 'utf-8'))
+    } catch {}
     // 从候选池随机抽样，避免每次顺序相同
     const pool = curatedLibrary.period_pools[period]
+      .filter(t => {
+        const key = `${t.name}::${t.artist}`.toLowerCase()
+        return !blacklist.includes(key)
+      })
     const shuffled = pool.slice().sort(() => Math.random() - 0.5)
     const items = curatedTracksToQueueItems(shuffled, playlistId, period)
     playlistTracksCache.set(playlistId, { items, fetchedAt: Date.now() })

@@ -1458,6 +1458,18 @@ app.post('/api/feedback', (req, res) => {
 
   if (action === 'dislike') {
     queueManager.remove(item => queueKeyFromItem(item) === `${name}::${artist}`.toLowerCase(), 'dislike-remove')
+
+    // 持久化黑名单
+    const fs = require('fs')
+    const path = require('path')
+    const blacklistPath = path.join(__dirname, 'disliked_tracks.json')
+    let blacklist = []
+    try { blacklist = JSON.parse(fs.readFileSync(blacklistPath, 'utf-8')) } catch {}
+    const key = `${name}::${artist}`.toLowerCase()
+    if (!blacklist.includes(key)) {
+      blacklist.push(key)
+      fs.writeFileSync(blacklistPath, JSON.stringify(blacklist, null, 2))
+    }
   }
 
   return res.json({ ok: true, feedback: action })
