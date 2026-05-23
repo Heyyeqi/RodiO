@@ -33,7 +33,7 @@ try {
   const total = Object.values(curatedLibrary).reduce((s, arr) => s + arr.length, 0)
   console.log(`[spotify] 静态曲库加载: 清晨${curatedLibrary.morning.length}首 白天${curatedLibrary.day.length}首 夜晚${curatedLibrary.night.length}首 共${total}首`)
 } catch (e) {
-  console.warn('[spotify] 静态曲库加载失败:', e.message)
+  console.error('[spotify] 静态曲库加载失败:', e.message)
 }
 const USER_PLAYLIST_TRACKS_CACHE_MS = 10 * 60 * 1000
 
@@ -615,10 +615,12 @@ async function paginateSpotifyPublicItems(url, itemKey) {
   return items
 }
 
-const CURATED_PERIOD_MAP = {
-  [process.env.SPOTIFY_PLAYLIST_MORNING]: 'morning',
-  [process.env.SPOTIFY_PLAYLIST_DAY]:     'day',
-  [process.env.SPOTIFY_PLAYLIST_NIGHT]:   'night',
+function getCuratedPeriod(playlistId) {
+  if (!playlistId) return null
+  if (playlistId === process.env.SPOTIFY_PLAYLIST_MORNING) return 'morning'
+  if (playlistId === process.env.SPOTIFY_PLAYLIST_DAY) return 'day'
+  if (playlistId === process.env.SPOTIFY_PLAYLIST_NIGHT) return 'night'
+  return null
 }
 
 function curatedTracksToQueueItems(tracks, playlistId, playlistName) {
@@ -640,7 +642,7 @@ async function getPlaylistTracks(playlistId, options = {}) {
   const forceRefresh = !!options.forceRefresh
 
   // 策划歌单：直接从静态曲库返回，不调API
-  const period = CURATED_PERIOD_MAP[playlistId]
+  const period = getCuratedPeriod(playlistId)
   if (period && curatedLibrary[period]?.length) {
     const cached = playlistTracksCache.get(playlistId)
     if (!forceRefresh && cached && cached.fetchedAt > Date.now() - USER_PLAYLIST_TRACKS_CACHE_MS) {
