@@ -168,7 +168,9 @@ chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat() }
 
 // ── WebSocket ─────────────────────────────────
 function connectWs() {
-  const ws = new WebSocket(`ws://${location.host}/stream`)
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${wsProtocol}//${window.location.host}/stream`
+  const ws = new WebSocket(wsUrl)
   ws.onmessage = e => {
     try {
       const data = JSON.parse(e.data)
