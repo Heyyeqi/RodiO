@@ -32,7 +32,6 @@ function normalizeTtsText(text) {
     .replace(/\r/g, '')
     .replace(/\n+/g, '，')
     .replace(/[“”"]/g, '')
-    .replace(/[‘’']/g, '')
     .replace(/……/g, '，')
     .replace(/—+/g, '，')
     .replace(/\s+/g, ' ')
@@ -66,6 +65,7 @@ async function synthesizeWithOptions(text, options = {}) {
       vol: 0.92,
       pitch: 0,
     },
+    language_boost: 'auto',
     audio_setting: {
       audio_sample_rate: 32000,
       bitrate: 128000,
