@@ -22,9 +22,10 @@
     "msedge-tts": "^2.0.5",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "opencc-js": "^1.0.5",
     "openai": "^6.34.0",
+    "opencc-js": "^1.0.5",
     "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.34.5",
     "ws": "^8.20.0"
   }
 }

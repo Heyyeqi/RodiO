@@ -3,3 +3,4 @@ cache/
 db/
 node_modules/
 .DS_Store
+pwa/assets/

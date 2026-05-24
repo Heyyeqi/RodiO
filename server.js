@@ -1600,6 +1600,64 @@ app.post('/api/location', async (req, res) => {
   }
 })
 
+app.get('/api/globe-image', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat) || 31.2304
+    const lon = parseFloat(req.query.lon) || 121.4737
+    const phase = req.query.phase || 'day'
+
+    if (phase === 'night') {
+      const nightPath = path.join(__dirname, 'pwa/assets/blackmarble.jpg')
+      // 用sharp做经纬度裁切，与白天视角一致
+      try {
+        const sharp = require('sharp')
+        const img = sharp(nightPath)
+        const meta = await img.metadata()
+        const imgW = meta.width
+        const imgH = meta.height
+        // 等距圆柱投影裁切
+        const centerX = ((lon + 180) / 360) * imgW
+        const centerY = ((90 - lat) / 180) * imgH
+        const viewDeg = 110
+        const srcW = Math.round((viewDeg / 360) * imgW)
+        const srcH = Math.round((viewDeg / 180) * imgH)
+        const left = Math.max(0, Math.min(imgW - srcW, Math.round(centerX - srcW / 2)))
+        const top = Math.max(0, Math.min(imgH - srcH, Math.round(centerY - srcH / 2)))
+        const cropped = await img
+          .extract({ left, top, width: srcW, height: srcH })
+          .jpeg({ quality: 88 })
+          .toBuffer()
+        res.setHeader('Content-Type', 'image/jpeg')
+        res.setHeader('Cache-Control', 'public, max-age=3600')
+        return res.send(cropped)
+      } catch (e) {
+        console.error('[globe-image night crop]', e)
+        return res.sendFile(path.join(__dirname, 'pwa/assets/blackmarble.jpg'))
+      }
+    }
+
+    const token = process.env.MAPBOX_TOKEN
+    if (!token) {
+      return res.sendFile(path.join(__dirname, 'pwa/assets/bluemarble.jpg'))
+    }
+
+    const zoom = 7
+    const url = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lon},${lat},${zoom},0/1280x1280?access_token=${token}`
+    const https = require('https')
+    const mapboxReq = https.get(url, (mapboxRes) => {
+      res.setHeader('Content-Type', 'image/jpeg')
+      res.setHeader('Cache-Control', 'public, max-age=3600')
+      mapboxRes.pipe(res)
+    })
+    mapboxReq.on('error', () => {
+      res.sendFile(path.join(__dirname, 'pwa/assets/bluemarble.jpg'))
+    })
+  } catch (e) {
+    console.error('[/api/globe-image]', e)
+    res.status(500).end()
+  }
+})
+
 app.post('/api/now-playing', (req, res) => {
   const { song_info, play_url, spotify_uri, spotify_track, source } = req.body || {}
   const info = song_info || null

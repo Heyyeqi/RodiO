@@ -83,7 +83,7 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
   }
 
   .panel-layer {
@@ -189,7 +189,7 @@
   .theme-chip {
     appearance: none;
     border: 1px solid var(--line);
-    background: rgba(0, 0, 0, 0.28);
+    background: rgba(255, 255, 255, 0.07);
     color: var(--text-sub);
     padding: 6px 10px;
     min-width: 44px;
@@ -354,6 +354,7 @@
   .pages-container {
     position: absolute;
     inset: 0;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -1315,6 +1316,31 @@
   let ws = null
   let wsReconnectTimer = null
   let weatherFrameId = null
+  const globeImageCache = {
+    day: null, night: null,
+    dayLoaded: false, nightLoaded: false,
+    lastLat: null, lastLon: null
+  }
+
+  function loadGlobeImages(lat, lon) {
+    if (!globeImageCache.nightLoaded) {
+      const night = new Image()
+      night.onload = () => { globeImageCache.night = night; globeImageCache.nightLoaded = true }
+      night.src = '/api/globe-image?phase=night'
+    }
+    const sameLocation = globeImageCache.lastLat === lat && globeImageCache.lastLon === lon
+    if (!globeImageCache.dayLoaded || !sameLocation) {
+      globeImageCache.dayLoaded = false
+      const day = new Image()
+      day.onload = () => {
+        globeImageCache.day = day
+        globeImageCache.dayLoaded = true
+        globeImageCache.lastLat = lat
+        globeImageCache.lastLon = lon
+      }
+      day.src = `/api/globe-image?phase=day&lat=${lat}&lon=${lon}`
+    }
+  }
   let weatherParticles = []
   const autoExplainedTracks = new Set()
   let forcedThemeKey = null
@@ -1326,85 +1352,117 @@
   const VISUAL_PHASES = {
     sunrise: {
       name: '日出',
-      accent: '#8AAAD4',
-      textMain: '#D8D0E8',
-      textSub: 'rgba(216, 208, 232, 0.68)',
-      textDim: 'rgba(216, 208, 232, 0.34)',
-      line: 'rgba(216, 208, 232, 0.1)',
-      surface: 'rgba(255,255,255,0.02)',
-      surface2: 'rgba(255,255,255,0.04)',
-      bubbleDj: 'rgba(255,255,255,0.04)',
-      bubbleCommentary: 'rgba(255,255,255,0.025)',
-      bubbleYou: 'rgba(138,170,212,0.1)',
-      control: '#7B8AA6',
-      bgStart: '#0D0B14',
-      bgEnd: '#1A120A',
-      bg: '#100D1A',
-      bgGradient: 'linear-gradient(to bottom, #08090F 0%, #0D1018 30%, #141620 60%, #1A1408 100%)',
+      accent: '#D4A06A',
+      textMain: '#EDE8F5',
+      textSub: 'rgba(237,232,245,0.70)',
+      textDim: 'rgba(237,232,245,0.38)',
+      line: 'rgba(237,232,245,0.16)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(212,160,106,0.12)',
+      control: '#C0B0D0',
+      bgStart: '#08060E',
+      bgEnd: '#3C1808',
+      bg: '#100A18',
+      bgGradient: 'linear-gradient(to bottom, #08060E 0%, #1A0E20 35%, #3C1808 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(8,6,20,1)' },
+        { pos: 0.30, color: 'rgba(28,14,38,1)' },
+        { pos: 0.62, color: 'rgba(72,30,14,1)' },
+        { pos: 1,    color: 'rgba(60,22,8,1)' },
+      ],
     },
     morning: {
       name: '上午',
-      accent: '#B8965A',
-      textMain: '#1A1A1A',
-      textSub: '#5A5A5A',
-      textDim: 'rgba(26,26,26,0.42)',
-      line: '#D0CCC8',
-      surface: 'rgba(0,0,0,0.022)',
-      surface2: 'rgba(0,0,0,0.04)',
-      bubbleDj: 'rgba(0,0,0,0.035)',
-      bubbleCommentary: 'rgba(0,0,0,0.025)',
-      bubbleYou: 'rgba(184,150,90,0.08)',
-      control: '#6A6258',
-      bg: '#EEE8DF',
-      bgGradient: 'linear-gradient(to bottom, #C8D8E8 0%, #D8E0E4 20%, #E4DDD4 55%, #EDE4D4 100%)',
+      accent: '#88B8E8',
+      textMain: '#F0EEF8',
+      textSub: 'rgba(240,238,248,0.72)',
+      textDim: 'rgba(240,238,248,0.40)',
+      line: 'rgba(240,238,248,0.16)',
+      surface: 'rgba(255,255,255,0.06)',
+      surface2: 'rgba(255,255,255,0.10)',
+      bubbleDj: 'rgba(255,255,255,0.06)',
+      bubbleCommentary: 'rgba(255,255,255,0.04)',
+      bubbleYou: 'rgba(136,184,232,0.12)',
+      control: '#A8C8E8',
+      bg: '#081838',
+      bgGradient: 'linear-gradient(to bottom, #060E28 0%, #0A1E48 30%, #102858 65%, #183868 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,12,36,1)' },
+        { pos: 0.28, color: 'rgba(10,28,72,1)' },
+        { pos: 0.60, color: 'rgba(16,48,100,1)' },
+        { pos: 1,    color: 'rgba(24,58,112,1)' },
+      ],
     },
     noon: {
       name: '正午',
-      accent: '#A07840',
-      textMain: '#1A1A1A',
-      textSub: '#5A5A5A',
-      textDim: 'rgba(26,26,26,0.42)',
-      line: '#D0CCC8',
-      surface: 'rgba(0,0,0,0.022)',
-      surface2: 'rgba(0,0,0,0.04)',
-      bubbleDj: 'rgba(0,0,0,0.032)',
-      bubbleCommentary: 'rgba(0,0,0,0.024)',
-      bubbleYou: 'rgba(160,120,64,0.08)',
-      control: '#5F5850',
-      bg: '#F0EAD8',
-      bgGradient: 'linear-gradient(to bottom, #F8F8F4 0%, #F4F0E4 30%, #EEE8D8 65%, #E8DFC8 100%)',
+      accent: '#A8D0F0',
+      textMain: '#FFFFFF',
+      textSub: 'rgba(255,255,255,0.75)',
+      textDim: 'rgba(255,255,255,0.44)',
+      line: 'rgba(255,255,255,0.20)',
+      surface: 'rgba(255,255,255,0.08)',
+      surface2: 'rgba(255,255,255,0.12)',
+      bubbleDj: 'rgba(255,255,255,0.07)',
+      bubbleCommentary: 'rgba(255,255,255,0.05)',
+      bubbleYou: 'rgba(168,208,240,0.14)',
+      control: '#C0D8F0',
+      bg: '#061428',
+      bgGradient: 'linear-gradient(to bottom, #04101E 0%, #061828 25%, #0A2848 60%, #103060 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(4,10,24,1)' },
+        { pos: 0.18, color: 'rgba(6,20,52,1)' },
+        { pos: 0.48, color: 'rgba(10,48,110,1)' },
+        { pos: 0.78, color: 'rgba(16,72,160,1)' },
+        { pos: 1,    color: 'rgba(20,90,190,1)' },
+      ],
     },
     sunset: {
       name: '落日',
       accent: '#D4845A',
       textMain: '#F0D9C0',
-      textSub: 'rgba(240,217,192,0.64)',
-      textDim: 'rgba(240,217,192,0.3)',
-      line: 'rgba(240,217,192,0.1)',
-      surface: 'rgba(255,255,255,0.02)',
-      surface2: 'rgba(255,255,255,0.04)',
-      bubbleDj: 'rgba(255,255,255,0.04)',
-      bubbleCommentary: 'rgba(255,255,255,0.025)',
-      bubbleYou: 'rgba(212,132,90,0.1)',
-      control: '#87695A',
+      textSub: 'rgba(240,217,192,0.72)',
+      textDim: 'rgba(240,217,192,0.38)',
+      line: 'rgba(240,217,192,0.22)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(212,132,90,0.12)',
+      control: '#C09070',
       bg: '#0F0A06',
-      bgGradient: 'linear-gradient(to bottom, #14101E 0%, #2A1A10 25%, #3D1E0A 50%, #1E0E06 75%, #0A0604 100%)',
+      bgGradient: 'linear-gradient(to bottom, #100818 0%, #2A1208 30%, #3C1A06 55%, #200C04 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(10,6,20,1)' },
+        { pos: 0.22, color: 'rgba(42,18,8,1)' },
+        { pos: 0.52, color: 'rgba(90,32,12,1)' },
+        { pos: 0.76, color: 'rgba(120,48,16,1)' },
+        { pos: 1,    color: 'rgba(80,22,6,1)' },
+      ],
     },
     night: {
       name: '深夜',
       accent: '#C9A96E',
       textMain: '#F0EDE8',
-      textSub: 'rgba(240,237,232,0.52)',
-      textDim: 'rgba(240,237,232,0.28)',
-      line: 'rgba(240,237,232,0.08)',
-      surface: 'rgba(255,255,255,0.025)',
-      surface2: 'rgba(255,255,255,0.04)',
-      bubbleDj: 'rgba(255,255,255,0.04)',
+      textSub: 'rgba(240,237,232,0.65)',
+      textDim: 'rgba(240,237,232,0.35)',
+      line: 'rgba(240,237,232,0.16)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
       bubbleCommentary: 'rgba(255,255,255,0.03)',
-      bubbleYou: 'rgba(201,169,110,0.08)',
-      control: '#5A5A5A',
-      bg: '#080808',
-      bgGradient: 'linear-gradient(to bottom, #0A0A12 0%, #080810 40%, #06060A 70%, #040404 100%)',
+      bubbleYou: 'rgba(201,169,110,0.10)',
+      control: '#8A8A8A',
+      bg: '#060608',
+      bgGradient: 'linear-gradient(to bottom, #060610 0%, #080810 40%, #06060C 75%, #040406 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,6,18,1)' },
+        { pos: 0.40, color: 'rgba(8,10,24,1)' },
+        { pos: 0.75, color: 'rgba(10,8,20,1)' },
+        { pos: 1,    color: 'rgba(6,5,14,1)' },
+      ],
     },
   }
 
@@ -2284,6 +2342,7 @@
     state.themeKey = visualTheme.themeKey
     setTheme(visualTheme.themeState, visualTheme.themeKey)
     startWeatherSystem(nowData.weather || null, state.astronomy)
+    loadGlobeImages(state.lat || 31.2304, state.lon || 121.4737)
 
     if (Array.isArray(queueData.queue)) setLocalQueue(queueData.queue)
 
@@ -2927,14 +2986,17 @@
   function createWeatherProfile(weather, astronomy) {
     const main = weather?.main || 'Clear'
     const description = weather?.description || ''
-    const cloudiness = typeof weather?.cloudiness === 'number' ? weather.cloudiness : null
+    const cloudiness = typeof weather?.cloudiness === 'number' ? weather.cloudiness : 0
     const themeKey = state.themeKey
     const solarAltitude = astronomy?.solar?.altitude ?? null
     const isDaylight = solarAltitude !== null ? solarAltitude > -6 : themeKey !== 'night'
+    const windSpeed = weather?.windSpeed ?? 0
+
     const profile = {
       main,
       description,
       cloudiness,
+      windSpeed,
       hazeFilter: '',
       particles: [],
       snow: [],
@@ -2944,71 +3006,60 @@
       count: 0,
     }
 
+    // 天气效果通过云层和色温体现，不用粒子
     if (main === 'Clear') {
       profile.kind = 'clear'
-      if (themeKey === 'sunset') {
-        profile.particles = makeSparkParticles(3, 'sunset')
-        profile.count = profile.particles.length
-      } else if (isDaylight) {
-        profile.particles = makeSparkParticles(themeKey === 'sunrise' ? 3 : 4, 'day')
-        profile.count = profile.particles.length
-      }
       return profile
     }
 
     if (main === 'Clouds') {
       profile.kind = 'clouds'
-      if ((cloudiness ?? 100) < 50 && isDaylight) {
-        profile.particles = makeSparkParticles(3, themeKey === 'sunset' ? 'sunset' : 'day')
-      }
-      profile.count = profile.particles.length
       return profile
     }
 
-    if (main === 'Rain' || main === 'Drizzle' || main === 'Thunderstorm') {
-      const isHeavy = /大雨|暴雨|heavy|storm/i.test(description)
-      const isMid = /中雨|moderate/i.test(description)
-      const count = main === 'Thunderstorm' ? 120 : isHeavy ? 120 : isMid ? 80 : 40
-      const color = themeKey === 'night' ? '#6A8AA0' : themeKey === 'sunrise' ? '#A09080' : '#8AAABB'
-      profile.kind = main === 'Thunderstorm' ? 'storm' : 'rain'
-      profile.particles = makeRainParticles(count, color)
-      profile.count = profile.particles.length
+    if (main === 'Rain' || main === 'Drizzle') {
+      profile.kind = 'rain'
+      // 天空色温偏冷灰
+      profile.overlayColor = themeKey === 'night'
+        ? 'rgba(20,25,40,0.12)'
+        : 'rgba(100,110,130,0.10)'
+      return profile
+    }
+
+    if (main === 'Thunderstorm') {
+      profile.kind = 'storm'
+      profile.overlayColor = 'rgba(15,18,30,0.18)'
       return profile
     }
 
     if (main === 'Snow') {
       profile.kind = 'snow'
-      profile.snow = makeSnowParticles(60)
-      profile.count = profile.snow.length
+      profile.overlayColor = 'rgba(200,205,215,0.08)'
       return profile
     }
 
     if (main === 'Mist' || main === 'Fog') {
       profile.kind = 'fog'
-      profile.fog = { color: (themeKey === 'night' || themeKey === 'sunset') ? '#1A1A1A' : '#D0D0D0' }
+      profile.overlayColor = themeKey === 'night'
+        ? 'rgba(30,35,45,0.22)'
+        : 'rgba(180,185,190,0.20)'
+      profile.hazeFilter = 'blur(0.5px) saturate(0.7)'
       return profile
     }
 
     if (main === 'Haze') {
       profile.kind = 'haze'
-      profile.overlayColor = themeKey === 'night' ? 'rgba(42,32,16,0.12)' : 'rgba(200,176,144,0.12)'
-      profile.hazeFilter = 'sepia(0.1) saturate(0.8)'
+      profile.overlayColor = themeKey === 'night'
+        ? 'rgba(42,32,16,0.14)'
+        : 'rgba(200,176,144,0.14)'
+      profile.hazeFilter = 'sepia(0.12) saturate(0.75)'
       return profile
     }
 
     if (main === 'Dust' || main === 'Sand') {
       profile.kind = 'dust'
-      profile.overlayColor = 'rgba(138,90,32,0.15)'
-      profile.particles = makeSandParticles(40)
-      profile.count = profile.particles.length
-      return profile
-    }
-
-    if (main === 'Sleet') {
-      profile.kind = 'sleet'
-      profile.particles = makeRainParticles(40, '#8AAABB')
-      profile.snow = makeSnowParticles(30)
-      profile.count = profile.particles.length + profile.snow.length
+      profile.overlayColor = 'rgba(138,90,32,0.16)'
+      profile.hazeFilter = 'sepia(0.2) saturate(0.7)'
       return profile
     }
 
@@ -3100,22 +3151,172 @@
     ctx.fillRect(0, 0, visualState.width, visualState.height)
   }
 
+  function drawGlobe(nowMs, phaseKey, alphaScale = 1) {
+    const width = visualState.width
+    const height = visualState.height
+
+    // 先用当前时段渐变填满整个canvas，消除clip圆形之外的黑色角落
+    const phase = VISUAL_PHASES[phaseKey] || VISUAL_PHASES.night
+    if (phase.gradient && phase.gradient.length) {
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height)
+      phase.gradient.forEach(s => bgGrad.addColorStop(s.pos, s.color))
+      ctx.fillStyle = bgGrad
+    } else {
+      ctx.fillStyle = '#06060E'
+    }
+    ctx.fillRect(0, 0, width, height)
+
+    // 地球占下方40%，球心在屏幕底部以下
+    const globeR = width * 1.25
+    const globeCX = width * 0.5
+    const globeCY = height * 0.6 + globeR
+
+    const useNight = phaseKey === 'night' || phaseKey === 'sunset' || phaseKey === 'sunrise'
+    const img = useNight
+      ? (globeImageCache.nightLoaded ? globeImageCache.night : null)
+      : (globeImageCache.dayLoaded ? globeImageCache.day : null)
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(globeCX, globeCY, globeR, 0, Math.PI * 2)
+    ctx.clip()
+
+    // 占位底色
+    const dayBasColors = {
+      morning: '#c8d0d8',
+      noon:    '#b8c8d8',
+      sunrise: '#2a1810',
+    }
+    ctx.fillStyle = useNight ? '#040810' : (dayBasColors[phaseKey] || '#0a1a2e')
+    ctx.fillRect(0, 0, width, height)
+
+    if (img) {
+      const lat = state.lat || 31.2304
+      const lon = state.lon || 121.4737
+      const imgW = img.naturalWidth
+      const imgH = img.naturalHeight
+
+      // 等距圆柱投影：用户位置映射到图片坐标
+      const centerX = ((lon + 180) / 360) * imgW
+      const centerY = ((90 - lat) / 180) * imgH
+
+      // 可视范围
+      const viewDeg = 90
+      const srcW = (viewDeg / 360) * imgW
+      const srcH = (viewDeg / 180) * imgH
+      const srcX = Math.max(0, Math.min(imgW - srcW, centerX - srcW / 2))
+      const srcY = Math.max(0, Math.min(imgH - srcH, centerY - srcH / 2))
+
+      // 贴图到球面区域（屏幕下方40%）
+      const destY = height * 0.6
+      ctx.globalAlpha = 0.92 * alphaScale
+      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, destY, width, height - destY)
+      ctx.globalAlpha = 1
+
+      // 夜间叠加深色蒙层让灯光更突出
+      if (useNight) {
+        const overlay = ctx.createLinearGradient(0, destY, 0, height)
+        overlay.addColorStop(0, 'rgba(0,2,12,0.5)')
+        overlay.addColorStop(1, 'rgba(0,2,12,0.2)')
+        ctx.fillStyle = overlay
+        ctx.fillRect(0, destY, width, height - destY)
+      }
+
+      // 天气对地球球面的影响：通过云层透明度体现
+      const weather = state.weather
+      if (weather) {
+        const main = weather.main || 'Clear'
+        const cloudiness = weather.cloudiness ?? 0
+        let cloudAlpha = 0
+        let cloudColor = 'rgba(180,185,195,'
+
+        if (main === 'Rain' || main === 'Drizzle') {
+          cloudAlpha = 0.35 + (cloudiness / 100) * 0.25
+          cloudColor = 'rgba(80,90,110,'
+        } else if (main === 'Thunderstorm') {
+          cloudAlpha = 0.55
+          cloudColor = 'rgba(40,45,60,'
+        } else if (main === 'Snow') {
+          cloudAlpha = 0.3
+          cloudColor = 'rgba(200,205,215,'
+        } else if (main === 'Clouds') {
+          cloudAlpha = (cloudiness / 100) * 0.3
+          cloudColor = useNight ? 'rgba(30,35,50,' : 'rgba(160,165,175,'
+        } else if (main === 'Mist' || main === 'Fog') {
+          cloudAlpha = 0.4
+          cloudColor = 'rgba(150,155,160,'
+        } else if (main === 'Haze') {
+          cloudAlpha = 0.25
+          cloudColor = 'rgba(160,145,120,'
+        }
+
+        if (cloudAlpha > 0) {
+          const cloudOverlay = ctx.createLinearGradient(0, destY, 0, height)
+          cloudOverlay.addColorStop(0, `${cloudColor}${cloudAlpha.toFixed(3)})`)
+          cloudOverlay.addColorStop(0.4, `${cloudColor}${(cloudAlpha * 0.7).toFixed(3)})`)
+          cloudOverlay.addColorStop(1, `${cloudColor}${(cloudAlpha * 0.4).toFixed(3)})`)
+          ctx.fillStyle = cloudOverlay
+          ctx.fillRect(0, destY, width, height - destY)
+        }
+      }
+    }
+
+    ctx.restore()
+
+    // 大气层弧光：沿球面弧线精确描边，在clip外部绘制完整弧线
+    const arcTop = globeCY - globeR
+    const atmColorMap = {
+      night:   { inner: 'rgba(60,120,220,0.75)',  mid: 'rgba(40,90,180,0.35)',  outer: 'rgba(20,55,140,0)' },
+      sunset:  { inner: 'rgba(200,90,50,0.80)',   mid: 'rgba(160,65,30,0.35)',  outer: 'rgba(110,40,15,0)' },
+      sunrise: { inner: 'rgba(180,100,60,0.75)',  mid: 'rgba(140,70,35,0.32)',  outer: 'rgba(100,45,20,0)' },
+      morning: { inner: 'rgba(80,160,240,0.55)',  mid: 'rgba(55,125,210,0.22)', outer: 'rgba(35,90,170,0)' },
+      noon:    { inner: 'rgba(100,175,250,0.50)', mid: 'rgba(70,145,225,0.20)', outer: 'rgba(45,110,195,0)' },
+    }
+    const atm = atmColorMap[phaseKey] || atmColorMap.night
+
+    ctx.globalAlpha = alphaScale
+
+    // 外层晕
+    ctx.beginPath()
+    ctx.arc(globeCX, globeCY, globeR + 18, 0, Math.PI * 2)
+    ctx.strokeStyle = atm.outer
+    ctx.lineWidth = 14
+    ctx.stroke()
+
+    // 中层
+    ctx.beginPath()
+    ctx.arc(globeCX, globeCY, globeR + 7, 0, Math.PI * 2)
+    ctx.strokeStyle = atm.mid
+    ctx.lineWidth = 8
+    ctx.stroke()
+
+    // 内层
+    ctx.beginPath()
+    ctx.arc(globeCX, globeCY, globeR + 1, 0, Math.PI * 2)
+    ctx.strokeStyle = atm.inner
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+
+    ctx.globalAlpha = 1
+  }
+
   function drawPhaseBase(nowMs, phaseKey, alphaScale = 1) {
     const width = visualState.width
     const height = visualState.height
+    const skyHeight = height * 0.605
     const maxY = heroMaxY()
-    const phaseProgress = getPhaseProgress(phaseKey, nowMs, state.sunriseTs, state.sunsetTs)
+    const phaseProgress = getPhaseProgress(phaseKey, Date.now(), state.sunriseTs, state.sunsetTs)
 
     if (phaseKey === 'sunrise') {
       // 天空顶部深蓝
       drawRadialGlow(width * 0.5, 0, width * 0.9, '#3A5A8A', (0.22 + Math.sin(nowMs / 14000 * Math.PI * 2) * 0.05) * alphaScale)
       // 地平线橙红光带
-      const horizonGrad = ctx.createLinearGradient(0, height * 0.55, 0, height * 0.85)
+      const horizonGrad = ctx.createLinearGradient(0, height * 0.55, 0, skyHeight)
       horizonGrad.addColorStop(0, 'rgba(200, 120, 64, 0)')
       horizonGrad.addColorStop(0.4, `rgba(200, 120, 64, ${(0.28 * alphaScale).toFixed(4)})`)
       horizonGrad.addColorStop(1, `rgba(180, 80, 30, ${(0.18 * alphaScale).toFixed(4)})`)
       ctx.fillStyle = horizonGrad
-      ctx.fillRect(0, height * 0.55, width, height * 0.3)
+      ctx.fillRect(0, height * 0.55, width, Math.max(0, skyHeight - height * 0.55))
       // 底部暖光晕
       drawRadialGlow(width * 0.5, height, width * (0.5 + 0.25 * phaseProgress), '#C87840', (0.20 + phaseProgress * 0.14) * alphaScale)
       return
@@ -3148,7 +3349,7 @@
         grad.addColorStop(0.65, `hsla(${spot.hue}, 55%, 92%, ${alpha.toFixed(4)})`)
         grad.addColorStop(1, `hsla(${spot.hue}, 50%, 94%, 0)`)
         ctx.fillStyle = grad
-        ctx.fillRect(0, 0, width, height)
+        ctx.fillRect(0, 0, width, skyHeight)
       })
       // Fixed warm sun accent top-right, intensity tied to time of morning
       const morningProgress = getPhaseProgress('morning', nowMs, state.sunriseTs, state.sunsetTs)
@@ -3157,33 +3358,29 @@
       sunGrad.addColorStop(0, `rgba(255, 220, 160, ${(sunIntensity * alphaScale).toFixed(4)})`)
       sunGrad.addColorStop(1, 'rgba(255, 220, 160, 0)')
       ctx.fillStyle = sunGrad
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, width, skyHeight)
       return
     }
 
     if (phaseKey === 'noon') {
-      // Whole-canvas breathing rhythm — inhale/exhale of noon heat
-      // Slow 14-second cycle
-      const breathe = 0.5 + 0.5 * Math.sin(nowMs / 14000 * Math.PI * 2)
-      // Top zenith: pulses brighter on inhale
-      const zenithAlpha = (0.12 + breathe * 0.10) * alphaScale
-      drawRadialGlow(width * 0.5, -height * 0.08, width * 0.68, '#FFFFFF', zenithAlpha)
-      // Bottom warm reflection: counter-phase (darker when top is bright)
-      const floorAlpha = (0.06 + (1 - breathe) * 0.06) * alphaScale
-      drawRadialGlow(width * 0.5, height * 1.05, width * 0.5, '#E8D0A0', floorAlpha)
-      // Light rays: each ray has its own slow pulse, independent phase
-      visualState.phaseSeeds.noonRays.forEach((ray) => {
-        const pulse = 0.5 + 0.5 * Math.sin(nowMs / ray.speed * Math.PI * 2 + ray.phase)
-        const alpha = (ray.baseAlpha * 1.8 * pulse) * alphaScale
-        const rayBottom = Math.min(maxY, height * 0.58)
-        const grad = ctx.createLinearGradient(ray.x, 0, ray.x, rayBottom)
-        grad.addColorStop(0, `rgba(255, 252, 240, ${alpha.toFixed(4)})`)
-        grad.addColorStop(0.45, `rgba(255, 248, 225, ${(alpha * 0.5).toFixed(4)})`)
-        grad.addColorStop(1, 'rgba(255, 248, 225, 0)')
-        ctx.fillStyle = grad
-        const rayWidth = width * 0.16
-        ctx.fillRect(ray.x - rayWidth / 2, 0, rayWidth, rayBottom)
-      })
+      // 正午顶部强白光——直射感
+      const zenith = ctx.createRadialGradient(
+        width * 0.5, -height * 0.05, 0,
+        width * 0.5, -height * 0.05, width * 1.0
+      )
+      zenith.addColorStop(0, `rgba(255,255,255,${0.42 * alphaScale})`)
+      zenith.addColorStop(0.25, `rgba(220,240,255,${0.22 * alphaScale})`)
+      zenith.addColorStop(0.6, `rgba(180,220,255,${0.08 * alphaScale})`)
+      zenith.addColorStop(1, 'rgba(160,210,255,0)')
+      ctx.fillStyle = zenith
+      ctx.fillRect(0, 0, width, skyHeight)
+
+      // 大气散射层——顶部偏蓝白
+      const scatter = ctx.createLinearGradient(0, 0, 0, skyHeight * 0.5)
+      scatter.addColorStop(0, `rgba(255,255,255,${0.18 * alphaScale})`)
+      scatter.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = scatter
+      ctx.fillRect(0, 0, width, skyHeight * 0.5)
       return
     }
 
@@ -3217,9 +3414,9 @@
         grad.addColorStop(0.6, `rgba(${c.r}, ${c.g}, ${c.b}, ${(alpha * 0.3).toFixed(4)})`)
         grad.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`)
         ctx.fillStyle = grad
-        ctx.fillRect(0, 0, width, height)
+        ctx.fillRect(0, 0, width, skyHeight)
       })
-      const bandBottom = Math.min(maxY, height * 0.78)
+      const bandBottom = Math.min(maxY, skyHeight)
       const bandGrad = ctx.createLinearGradient(0, height * 0.55, 0, bandBottom)
       bandGrad.addColorStop(0, 'rgba(40, 28, 12, 0)')
       bandGrad.addColorStop(0.5, `rgba(40, 28, 12, ${(0.1 * alphaScale).toFixed(4)})`)
@@ -3227,17 +3424,17 @@
       ctx.fillStyle = bandGrad
       ctx.fillRect(0, height * 0.55, width, Math.max(0, bandBottom - height * 0.55))
       // 深夜地平线微光（城市光污染感）
-      const cityGlow = ctx.createLinearGradient(0, height * 0.75, 0, height)
+      const cityGlow = ctx.createLinearGradient(0, Math.min(height * 0.75, skyHeight - 1), 0, skyHeight)
       cityGlow.addColorStop(0, 'rgba(20, 12, 40, 0)')
       cityGlow.addColorStop(1, `rgba(20, 12, 40, ${(0.22 * alphaScale).toFixed(4)})`)
       ctx.fillStyle = cityGlow
-      ctx.fillRect(0, height * 0.75, width, height * 0.25)
+      ctx.fillRect(0, Math.min(height * 0.75, skyHeight - 1), width, Math.max(0, skyHeight - Math.min(height * 0.75, skyHeight - 1)))
       // 顶部深蓝渐变增强天空感
       const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.4)
       skyGrad.addColorStop(0, `rgba(8, 10, 28, ${(0.35 * alphaScale).toFixed(4)})`)
       skyGrad.addColorStop(1, 'rgba(8, 10, 28, 0)')
       ctx.fillStyle = skyGrad
-      ctx.fillRect(0, 0, width, height * 0.4)
+      ctx.fillRect(0, 0, width, Math.min(height * 0.4, skyHeight))
     }
   }
 
@@ -3607,6 +3804,8 @@
     const x = width * clamp((azimuth - 60) / 240, 0, 1)
     const sunAltitudeRatio = clamp(altitude / 90, 0, 1)
     const y = height * (0.68 - 0.58 * sunAltitudeRatio)
+    const skyBoundary = visualState.height * 0.58
+    if (y > skyBoundary) return
     const horizonProximity = 1 - Math.min(1, altitude / 20)
     const baseAlpha = (0.52 + horizonProximity * 0.32) * alphaScale
     const sunColor = {
@@ -3672,10 +3871,12 @@
     const moonX = width * (isWaxing ? 0.78 : 0.22)
     const moonY = height * (0.38 - 0.22 * clamp(altitude / 80, 0, 1))
     const moonRadius = width * 0.028
+    const skyBoundary = visualState.height * 0.58
+    if (moonY > skyBoundary) return
 
     // Glow — soft, large, very low alpha
-    const glowRadius = moonRadius * 4
-    const glowAlpha = illumination * 0.10 * alphaScale
+    const glowRadius = moonRadius * 7
+    const glowAlpha = illumination * 0.18 * alphaScale
     const glowGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, glowRadius)
     glowGrad.addColorStop(0, `rgba(220,220,200,${glowAlpha.toFixed(4)})`)
     glowGrad.addColorStop(0.4, `rgba(220,220,200,${(glowAlpha * 0.4).toFixed(4)})`)
@@ -3758,109 +3959,31 @@
   function drawWeatherOverlay(profile, nowMs, alphaScale = 1) {
     if (!profile || alphaScale <= 0) return
     const width = visualState.width
-    const height = visualState.height
-    ctx.save()
-    ctx.globalAlpha = alphaScale
+    const skyHeight = visualState.height * 0.62
 
+    // 只在天空区域叠加色温/能见度效果
     if (profile.overlayColor) {
       ctx.fillStyle = profile.overlayColor
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, width, skyHeight)
     }
 
-    if (profile.particles.length) {
-      if (profile.kind === 'rain' || profile.kind === 'storm') {
-        ctx.lineWidth = 1
-        profile.particles.forEach((drop) => {
-          ctx.strokeStyle = drop.color
-          ctx.globalAlpha = drop.alpha * alphaScale
-          ctx.beginPath()
-          ctx.moveTo(drop.x, drop.y)
-          ctx.lineTo(drop.x + 1, drop.y + drop.len)
-          ctx.stroke()
-          drop.y += drop.speed
-          drop.x += 0.35
-          if (drop.y > height) {
-            drop.y = -drop.len
-            drop.x = rand(0, width)
-          }
-        })
-        if (profile.kind === 'storm' && nowMs > visualState.flashUntil && Math.random() < 0.001) {
-          visualState.flashUntil = nowMs + 100
-        }
-      } else if (profile.kind === 'dust') {
-        profile.particles.forEach((grain) => {
-          ctx.fillStyle = `rgba(192, 144, 80, ${grain.alpha.toFixed(4)})`
-          ctx.fillRect(grain.x, grain.y, grain.len, 1)
-          grain.x += grain.speed
-          if (grain.x > width + 8) {
-            grain.x = -8
-            grain.y = rand(0, height)
-          }
-        })
-      } else {
-        profile.particles.forEach((spark) => {
-          ctx.beginPath()
-          ctx.fillStyle = profile.kind === 'clear' && state.themeKey === 'sunset'
-            ? `rgba(255, 208, 128, ${(spark.alpha * alphaScale).toFixed(4)})`
-            : `rgba(240, 192, 128, ${(spark.alpha * alphaScale).toFixed(4)})`
-          ctx.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2)
-          ctx.fill()
-          spark.y -= spark.speed
-          if (state.themeKey === 'sunset') {
-            spark.x += Math.sin(nowMs / 5000 + spark.y) * 0.08
-          }
-          if (spark.y < height * 0.4) {
-            spark.y = rand(height * 0.45, height * 0.62)
-            spark.x = rand(width * 0.2, width * 0.82)
-          }
-        })
+    // 雷暴：偶发全屏闪白（包括地球区域，因为闪电会照亮整个场景）
+    if (profile.kind === 'storm') {
+      if (Math.random() < 0.002) {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)'
+        ctx.fillRect(0, 0, width, visualState.height)
       }
     }
 
-    if (profile.snow.length) {
-      profile.snow.forEach((flake, index) => {
-        ctx.beginPath()
-        ctx.fillStyle = `rgba(240,240,240,${(flake.alpha * alphaScale).toFixed(4)})`
-        ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI * 2)
-        ctx.fill()
-        flake.y += flake.speed
-        flake.x += Math.sin(nowMs / 1000 + flake.driftSeed + index) * 0.08
-        if (flake.y > height + 4) {
-          flake.y = -4
-          flake.x = rand(0, width)
-        }
-      })
+    // 大风：云层移动速度在initCloudSystem里处理，这里只加轻微动感
+    if (profile.windSpeed > 8) {
+      const windAlpha = Math.min(0.06, (profile.windSpeed - 8) / 100)
+      ctx.fillStyle = `rgba(200,205,215,${windAlpha.toFixed(3)})`
+      ctx.fillRect(0, 0, width, skyHeight * 0.5)
     }
 
-    if (profile.kind === 'fog') {
-      const fogAlpha = 0.1 + Math.sin(nowMs / 15000 * Math.PI * 2) * 0.04
-      const corners = [
-        [0, 0],
-        [width, 0],
-        [0, height],
-        [width, height],
-      ]
-      corners.forEach(([x, y]) => {
-        const gradient = ctx.createRadialGradient(x, y, 0, width * 0.5, height * 0.5, width * 0.75)
-        const c = cachedParseColor(profile.fog.color)
-        gradient.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, ${(fogAlpha * alphaScale).toFixed(4)})`)
-        gradient.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`)
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 0, width, height)
-      })
-    }
-
-    if (profile.kind === 'haze') {
-      ctx.fillStyle = profile.overlayColor
-      ctx.fillRect(0, 0, width, height)
-    }
-
-    if (visualState.flashUntil > nowMs) {
-      ctx.fillStyle = 'rgba(255,255,255,0.08)'
-      ctx.fillRect(0, 0, width, height)
-    }
-
-    ctx.restore()
+    // canvas filter（雾/霾）
+    canvas.style.filter = profile.hazeFilter || 'none'
   }
 
   function getCanvasHintThemeWeight(hint) {
@@ -4208,6 +4331,7 @@
     }
 
     ctx.clearRect(0, 0, visualState.width, visualState.height)
+    drawGlobe(nowMs, state.themeKey, 1)
     const heroClipHeight = visualState.height
     ctx.save()
     ctx.beginPath()
