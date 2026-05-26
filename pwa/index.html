@@ -77,13 +77,23 @@
     }
   }
 
-  #weather-canvas {
+  #earth3d-layer {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
     z-index: 0;
+    overflow: hidden;
+  }
+
+  #weather-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
   }
 
   .panel-layer {
@@ -794,6 +804,7 @@
 </head>
 <body>
 <div id="app">
+  <div id="earth3d-layer"></div>
   <canvas id="weather-canvas"></canvas>
   <audio id="claudio-audio" style="display:none"></audio>
   <div class="pages-container" id="pages-container">
@@ -922,6 +933,8 @@
 
 <div class="error-overlay" id="error-overlay"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/earth3d.js"></script>
 <script>
 (() => {
   const errorOverlay = document.getElementById('error-overlay')
@@ -1496,6 +1509,7 @@
       { id: makeId('dj'), from: 'dj', text: '跟我说说你想听什么，或者让我来决定。', time: ts() },
     ],
   }
+  window.__rodioVisualState = state
 
   function makeId(prefix) {
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -4330,8 +4344,11 @@
       lastAppliedThemeKey = themed.themeKey
     }
 
+    const useEarth3D = Boolean(window.earth3d?.isReady)
     ctx.clearRect(0, 0, visualState.width, visualState.height)
-    drawGlobe(nowMs, state.themeKey, 1)
+    if (!useEarth3D) {
+      drawGlobe(nowMs, state.themeKey, 1)
+    }
     const heroClipHeight = visualState.height
     ctx.save()
     ctx.beginPath()
@@ -4346,14 +4363,16 @@
         const transitionDuration = 8 * 60000
         const t = clamp((nowMs - currentWindow.start) / transitionDuration, 0, 1)
         const { prev } = getAdjacentThemeKeys(state.themeKey)
-        if (t < 1) {
+        if (t < 1 && !useEarth3D) {
           drawPhaseBase(nowMs, prev, 1 - t)
         }
       }
     }
-    drawPhaseBase(nowMs, state.themeKey, inThemeTransition
-      ? clamp((nowMs - (getPhaseWindows(nowMs, state.sunriseTs, state.sunsetTs).find(w => w.key === state.themeKey)?.start || nowMs)) / (8 * 60000), 0, 1)
-      : 1)
+    if (!useEarth3D) {
+      drawPhaseBase(nowMs, state.themeKey, inThemeTransition
+        ? clamp((nowMs - (getPhaseWindows(nowMs, state.sunriseTs, state.sunsetTs).find(w => w.key === state.themeKey)?.start || nowMs)) / (8 * 60000), 0, 1)
+        : 1)
+    }
     drawStarField(nowMs, state.astronomy, 1)
     drawCloudSystem(nowMs, 1)
     if (state.astronomy) {
@@ -4381,6 +4400,10 @@
 
     if (nowMs - visualState.lastWeatherFetchAt >= 30 * 60000) {
       refreshAmbientNow()
+    }
+
+    if (useEarth3D) {
+      window.earth3d.setTimeOfDay(state.themeKey || 'night')
     }
 
     weatherFrameId = requestAnimationFrame(startVisualLoop)
