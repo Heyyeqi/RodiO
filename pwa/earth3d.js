@@ -1,4 +1,14 @@
 (function () {
+  const TEXTURE_LON_OFFSET = 90
+  const DEBUG_MARKERS_ENABLED = false
+  const DEBUG_CITIES = [
+    { name: 'Shanghai', lon: 121.4737, lat: 31.2304, color: 0xff3300 },
+    { name: 'Tokyo', lon: 139.6917, lat: 35.6895, color: 0xffff00 },
+    { name: 'London', lon: 0, lat: 51.5, color: 0x00ff66 },
+    { name: 'NewYork', lon: -74, lat: 40.7, color: 0x3399ff },
+    { name: 'Sydney', lon: 151.2, lat: -33.9, color: 0xff66ff }
+  ]
+
   function lerp(a, b, t) {
     return a + (b - a) * t
   }
@@ -18,13 +28,6 @@
     return value
   }
 
-  function shortestLonDelta(a, b) {
-    let delta = normalizeLon(a) - normalizeLon(b)
-    while (delta < -180) delta += 360
-    while (delta > 180) delta -= 360
-    return delta
-  }
-
   function buildStarField(count, radius) {
     const positions = new Float32Array(count * 3)
     for (let i = 0; i < count; i += 1) {
@@ -39,6 +42,63 @@
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     return geometry
+  }
+
+  function lonLatToVector3(lon, lat, radius = 1) {
+    const latRad = THREE.MathUtils.degToRad(lat)
+    const lonRad = THREE.MathUtils.degToRad(lon + TEXTURE_LON_OFFSET)
+
+    return new THREE.Vector3(
+      Math.cos(latRad) * Math.sin(lonRad),
+      Math.sin(latRad),
+      Math.cos(latRad) * Math.cos(lonRad)
+    ).multiplyScalar(radius)
+  }
+
+  function lonLatToNorthTangent(lon, lat) {
+    const latRad = THREE.MathUtils.degToRad(lat)
+    const lonRad = THREE.MathUtils.degToRad(lon + TEXTURE_LON_OFFSET)
+
+    return new THREE.Vector3(
+      -Math.sin(latRad) * Math.sin(lonRad),
+      Math.cos(latRad),
+      -Math.sin(latRad) * Math.cos(lonRad)
+    ).normalize()
+  }
+
+  function quaternionFromBasis(sourceNormal, sourceNorth, targetNormal, targetNorth) {
+    const sourceEast = new THREE.Vector3()
+      .crossVectors(sourceNorth, sourceNormal)
+      .normalize()
+
+    const correctedSourceNorth = new THREE.Vector3()
+      .crossVectors(sourceNormal, sourceEast)
+      .normalize()
+
+    const targetEast = new THREE.Vector3()
+      .crossVectors(targetNorth, targetNormal)
+      .normalize()
+
+    const correctedTargetNorth = new THREE.Vector3()
+      .crossVectors(targetNormal, targetEast)
+      .normalize()
+
+    const sourceMatrix = new THREE.Matrix4().makeBasis(
+      sourceEast,
+      correctedSourceNorth,
+      sourceNormal
+    )
+
+    const targetMatrix = new THREE.Matrix4().makeBasis(
+      targetEast,
+      correctedTargetNorth,
+      targetNormal
+    )
+
+    const sourceQuat = new THREE.Quaternion().setFromRotationMatrix(sourceMatrix)
+    const targetQuat = new THREE.Quaternion().setFromRotationMatrix(targetMatrix)
+
+    return targetQuat.multiply(sourceQuat.invert()).normalize()
   }
 
   function createEarth3D() {
@@ -66,12 +126,16 @@
       renderer.domElement.style.width = '100%'
       renderer.domElement.style.height = '100%'
       renderer.domElement.style.display = 'block'
+      renderer.domElement.style.opacity = '0'
+      renderer.domElement.style.transition = 'opacity 240ms ease'
+      renderer.domElement.style.willChange = 'opacity'
       mountEl.appendChild(renderer.domElement)
 
       function markUnavailable() {
         isReady = false
         permanentlyUnavailable = true
         if (renderer) renderer.setAnimationLoop(null)
+        if (renderer?.domElement) renderer.domElement.style.opacity = '0'
       }
 
       renderer.domElement.addEventListener('webglcontextlost', (event) => {
@@ -85,17 +149,43 @@
       camera.lookAt(0, 0, 0)
 
       const loader = new THREE.TextureLoader()
-      dayTexture = loader.load('/assets/bluemarble.jpg')
-      nightTexture = loader.load('/assets/blackmarble.jpg')
-      ;[dayTexture, nightTexture].forEach((texture) => {
+      function configureEarthTexture(texture) {
         texture.colorSpace = THREE.SRGBColorSpace
-        texture.anisotropy = 8
-      })
+        texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy())
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        texture.needsUpdate = true
+        return texture
+      }
+
+      function loadTextureWithFallback(primaryPath, fallbackPath, onLoad) {
+        loader.load(
+          primaryPath,
+          (texture) => {
+            onLoad(configureEarthTexture(texture), primaryPath)
+          },
+          undefined,
+          () => {
+            console.warn('[earth3d] texture fallback:', primaryPath, '->', fallbackPath)
+            loader.load(
+              fallbackPath,
+              (texture) => {
+                onLoad(configureEarthTexture(texture), fallbackPath)
+              },
+              undefined,
+              () => {
+                console.error('[earth3d] texture load failed:', primaryPath, fallbackPath)
+              }
+            )
+          }
+        )
+      }
 
       earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x1a3a5c,
-        shininess: 4,
-        specular: new THREE.Color(0x11161f),
+        shininess: 1,
+        specular: new THREE.Color(0x05070a),
       })
       earthGeometry = new THREE.SphereGeometry(2, 64, 64)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
@@ -114,9 +204,113 @@
 
       const earthGroup = new THREE.Group()
       earthGroup.position.set(0, -1.4, 0)
-      earthGroup.rotation.z = THREE.MathUtils.degToRad(23.4)
+      // earthGroup.rotation.z = THREE.MathUtils.degToRad(23.4)
       earth.add(atmosphere)
       earthGroup.add(earth)
+
+      const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
+      const visualRaycaster = new THREE.Raycaster()
+      const visualTargetDir = new THREE.Vector3(0, 0, 1)
+
+      function updateVisualTargetDir() {
+        const savedQuaternion = earth.quaternion.clone()
+
+        // 用未旋转的 earth 计算“屏幕视觉锚点”对应的球面方向
+        earth.quaternion.identity()
+        earth.updateMatrixWorld(true)
+        earthGroup.updateMatrixWorld(true)
+        scene.updateMatrixWorld(true)
+        camera.updateMatrixWorld(true)
+
+        const earthCenterWorld = new THREE.Vector3()
+        earth.getWorldPosition(earthCenterWorld)
+
+        const sphere = new THREE.Sphere(earthCenterWorld, 2)
+        visualRaycaster.setFromCamera(VISUAL_TARGET_NDC, camera)
+
+        const hit = new THREE.Vector3()
+        const intersection = visualRaycaster.ray.intersectSphere(sphere, hit)
+
+        console.log(
+          '[earth3d] visual target ndc =',
+          VISUAL_TARGET_NDC.x.toFixed(3),
+          VISUAL_TARGET_NDC.y.toFixed(3)
+        )
+
+        console.log(
+          '[earth3d] earth center world =',
+          earthCenterWorld.x.toFixed(3),
+          earthCenterWorld.y.toFixed(3),
+          earthCenterWorld.z.toFixed(3)
+        )
+
+        console.log(
+          '[earth3d] visual ray origin =',
+          visualRaycaster.ray.origin.x.toFixed(3),
+          visualRaycaster.ray.origin.y.toFixed(3),
+          visualRaycaster.ray.origin.z.toFixed(3)
+        )
+
+        console.log(
+          '[earth3d] visual ray direction =',
+          visualRaycaster.ray.direction.x.toFixed(3),
+          visualRaycaster.ray.direction.y.toFixed(3),
+          visualRaycaster.ray.direction.z.toFixed(3)
+        )
+
+        console.log('[earth3d] visual target hit =', Boolean(intersection))
+
+        if (!intersection) {
+          visualTargetDir.set(0, 0, 1)
+        } else {
+          console.log(
+            '[earth3d] visual hit world =',
+            hit.x.toFixed(3),
+            hit.y.toFixed(3),
+            hit.z.toFixed(3)
+          )
+
+          const localHit = earth.worldToLocal(hit.clone())
+
+          console.log(
+            '[earth3d] visual hit local =',
+            localHit.x.toFixed(3),
+            localHit.y.toFixed(3),
+            localHit.z.toFixed(3)
+          )
+
+          visualTargetDir.copy(localHit.normalize())
+        }
+
+        earth.quaternion.copy(savedQuaternion)
+        earth.updateMatrixWorld(true)
+
+        console.log(
+          '[earth3d] visualTargetDir final =',
+          visualTargetDir.x.toFixed(3),
+          visualTargetDir.y.toFixed(3),
+          visualTargetDir.z.toFixed(3)
+        )
+      }
+
+      const debugCityMarkers = DEBUG_MARKERS_ENABLED
+        ? DEBUG_CITIES.map((city) => {
+            const marker = new THREE.Mesh(
+              new THREE.SphereGeometry(0.045, 16, 16),
+              new THREE.MeshBasicMaterial({
+                color: city.color,
+                depthTest: false,
+                depthWrite: false
+              })
+            )
+            marker.name = city.name
+            marker.renderOrder = 999
+            marker.position.copy(lonLatToVector3(city.lon, city.lat, 2.08))
+            earth.add(marker)
+            return { city, marker }
+          })
+        : []
+
       scene.add(earthGroup)
 
       earth.rotation.order = 'YXZ'
@@ -137,79 +331,276 @@
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.018)
       scene.add(ambientLight)
 
-      const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.8)
+      const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.25)
       scene.add(sunLight)
+
+      // Current 5-theme bridge layer:
+      // sunrise currently carries "sunrise / night-dawn transition";
+      // morning currently carries "morning";
+      // noon carries "noon";
+      // sunset currently carries "sunset";
+      // night currently carries "night / deep night".
+      // Reference lock-screen styling should ultimately live in dawn/sunrise,
+      // not in pure night.
+      const THEME_VISUAL_CONFIG = {
+        sunrise: {
+          themeHour: 6.3,
+          texture: {
+            map: 'day',
+            emissiveMap: 'night',
+            mapColor: 0xa8bac3,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 0.34,
+          },
+          material: {
+            specular: 0x010204,
+            shininess: 0.35,
+          },
+          atmosphere: {
+            color: '#78c4ff',
+            opacity: 0.10,
+          },
+          lighting: {
+            ambient: 0.045,
+            sun: 0.50,
+            stars: 0.28,
+          },
+        },
+        morning: {
+          themeHour: 9.5,
+          texture: {
+            map: 'day',
+            emissiveMap: null,
+            mapColor: 0xffffff,
+            emissiveColor: 0x000000,
+            emissiveIntensity: 0,
+          },
+          material: {
+            specular: 0x05070a,
+            shininess: 1,
+          },
+          atmosphere: {
+            color: '#88ccff',
+            opacity: 0.15,
+          },
+          lighting: {
+            ambient: 0.06,
+            sun: 1.05,
+            stars: 0.08,
+          },
+        },
+        noon: {
+          themeHour: 13,
+          texture: {
+            map: 'day',
+            emissiveMap: null,
+            mapColor: 0xffffff,
+            emissiveColor: 0x000000,
+            emissiveIntensity: 0,
+          },
+          material: {
+            specular: 0x05070a,
+            shininess: 1,
+          },
+          atmosphere: {
+            color: '#88ccff',
+            opacity: 0.15,
+          },
+          lighting: {
+            ambient: 0.05,
+            sun: 1.25,
+            stars: 0.02,
+          },
+        },
+        sunset: {
+          themeHour: 18.2,
+          texture: {
+            map: 'day',
+            emissiveMap: 'night',
+            mapColor: 0xb4c2cb,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 0.16,
+          },
+          material: {
+            specular: 0x010204,
+            shininess: 0.4,
+          },
+          atmosphere: {
+            color: '#6ea8dc',
+            opacity: 0.08,
+          },
+          lighting: {
+            ambient: 0.05,
+            sun: 0.54,
+            stars: 0.34,
+          },
+        },
+        night: {
+          themeHour: 22.5,
+          texture: {
+            map: null,
+            emissiveMap: 'night',
+            mapColor: 0x000000,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 1.55,
+          },
+          material: {
+            specular: 0x05070a,
+            shininess: 1,
+          },
+          atmosphere: {
+            color: '#040912',
+            opacity: 0.028,
+          },
+          lighting: {
+            ambient: 0.006,
+            sun: 0.03,
+            stars: 0.9,
+          },
+        },
+      }
+
+      function getThemeVisualConfig(themeKey) {
+        return (
+          THEME_VISUAL_CONFIG[themeKey]
+          || THEME_VISUAL_CONFIG[currentTheme]
+          || THEME_VISUAL_CONFIG[pendingTheme]
+          || THEME_VISUAL_CONFIG.night
+        )
+      }
 
       function getTargetOrientation() {
         const vs = window.__rodioVisualState || {}
-        const lon = normalizeLon(Number.isFinite(vs.lon) ? vs.lon : 121.4737)
+        const lon = normalizeLon(
+          Number.isFinite(vs.lon) ? vs.lon : 121.4737
+        )
         const lat = clamp(
           Number.isFinite(vs.lat) ? vs.lat : 31.2304,
           -80,
           80
         )
-        const baseRotY = THREE.MathUtils.degToRad(-227)
-      const baseRotX = THREE.MathUtils.degToRad(-20)
-        const deltaLon = shortestLonDelta(lon, 121.4737)
-        const deltaLat = clamp(lat - 31.2304, -25, 25)
-        return {
-          x: baseRotX + THREE.MathUtils.degToRad(-deltaLat * 0.18),
-          y: baseRotY + THREE.MathUtils.degToRad(-deltaLon * 0.32),
+        const targetPoint = lonLatToVector3(lon, lat, 1).normalize()
+        const sourceNorth = lonLatToNorthTangent(lon, lat)
+
+        const targetNormal = visualTargetDir.clone().normalize()
+
+        const screenUp = new THREE.Vector3(0, 1, 0)
+        let targetNorth = screenUp.clone().projectOnPlane(targetNormal)
+
+        if (targetNorth.lengthSq() < 1e-6) {
+          targetNorth = new THREE.Vector3(0, 0, 1).projectOnPlane(targetNormal)
         }
+
+        targetNorth.normalize()
+
+        return quaternionFromBasis(
+          targetPoint,
+          sourceNorth,
+          targetNormal,
+          targetNorth
+        )
       }
 
       let currentTheme = null
-      function applyTheme(themeKey) {
-        if (currentTheme === themeKey) return
-        currentTheme = themeKey
+      let pendingTheme = 'night'
 
-        switch (themeKey) {
-          case 'morning':
-          case 'noon':
-            earthMaterial.map = dayTexture
-            earthMaterial.color.set(0xffffff)
-            earthMaterial.emissive.set(0x000000)
-            earthMaterial.emissiveMap = null
-            earthMaterial.emissiveIntensity = 0
-            atmosphereMaterial.color.set('#88ccff')
-            atmosphereMaterial.opacity = 0.15
-            ambientLight.intensity = themeKey === 'noon' ? 0.05 : 0.06
-            break
-          case 'sunrise':
-            earthMaterial.map = dayTexture
-            earthMaterial.color.set(0xffffff)
-            earthMaterial.emissive.set(0x000000)
-            earthMaterial.emissiveMap = null
-            earthMaterial.emissiveIntensity = 0
-            atmosphereMaterial.color.set('#ff8844')
-            atmosphereMaterial.opacity = 0.22
-            ambientLight.intensity = 0.08
-            break
-          case 'sunset':
-            earthMaterial.map = dayTexture
-            earthMaterial.color.set(0xffffff)
-            earthMaterial.emissive.set(0x000000)
-            earthMaterial.emissiveMap = null
-            earthMaterial.emissiveIntensity = 0
-            atmosphereMaterial.color.set('#ff5522')
-            atmosphereMaterial.opacity = 0.20
-            ambientLight.intensity = 0.07
-            break
-          case 'night':
-          default:
-            earthMaterial.map = null
-            earthMaterial.color.set(0x000000)
-            earthMaterial.emissive.set(0xffffff)
-            earthMaterial.emissiveMap = nightTexture
-            earthMaterial.emissiveIntensity = 0.85
-            atmosphereMaterial.color.set('#060d1f')
-            atmosphereMaterial.opacity = 0.18
-            ambientLight.intensity = 0.015
-            break
+      function getRequiredTextures(themeKey) {
+        const config = getThemeVisualConfig(themeKey)
+        if (!config) return []
+
+        const required = new Set()
+        if (config.texture.map === 'day') required.add('day')
+        if (config.texture.map === 'night') required.add('night')
+        if (config.texture.emissiveMap === 'day') required.add('day')
+        if (config.texture.emissiveMap === 'night') required.add('night')
+        return Array.from(required)
+      }
+
+      function areRequiredTexturesReady(themeKey) {
+        const required = getRequiredTextures(themeKey)
+        if (!required.length) return true
+
+        for (const key of required) {
+          if (key === 'day' && !dayTexture) return false
+          if (key === 'night' && !nightTexture) return false
         }
+        return true
+      }
+
+      function applyTheme(themeKey, options = {}) {
+        const resolvedTheme = themeKey || pendingTheme || currentTheme || 'night'
+        if (currentTheme === resolvedTheme && options.force !== true) return true
+
+        const config = getThemeVisualConfig(resolvedTheme)
+        if (!areRequiredTexturesReady(resolvedTheme)) {
+          pendingTheme = resolvedTheme
+          return false
+        }
+
+        earthMaterial.map = config.texture.map === 'day' ? dayTexture : null
+        earthMaterial.color.set(config.texture.mapColor)
+        earthMaterial.emissive.set(config.texture.emissiveColor)
+        earthMaterial.emissiveMap = config.texture.emissiveMap === 'night' ? nightTexture : null
+        earthMaterial.emissiveIntensity = config.texture.emissiveIntensity
+        earthMaterial.specular.set(config.material.specular)
+        earthMaterial.shininess = config.material.shininess
+        atmosphereMaterial.color.set(config.atmosphere.color)
+        atmosphereMaterial.opacity = config.atmosphere.opacity
+        ambientLight.intensity = config.lighting.ambient
+        sunLight.intensity = config.lighting.sun
+        if (stars?.material) {
+          stars.material.opacity = config.lighting.stars
+          stars.material.needsUpdate = true
+        }
+
+        currentTheme = resolvedTheme
+        pendingTheme = resolvedTheme
         earthMaterial.needsUpdate = true
         atmosphereMaterial.needsUpdate = true
+        return true
       }
+
+      loadTextureWithFallback(
+        '/assets/earth_day_8k.jpg',
+        '/assets/bluemarble.jpg',
+        (texture, usedPath) => {
+          dayTexture = texture
+          console.log('[earth3d] day texture loaded:', usedPath)
+
+          if (typeof applyTheme === 'function') {
+            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
+            if (applied) {
+              isReady = true
+              renderer.render(scene, camera)
+              renderer.domElement.style.opacity = '1'
+            }
+          } else {
+            earthMaterial.map = texture
+            earthMaterial.needsUpdate = true
+          }
+        }
+      )
+
+      loadTextureWithFallback(
+        '/assets/earth_night_8k.jpg',
+        '/assets/blackmarble.jpg',
+        (texture, usedPath) => {
+          nightTexture = texture
+          console.log('[earth3d] night texture loaded:', usedPath)
+
+          if (typeof applyTheme === 'function') {
+            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
+            if (applied) {
+              isReady = true
+              renderer.render(scene, camera)
+              renderer.domElement.style.opacity = '1'
+            }
+          } else {
+            earthMaterial.emissiveMap = texture
+            earthMaterial.needsUpdate = true
+          }
+        }
+      )
 
       function updateSunPosition(hour) {
         const h = ((hour % 24) + 24) % 24
@@ -240,6 +631,11 @@
         )
       }
 
+      function getThemeHour(themeKey) {
+        const config = getThemeVisualConfig(themeKey)
+        return config?.themeHour ?? THEME_VISUAL_CONFIG.night.themeHour
+      }
+
       function resize() {
         const width = appEl.clientWidth
         const height = appEl.clientHeight
@@ -247,30 +643,27 @@
         renderer.setSize(width, height, false)
         camera.aspect = width / height
         camera.updateProjectionMatrix()
+        updateVisualTargetDir()
       }
 
       observer = new ResizeObserver(() => resize())
       observer.observe(appEl)
       resize()
+      updateVisualTargetDir()
       const initialOrientation = getTargetOrientation()
-      earth.rotation.x = initialOrientation.x
-      earth.rotation.y = initialOrientation.y
-      atmosphere.rotation.x = initialOrientation.x
-      atmosphere.rotation.y = initialOrientation.y
+      earth.quaternion.copy(initialOrientation)
+      atmosphere.rotation.set(0, 0, 0)
       updateSunPosition(new Date().getHours())
-      applyTheme('night')
+      applyTheme(pendingTheme)
 
       renderer.setAnimationLoop(() => {
         if (!isReady || permanentlyUnavailable) return
         const target = getTargetOrientation()
-        earth.rotation.x = damp(earth.rotation.x, target.x, 0.02)
-        earth.rotation.y = damp(earth.rotation.y, target.y, 0.02)
-        atmosphere.rotation.x = earth.rotation.x
-        atmosphere.rotation.y = earth.rotation.y
+        earth.quaternion.slerp(target, 0.02)
+        atmosphere.rotation.set(0, 0, 0)
+
         renderer.render(scene, camera)
       })
-
-      isReady = true
 
       window.earth3d = {
         get isReady() {
@@ -279,14 +672,57 @@
         isAvailable() {
           return isReady && !permanentlyUnavailable
         },
+        setDebugLocation(lon, lat) {
+          window.__rodioVisualState = {
+            ...(window.__rodioVisualState || {}),
+            lon,
+            lat
+          }
+
+          const target = getTargetOrientation()
+          earth.quaternion.copy(target)
+          atmosphere.rotation.set(0, 0, 0)
+
+          earth.updateMatrixWorld(true)
+          atmosphere.updateMatrixWorld(true)
+          earthGroup.updateMatrixWorld(true)
+          scene.updateMatrixWorld(true)
+          camera.updateMatrixWorld(true)
+          renderer.render(scene, camera)
+
+          if (DEBUG_MARKERS_ENABLED) {
+            console.log('[earth3d] debug location set =', lon, lat)
+            debugCityMarkers.forEach(({ city, marker }) => {
+              const markerWorldPos = new THREE.Vector3()
+              marker.getWorldPosition(markerWorldPos)
+              const markerScreenPos = markerWorldPos.clone().project(camera)
+
+              console.log(
+                `[earth3d] marker ${city.name} screen =`,
+                markerScreenPos.x.toFixed(3),
+                markerScreenPos.y.toFixed(3),
+                markerScreenPos.z.toFixed(3)
+              )
+            })
+          }
+        },
         setTimeOfDay(themeKey) {
-          if (!isReady || permanentlyUnavailable) return
-          applyTheme(themeKey)
-          updateSunPosition(new Date().getHours())
+          if (permanentlyUnavailable) return
+          pendingTheme = themeKey
+          if (areRequiredTexturesReady(themeKey)) {
+            const applied = applyTheme(themeKey, { force: true })
+            if (applied) {
+              isReady = true
+              renderer.render(scene, camera)
+              renderer.domElement.style.opacity = '1'
+            }
+          }
+          updateSunPosition(getThemeHour(themeKey))
         },
         dispose() {
           isReady = false
           renderer.setAnimationLoop(null)
+          if (renderer?.domElement) renderer.domElement.style.opacity = '0'
           if (observer) observer.disconnect()
           if (earthGeometry) earthGeometry.dispose()
           if (atmosphere?.geometry) atmosphere.geometry.dispose()
