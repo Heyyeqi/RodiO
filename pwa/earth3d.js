@@ -334,15 +334,54 @@
       const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.25)
       scene.add(sunLight)
 
-      // Current 5-theme bridge layer:
-      // sunrise currently carries "sunrise / night-dawn transition";
-      // morning currently carries "morning";
-      // noon carries "noon";
-      // sunset currently carries "sunset";
-      // night currently carries "night / deep night".
+      // Transitional bridge toward the future 9-segment time system:
+      // dawn, sunrise, earlyMorning, morning, noon, afternoon,
+      // sunset, evening, deepNight.
+      //
+      // Current button compatibility is preserved:
+      // sunrise -> sunrise
+      // morning -> morning
+      // noon -> noon
+      // sunset -> sunset
+      // night -> night (compatible with deepNight)
+      //
+      // Visual responsibility notes:
+      // dawn: pre-sunrise / night-dawn transition
+      // sunrise: sunrise / lock-screen reference primary direction
+      // earlyMorning: post-sunrise cool morning transition
+      // morning: morning
+      // noon: noon
+      // afternoon: softer post-noon daylight
+      // sunset: sunset / low-angle evening transition
+      // evening: early night with visible city lights
+      // deepNight: pure deep-night mode
+      //
       // Reference lock-screen styling should ultimately live in dawn/sunrise,
       // not in pure night.
       const THEME_VISUAL_CONFIG = {
+        dawn: {
+          themeHour: 5.4,
+          texture: {
+            map: 'day',
+            emissiveMap: 'night',
+            mapColor: 0x8699a6,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 0.48,
+          },
+          material: {
+            specular: 0x010204,
+            shininess: 0.3,
+          },
+          atmosphere: {
+            color: '#6fb8ff',
+            opacity: 0.115,
+          },
+          lighting: {
+            ambient: 0.03,
+            sun: 0.28,
+            stars: 0.46,
+          },
+        },
         sunrise: {
           themeHour: 6.3,
           texture: {
@@ -364,6 +403,29 @@
             ambient: 0.045,
             sun: 0.50,
             stars: 0.28,
+          },
+        },
+        earlyMorning: {
+          themeHour: 7.4,
+          texture: {
+            map: 'day',
+            emissiveMap: 'night',
+            mapColor: 0xc3d1da,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 0.10,
+          },
+          material: {
+            specular: 0x020407,
+            shininess: 0.55,
+          },
+          atmosphere: {
+            color: '#8ecfff',
+            opacity: 0.12,
+          },
+          lighting: {
+            ambient: 0.052,
+            sun: 0.72,
+            stars: 0.12,
           },
         },
         morning: {
@@ -412,6 +474,29 @@
             stars: 0.02,
           },
         },
+        afternoon: {
+          themeHour: 15.4,
+          texture: {
+            map: 'day',
+            emissiveMap: null,
+            mapColor: 0xf2f4f5,
+            emissiveColor: 0x000000,
+            emissiveIntensity: 0,
+          },
+          material: {
+            specular: 0x04060a,
+            shininess: 0.9,
+          },
+          atmosphere: {
+            color: '#84bdf0',
+            opacity: 0.14,
+          },
+          lighting: {
+            ambient: 0.048,
+            sun: 0.96,
+            stars: 0.01,
+          },
+        },
         sunset: {
           themeHour: 18.2,
           texture: {
@@ -433,6 +518,52 @@
             ambient: 0.05,
             sun: 0.54,
             stars: 0.34,
+          },
+        },
+        evening: {
+          themeHour: 20.2,
+          texture: {
+            map: null,
+            emissiveMap: 'night',
+            mapColor: 0x010204,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 1.10,
+          },
+          material: {
+            specular: 0x04060a,
+            shininess: 0.85,
+          },
+          atmosphere: {
+            color: '#06101d',
+            opacity: 0.032,
+          },
+          lighting: {
+            ambient: 0.010,
+            sun: 0.09,
+            stars: 0.62,
+          },
+        },
+        deepNight: {
+          themeHour: 22.5,
+          texture: {
+            map: null,
+            emissiveMap: 'night',
+            mapColor: 0x000000,
+            emissiveColor: 0xffffff,
+            emissiveIntensity: 1.55,
+          },
+          material: {
+            specular: 0x05070a,
+            shininess: 1,
+          },
+          atmosphere: {
+            color: '#040912',
+            opacity: 0.028,
+          },
+          lighting: {
+            ambient: 0.006,
+            sun: 0.03,
+            stars: 0.9,
           },
         },
         night: {
