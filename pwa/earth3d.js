@@ -384,6 +384,7 @@
             mapColor: 0x667780,
             emissiveColor: 0xffffff,
             emissiveIntensity: 0.72,
+            nightBaseIntensity: 0.34,
           },
           material: {
             specular: 0x000102,
@@ -408,6 +409,7 @@
             mapColor: 0x96a6ae,
             emissiveColor: 0xffffff,
             emissiveIntensity: 0.46,
+            nightBaseIntensity: 0.20,
           },
           material: {
             specular: 0x000102,
@@ -552,6 +554,7 @@
             mapColor: 0x010204,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.38,
+            nightBaseIntensity: 0.40,
           },
           material: {
             specular: 0x000102,
@@ -565,7 +568,7 @@
             ambient: 0.010,
             sun: 0.04,
             stars: 0.78,
-            cityLightsOpacity: 0.86,
+            cityLightsOpacity: 0.58,
           },
         },
         deepNight: {
@@ -576,6 +579,7 @@
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.18,
+            nightBaseIntensity: 0.34,
           },
           material: {
             specular: 0x000001,
@@ -589,7 +593,7 @@
             ambient: 0.004,
             sun: 0.008,
             stars: 0.94,
-            cityLightsOpacity: 0.55,
+            cityLightsOpacity: 0.58,
           },
         },
         night: {
@@ -600,6 +604,7 @@
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.55,
+            nightBaseIntensity: 0.38,
           },
           material: {
             specular: 0x05070a,
@@ -666,12 +671,22 @@
         const config = getThemeVisualConfig(themeKey)
         if (!config) return []
 
+        // Stable 4D path: the earth body always depends on the day texture.
+        // City lights are an optional enhancement layer and must never block
+        // the base globe from rendering.
         const required = new Set()
-        if (config.texture.map === 'day') required.add('day')
+        required.add('day')
         if (config.texture.map === 'night') required.add('night')
         if (config.texture.emissiveMap === 'day') required.add('day')
-        if (config.texture.emissiveMap === 'night') required.add('night')
-        if ((config.lighting?.cityLightsOpacity || 0) > 0) required.add('cityLights')
+        if (
+          config.texture.emissiveMap === 'night'
+          && (
+            (config.lighting?.cityLightsOpacity || 0) <= 0
+            || (config.texture.nightBaseIntensity || 0) > 0
+          )
+        ) {
+          required.add('night')
+        }
         return Array.from(required)
       }
 
@@ -682,7 +697,6 @@
         for (const key of required) {
           if (key === 'day' && !dayTexture) return false
           if (key === 'night' && !nightTexture) return false
-          if (key === 'cityLights' && !cityLightsTexture) return false
         }
         return true
       }
@@ -698,14 +712,17 @@
         }
 
         const cityLightsOpacity = config.lighting?.cityLightsOpacity || 0
+        const nightBaseIntensity = config.texture.nightBaseIntensity || 0
+        const shouldUseNightBase = config.texture.emissiveMap === 'night'
+          && (cityLightsOpacity <= 0 || nightBaseIntensity > 0)
 
         earthMaterial.map = config.texture.map === 'day' ? dayTexture : null
         earthMaterial.color.set(config.texture.mapColor)
-        earthMaterial.emissive.set(cityLightsOpacity > 0 ? 0x000000 : config.texture.emissiveColor)
-        earthMaterial.emissiveMap = cityLightsOpacity > 0
-          ? null
-          : (config.texture.emissiveMap === 'night' ? nightTexture : null)
-        earthMaterial.emissiveIntensity = cityLightsOpacity > 0 ? 0 : config.texture.emissiveIntensity
+        earthMaterial.emissive.set(shouldUseNightBase ? config.texture.emissiveColor : 0x000000)
+        earthMaterial.emissiveMap = shouldUseNightBase ? nightTexture : null
+        earthMaterial.emissiveIntensity = shouldUseNightBase
+          ? (cityLightsOpacity > 0 ? nightBaseIntensity : config.texture.emissiveIntensity)
+          : 0
         earthMaterial.specular.set(config.material.specular)
         earthMaterial.shininess = config.material.shininess
         atmosphereMaterial.color.set(config.atmosphere.color)
