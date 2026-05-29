@@ -182,6 +182,8 @@
         )
       }
 
+      let cityLightsTexture = null
+
       earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x1a3a5c,
         shininess: 1,
@@ -189,6 +191,20 @@
       })
       earthGeometry = new THREE.SphereGeometry(2, 64, 64)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
+      const cityLightsMaterial = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0xfff7e8),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+      })
+      const cityLightsMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(2.004, 64, 64),
+        cityLightsMaterial
+      )
+      cityLightsMesh.renderOrder = 5
+      cityLightsMesh.visible = false
 
       atmosphereMaterial = new THREE.MeshPhongMaterial({
         color: new THREE.Color('#88ccff'),
@@ -206,6 +222,7 @@
       earthGroup.position.set(0, -1.4, 0)
       // earthGroup.rotation.z = THREE.MathUtils.degToRad(23.4)
       earth.add(atmosphere)
+      earth.add(cityLightsMesh)
       earthGroup.add(earth)
 
       const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
@@ -364,22 +381,23 @@
           texture: {
             map: 'day',
             emissiveMap: 'night',
-            mapColor: 0x8699a6,
+            mapColor: 0x667780,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 0.48,
+            emissiveIntensity: 0.72,
           },
           material: {
-            specular: 0x010204,
-            shininess: 0.3,
+            specular: 0x000102,
+            shininess: 0.12,
           },
           atmosphere: {
             color: '#6fb8ff',
-            opacity: 0.115,
+            opacity: 0.082,
           },
           lighting: {
-            ambient: 0.03,
-            sun: 0.28,
-            stars: 0.46,
+            ambient: 0.032,
+            sun: 0.18,
+            stars: 0.55,
+            cityLightsOpacity: 0.60,
           },
         },
         sunrise: {
@@ -387,22 +405,23 @@
           texture: {
             map: 'day',
             emissiveMap: 'night',
-            mapColor: 0xa8bac3,
+            mapColor: 0x96a6ae,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 0.34,
+            emissiveIntensity: 0.46,
           },
           material: {
-            specular: 0x010204,
-            shininess: 0.35,
+            specular: 0x000102,
+            shininess: 0.16,
           },
           atmosphere: {
-            color: '#78c4ff',
-            opacity: 0.10,
+            color: '#8ad0ff',
+            opacity: 0.115,
           },
           lighting: {
-            ambient: 0.045,
-            sun: 0.50,
-            stars: 0.28,
+            ambient: 0.055,
+            sun: 0.48,
+            stars: 0.24,
+            cityLightsOpacity: 0.26,
           },
         },
         earlyMorning: {
@@ -426,6 +445,7 @@
             ambient: 0.052,
             sun: 0.72,
             stars: 0.12,
+            cityLightsOpacity: 0.10,
           },
         },
         morning: {
@@ -449,6 +469,7 @@
             ambient: 0.06,
             sun: 1.05,
             stars: 0.08,
+            cityLightsOpacity: 0,
           },
         },
         noon: {
@@ -472,6 +493,7 @@
             ambient: 0.05,
             sun: 1.25,
             stars: 0.02,
+            cityLightsOpacity: 0,
           },
         },
         afternoon: {
@@ -495,6 +517,7 @@
             ambient: 0.048,
             sun: 0.96,
             stars: 0.01,
+            cityLightsOpacity: 0,
           },
         },
         sunset: {
@@ -507,17 +530,18 @@
             emissiveIntensity: 0.16,
           },
           material: {
-            specular: 0x010204,
-            shininess: 0.4,
+            specular: 0x000102,
+            shininess: 0.18,
           },
           atmosphere: {
-            color: '#6ea8dc',
-            opacity: 0.08,
+            color: '#6a9fd1',
+            opacity: 0.075,
           },
           lighting: {
-            ambient: 0.05,
-            sun: 0.54,
+            ambient: 0.046,
+            sun: 0.40,
             stars: 0.34,
+            cityLightsOpacity: 0.18,
           },
         },
         evening: {
@@ -527,20 +551,21 @@
             emissiveMap: 'night',
             mapColor: 0x010204,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.10,
+            emissiveIntensity: 1.38,
           },
           material: {
-            specular: 0x04060a,
-            shininess: 0.85,
+            specular: 0x000102,
+            shininess: 0.10,
           },
           atmosphere: {
-            color: '#06101d',
-            opacity: 0.032,
+            color: '#061027',
+            opacity: 0.042,
           },
           lighting: {
             ambient: 0.010,
-            sun: 0.09,
-            stars: 0.62,
+            sun: 0.04,
+            stars: 0.78,
+            cityLightsOpacity: 0.86,
           },
         },
         deepNight: {
@@ -550,20 +575,21 @@
             emissiveMap: 'night',
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.55,
+            emissiveIntensity: 1.18,
           },
           material: {
-            specular: 0x05070a,
-            shininess: 1,
+            specular: 0x000001,
+            shininess: 0.08,
           },
           atmosphere: {
             color: '#040912',
-            opacity: 0.028,
+            opacity: 0.022,
           },
           lighting: {
-            ambient: 0.006,
-            sun: 0.03,
-            stars: 0.9,
+            ambient: 0.004,
+            sun: 0.008,
+            stars: 0.94,
+            cityLightsOpacity: 0.55,
           },
         },
         night: {
@@ -587,6 +613,7 @@
             ambient: 0.006,
             sun: 0.03,
             stars: 0.9,
+            cityLightsOpacity: 0.58,
           },
         },
       }
@@ -644,6 +671,7 @@
         if (config.texture.map === 'night') required.add('night')
         if (config.texture.emissiveMap === 'day') required.add('day')
         if (config.texture.emissiveMap === 'night') required.add('night')
+        if ((config.lighting?.cityLightsOpacity || 0) > 0) required.add('cityLights')
         return Array.from(required)
       }
 
@@ -654,6 +682,7 @@
         for (const key of required) {
           if (key === 'day' && !dayTexture) return false
           if (key === 'night' && !nightTexture) return false
+          if (key === 'cityLights' && !cityLightsTexture) return false
         }
         return true
       }
@@ -668,17 +697,25 @@
           return false
         }
 
+        const cityLightsOpacity = config.lighting?.cityLightsOpacity || 0
+
         earthMaterial.map = config.texture.map === 'day' ? dayTexture : null
         earthMaterial.color.set(config.texture.mapColor)
-        earthMaterial.emissive.set(config.texture.emissiveColor)
-        earthMaterial.emissiveMap = config.texture.emissiveMap === 'night' ? nightTexture : null
-        earthMaterial.emissiveIntensity = config.texture.emissiveIntensity
+        earthMaterial.emissive.set(cityLightsOpacity > 0 ? 0x000000 : config.texture.emissiveColor)
+        earthMaterial.emissiveMap = cityLightsOpacity > 0
+          ? null
+          : (config.texture.emissiveMap === 'night' ? nightTexture : null)
+        earthMaterial.emissiveIntensity = cityLightsOpacity > 0 ? 0 : config.texture.emissiveIntensity
         earthMaterial.specular.set(config.material.specular)
         earthMaterial.shininess = config.material.shininess
         atmosphereMaterial.color.set(config.atmosphere.color)
         atmosphereMaterial.opacity = config.atmosphere.opacity
         ambientLight.intensity = config.lighting.ambient
         sunLight.intensity = config.lighting.sun
+        cityLightsMaterial.map = cityLightsTexture
+        cityLightsMaterial.opacity = cityLightsOpacity
+        cityLightsMaterial.needsUpdate = true
+        cityLightsMesh.visible = cityLightsOpacity > 0 && Boolean(cityLightsTexture)
         if (stars?.material) {
           stars.material.opacity = config.lighting.stars
           stars.material.needsUpdate = true
@@ -730,6 +767,32 @@
             earthMaterial.emissiveMap = texture
             earthMaterial.needsUpdate = true
           }
+        }
+      )
+
+      loader.load(
+        '/assets/earth_city_lights_alpha_preview_v3.png',
+        (texture) => {
+          cityLightsTexture = configureEarthTexture(texture)
+          console.log('[earth3d] city lights texture loaded:', '/assets/earth_city_lights_alpha_preview_v3.png')
+          cityLightsMaterial.map = cityLightsTexture
+          cityLightsMaterial.needsUpdate = true
+
+          if (typeof applyTheme === 'function') {
+            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
+            if (applied) {
+              isReady = true
+              renderer.render(scene, camera)
+              renderer.domElement.style.opacity = '1'
+            }
+          }
+        },
+        undefined,
+        () => {
+          console.warn('[earth3d] city lights texture unavailable:', '/assets/earth_city_lights_alpha_preview_v3.png')
+          cityLightsTexture = null
+          cityLightsMaterial.map = null
+          cityLightsMaterial.needsUpdate = true
         }
       )
 
