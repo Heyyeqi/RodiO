@@ -192,7 +192,7 @@
       earthGeometry = new THREE.SphereGeometry(2, 64, 64)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
       const cityLightsMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0xfff2cf),
+        color: new THREE.Color(0xfff7e8),
         transparent: true,
         opacity: 0,
         depthWrite: false,
@@ -384,7 +384,7 @@
             mapColor: 0x667780,
             emissiveColor: 0xffffff,
             emissiveIntensity: 0.72,
-            nightBaseIntensity: 0.20,
+            nightBaseIntensity: 0.34,
           },
           material: {
             specular: 0x000102,
@@ -409,7 +409,7 @@
             mapColor: 0x96a6ae,
             emissiveColor: 0xffffff,
             emissiveIntensity: 0.46,
-            nightBaseIntensity: 0.10,
+            nightBaseIntensity: 0.20,
           },
           material: {
             specular: 0x000102,
@@ -554,7 +554,7 @@
             mapColor: 0x010204,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.38,
-            nightBaseIntensity: 0.22,
+            nightBaseIntensity: 0.40,
           },
           material: {
             specular: 0x000102,
@@ -579,7 +579,7 @@
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.18,
-            nightBaseIntensity: 0.18,
+            nightBaseIntensity: 0.34,
           },
           material: {
             specular: 0x000001,
@@ -604,7 +604,7 @@
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
             emissiveIntensity: 1.55,
-            nightBaseIntensity: 0.22,
+            nightBaseIntensity: 0.38,
           },
           material: {
             specular: 0x05070a,
@@ -667,26 +667,58 @@
       let currentTheme = null
       let pendingTheme = 'night'
 
-      function getRequiredTextures(themeKey, options = {}) {
+      function getRequiredTextures(themeKey) {
         const config = getThemeVisualConfig(themeKey)
         if (!config) return []
-        const { forReveal = false } = options
 
         const required = new Set()
         if (config.texture.map === 'day') required.add('day')
         if (config.texture.map === 'night') required.add('night')
         if (config.texture.emissiveMap === 'day') required.add('day')
-        if (config.texture.emissiveMap === 'night') {
+        if (
+          config.texture.emissiveMap === 'night'
+          && (
+            (config.lighting?.cityLightsOpacity || 0) <= 0
+            || (config.texture.nightBaseIntensity || 0) > 0
+          )
+        ) {
           required.add('night')
-        }
-        if (forReveal && (config.lighting?.cityLightsOpacity || 0) > 0) {
-          required.add('cityLights')
         }
         return Array.from(required)
       }
 
-      function areRequiredTexturesReady(themeKey, options = {}) {
-        const required = getRequiredTextures(themeKey, options)
+      function getRevealTextures(themeKey) {
+        const required = new Set(getRequiredTextures(themeKey))
+        const config = getThemeVisualConfig(themeKey)
+        if (!config) return Array.from(required)
+
+        // Mixed day/night themes should not reveal until the night base is ready.
+        // This keeps dawn/sunrise/sunset/earlyMorning from exposing a partial state
+        // where only the day layer is visible during startup.
+        if (config.texture.emissiveMap === 'night') {
+          required.add('night')
+        }
+
+        if ((config.lighting?.cityLightsOpacity || 0) > 0) {
+          required.add('cityLights')
+        }
+
+        return Array.from(required)
+      }
+
+      function areRequiredTexturesReady(themeKey) {
+        const required = getRequiredTextures(themeKey)
+        if (!required.length) return true
+
+        for (const key of required) {
+          if (key === 'day' && !dayTexture) return false
+          if (key === 'night' && !nightTexture) return false
+        }
+        return true
+      }
+
+      function areRevealTexturesReady(themeKey) {
+        const required = getRevealTextures(themeKey)
         if (!required.length) return true
 
         for (const key of required) {
@@ -698,14 +730,16 @@
       }
 
       function syncRevealState(themeKey, applied) {
-        if (!applied) return
+        if (!applied || permanentlyUnavailable) return
+
         const resolvedTheme = themeKey || pendingTheme || currentTheme || 'night'
-        const revealReady = areRequiredTexturesReady(resolvedTheme, { forReveal: true })
-        if (!revealReady) return
+        if (!areRevealTexturesReady(resolvedTheme)) return
+
         if (!isReady) {
           isReady = true
           renderer.domElement.style.opacity = '1'
         }
+
         renderer.render(scene, camera)
       }
 
@@ -737,11 +771,10 @@
         atmosphereMaterial.opacity = config.atmosphere.opacity
         ambientLight.intensity = config.lighting.ambient
         sunLight.intensity = config.lighting.sun
-          cityLightsMaterial.map = null
-          cityLightsMaterial.alphaMap = cityLightsTexture
-          cityLightsMaterial.opacity = cityLightsOpacity
-          cityLightsMaterial.needsUpdate = true
-          cityLightsMesh.visible = cityLightsOpacity > 0 && Boolean(cityLightsTexture)
+        cityLightsMaterial.map = cityLightsTexture
+        cityLightsMaterial.opacity = cityLightsOpacity
+        cityLightsMaterial.needsUpdate = true
+        cityLightsMesh.visible = cityLightsOpacity > 0 && Boolean(cityLightsTexture)
         if (stars?.material) {
           stars.material.opacity = config.lighting.stars
           stars.material.needsUpdate = true
@@ -762,8 +795,9 @@
           console.log('[earth3d] day texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
-            syncRevealState(pendingTheme || currentTheme || 'night', applied)
+            const themeKey = pendingTheme || currentTheme || 'night'
+            const applied = applyTheme(themeKey, { force: true })
+            syncRevealState(themeKey, applied)
           } else {
             earthMaterial.map = texture
             earthMaterial.needsUpdate = true
@@ -779,8 +813,9 @@
           console.log('[earth3d] night texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
-            syncRevealState(pendingTheme || currentTheme || 'night', applied)
+            const themeKey = pendingTheme || currentTheme || 'night'
+            const applied = applyTheme(themeKey, { force: true })
+            syncRevealState(themeKey, applied)
           } else {
             earthMaterial.emissiveMap = texture
             earthMaterial.needsUpdate = true
@@ -793,13 +828,13 @@
         (texture) => {
           cityLightsTexture = configureEarthTexture(texture)
           console.log('[earth3d] city lights texture loaded:', '/assets/earth_city_lights_alpha_preview_v3.png')
-          cityLightsMaterial.map = null
-          cityLightsMaterial.alphaMap = cityLightsTexture
+          cityLightsMaterial.map = cityLightsTexture
           cityLightsMaterial.needsUpdate = true
 
           if (typeof applyTheme === 'function') {
-            const applied = applyTheme(pendingTheme || currentTheme || 'night', { force: true })
-            syncRevealState(pendingTheme || currentTheme || 'night', applied)
+            const themeKey = pendingTheme || currentTheme || 'night'
+            const applied = applyTheme(themeKey, { force: true })
+            syncRevealState(themeKey, applied)
           }
         },
         undefined,
@@ -918,10 +953,8 @@
         setTimeOfDay(themeKey) {
           if (permanentlyUnavailable) return
           pendingTheme = themeKey
-          if (areRequiredTexturesReady(themeKey)) {
-            const applied = applyTheme(themeKey, { force: true })
-            syncRevealState(themeKey, applied)
-          }
+          const applied = applyTheme(themeKey, { force: true })
+          syncRevealState(themeKey, applied)
           updateSunPosition(getThemeHour(themeKey))
         },
         dispose() {

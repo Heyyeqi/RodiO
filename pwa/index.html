@@ -1359,6 +1359,7 @@
   let lastAppliedThemeKey = null
   let inThemeTransition = false
   let lastRenderedForceKey = null
+  let lastSentEarth3DThemeKey = null
 
   const VISUAL_PHASES = {
     sunrise: {
@@ -1691,7 +1692,13 @@
   function getInterpolatedThemeState(nowMs) {
     const themeKey = resolveThemeKey(new Date(nowMs), state.sunrise, state.sunset, state.sunriseTs, state.sunsetTs)
     const themeState = getThemeState(themeKey, nowMs)
-    if (forcedThemeKey) return { themeKey, themeState, transitioning: false }
+    if (forcedThemeKey) {
+      return {
+        themeKey: forcedThemeKey,
+        themeState: getThemeState(forcedThemeKey, nowMs),
+        transitioning: false
+      }
+    }
 
     const windows = getPhaseWindows(nowMs, state.sunriseTs, state.sunsetTs)
     const currentWindow = windows.find(item => item.key === themeKey)
@@ -4399,9 +4406,23 @@
 
     const useEarth3D = Boolean(window.earth3d?.isReady)
     ctx.clearRect(0, 0, visualState.width, visualState.height)
-    if (!useEarth3D) {
-      drawNeutralLoadingBase(nowMs, state.themeKey)
+
+    if (window.earth3d?.setTimeOfDay) {
+      const nextEarth3DThemeKey = state.themeKey || 'night'
+      if (lastSentEarth3DThemeKey !== nextEarth3DThemeKey) {
+        window.earth3d.setTimeOfDay(nextEarth3DThemeKey)
+        lastSentEarth3DThemeKey = nextEarth3DThemeKey
+      }
+    } else {
+      lastSentEarth3DThemeKey = null
     }
+
+    if (useEarth3D) {
+      weatherFrameId = requestAnimationFrame(startVisualLoop)
+      return
+    }
+
+    drawNeutralLoadingBase(nowMs, state.themeKey)
     const heroClipHeight = visualState.height
     ctx.save()
     ctx.beginPath()
@@ -4415,7 +4436,7 @@
         state.themeKey, nowMs, state.sunriseTs, state.sunsetTs
       )
       if (!useEarth3D && sunAlpha > 0.01) drawSun(nowMs, state.astronomy, sunAlpha)
-      if (moonAlpha > 0.01) drawMoon(nowMs, state.astronomy, moonAlpha)
+      if (!useEarth3D && moonAlpha > 0.01) drawMoon(nowMs, state.astronomy, moonAlpha)
     }
 
     let currentAlpha = 1
@@ -4435,10 +4456,6 @@
 
     if (nowMs - visualState.lastWeatherFetchAt >= 30 * 60000) {
       refreshAmbientNow()
-    }
-
-    if (useEarth3D) {
-      window.earth3d.setTimeOfDay(state.themeKey || 'night')
     }
 
     weatherFrameId = requestAnimationFrame(startVisualLoop)

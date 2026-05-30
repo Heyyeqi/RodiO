@@ -3,6 +3,8 @@ cache/
 db/
 node_modules/
 .DS_Store
-pwa/assets/
+pwa/assets/source/
+pwa/assets/earth_city_lights_alpha_preview.png
+pwa/assets/earth_city_lights_alpha_preview_v2.png
 
 .venv/
