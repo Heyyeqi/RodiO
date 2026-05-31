@@ -122,6 +122,11 @@
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
       renderer.setClearColor(0x000000, 0)
+      if (typeof THREE.SRGBColorSpace !== 'undefined') {
+        renderer.outputColorSpace = THREE.SRGBColorSpace
+      } else if (typeof THREE.sRGBEncoding !== 'undefined') {
+        renderer.outputEncoding = THREE.sRGBEncoding
+      }
       renderer.domElement.id = 'earth3d-canvas'
       renderer.domElement.style.width = '100%'
       renderer.domElement.style.height = '100%'
@@ -478,7 +483,7 @@
             opacity: 0.15,
           },
           lighting: {
-            ambient: 0.05,
+            ambient: 0.09,
             sun: 1.25,
             stars: 0.02,
             cityLightsOpacity: 0,
@@ -539,7 +544,7 @@
             emissiveMap: 'night',
             mapColor: 0x010204,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.38,
+            emissiveIntensity: 1.75,
             nightBaseIntensity: 0.40,
           },
           material: {
@@ -564,7 +569,7 @@
             emissiveMap: 'night',
             mapColor: 0x000000,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.18,
+            emissiveIntensity: 2.0,
             nightBaseIntensity: 0.34,
           },
           material: {
@@ -651,7 +656,18 @@
       }
 
       let currentTheme = null
-      let pendingTheme = 'night'
+      function resolveInitialPendingTheme() {
+        if (window.__rodioVisualState?.themeKey) return window.__rodioVisualState.themeKey
+        const h = new Date().getHours()
+        if (h >= 5 && h < 8) return 'sunrise'
+        if (h >= 8 && h < 11) return 'morning'
+        if (h >= 11 && h < 15) return 'noon'
+        if (h >= 15 && h < 17) return 'afternoon'
+        if (h >= 17 && h < 20) return 'sunset'
+        if (h >= 20 && h < 23) return 'evening'
+        return 'deepNight'
+      }
+      let pendingTheme = resolveInitialPendingTheme()
       let lastThemeAuditSignature = null
 
       function getRequiredTextures(themeKey) {
@@ -810,7 +826,7 @@
           console.log('[earth3d] day texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const themeKey = pendingTheme || currentTheme || 'night'
+            const themeKey = window.__rodioVisualState?.themeKey || pendingTheme || currentTheme || 'night'
             const applied = applyTheme(themeKey, { force: true })
             syncRevealState(themeKey, applied)
           } else {
@@ -828,7 +844,7 @@
           console.log('[earth3d] night texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const themeKey = pendingTheme || currentTheme || 'night'
+            const themeKey = window.__rodioVisualState?.themeKey || pendingTheme || currentTheme || 'night'
             const applied = applyTheme(themeKey, { force: true })
             syncRevealState(themeKey, applied)
           } else {
