@@ -1362,6 +1362,28 @@
   let lastSentEarth3DThemeKey = null
 
   const VISUAL_PHASES = {
+    dawn: {
+      name: '黎明',
+      accent: '#C9A96E',
+      textMain: '#F0EDE8',
+      textSub: 'rgba(240,237,232,0.65)',
+      textDim: 'rgba(240,237,232,0.35)',
+      line: 'rgba(240,237,232,0.16)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(201,169,110,0.10)',
+      control: '#8A8A8A',
+      bg: '#060608',
+      bgGradient: 'linear-gradient(to bottom, #060610 0%, #080810 40%, #06060C 75%, #040406 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,6,18,1)' },
+        { pos: 0.40, color: 'rgba(8,10,24,1)' },
+        { pos: 0.75, color: 'rgba(10,8,20,1)' },
+        { pos: 1,    color: 'rgba(6,5,14,1)' },
+      ],
+    },
     sunrise: {
       name: '日出',
       accent: '#D4A06A',
@@ -1384,6 +1406,28 @@
         { pos: 0.30, color: 'rgba(28,14,38,1)' },
         { pos: 0.62, color: 'rgba(72,30,14,1)' },
         { pos: 1,    color: 'rgba(60,22,8,1)' },
+      ],
+    },
+    earlyMorning: {
+      name: '清晨',
+      accent: '#88B8E8',
+      textMain: '#F0EEF8',
+      textSub: 'rgba(240,238,248,0.72)',
+      textDim: 'rgba(240,238,248,0.40)',
+      line: 'rgba(240,238,248,0.16)',
+      surface: 'rgba(255,255,255,0.06)',
+      surface2: 'rgba(255,255,255,0.10)',
+      bubbleDj: 'rgba(255,255,255,0.06)',
+      bubbleCommentary: 'rgba(255,255,255,0.04)',
+      bubbleYou: 'rgba(136,184,232,0.12)',
+      control: '#A8C8E8',
+      bg: '#081838',
+      bgGradient: 'linear-gradient(to bottom, #060E28 0%, #0A1E48 30%, #102858 65%, #183868 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,12,36,1)' },
+        { pos: 0.28, color: 'rgba(10,28,72,1)' },
+        { pos: 0.60, color: 'rgba(16,48,100,1)' },
+        { pos: 1,    color: 'rgba(24,58,112,1)' },
       ],
     },
     morning: {
@@ -1431,6 +1475,29 @@
         { pos: 1,    color: 'rgba(20,90,190,1)' },
       ],
     },
+    afternoon: {
+      name: '下午',
+      accent: '#A8D0F0',
+      textMain: '#FFFFFF',
+      textSub: 'rgba(255,255,255,0.75)',
+      textDim: 'rgba(255,255,255,0.44)',
+      line: 'rgba(255,255,255,0.20)',
+      surface: 'rgba(255,255,255,0.08)',
+      surface2: 'rgba(255,255,255,0.12)',
+      bubbleDj: 'rgba(255,255,255,0.07)',
+      bubbleCommentary: 'rgba(255,255,255,0.05)',
+      bubbleYou: 'rgba(168,208,240,0.14)',
+      control: '#C0D8F0',
+      bg: '#061428',
+      bgGradient: 'linear-gradient(to bottom, #04101E 0%, #061828 25%, #0A2848 60%, #103060 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(4,10,24,1)' },
+        { pos: 0.18, color: 'rgba(6,20,52,1)' },
+        { pos: 0.48, color: 'rgba(10,48,110,1)' },
+        { pos: 0.78, color: 'rgba(16,72,160,1)' },
+        { pos: 1,    color: 'rgba(20,90,190,1)' },
+      ],
+    },
     sunset: {
       name: '落日',
       accent: '#D4845A',
@@ -1452,6 +1519,50 @@
         { pos: 0.52, color: 'rgba(90,32,12,1)' },
         { pos: 0.76, color: 'rgba(120,48,16,1)' },
         { pos: 1,    color: 'rgba(80,22,6,1)' },
+      ],
+    },
+    evening: {
+      name: '夜晚',
+      accent: '#C9A96E',
+      textMain: '#F0EDE8',
+      textSub: 'rgba(240,237,232,0.65)',
+      textDim: 'rgba(240,237,232,0.35)',
+      line: 'rgba(240,237,232,0.16)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(201,169,110,0.10)',
+      control: '#8A8A8A',
+      bg: '#060608',
+      bgGradient: 'linear-gradient(to bottom, #060610 0%, #080810 40%, #06060C 75%, #040406 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,6,18,1)' },
+        { pos: 0.40, color: 'rgba(8,10,24,1)' },
+        { pos: 0.75, color: 'rgba(10,8,20,1)' },
+        { pos: 1,    color: 'rgba(6,5,14,1)' },
+      ],
+    },
+    deepNight: {
+      name: '深夜',
+      accent: '#C9A96E',
+      textMain: '#F0EDE8',
+      textSub: 'rgba(240,237,232,0.65)',
+      textDim: 'rgba(240,237,232,0.35)',
+      line: 'rgba(240,237,232,0.16)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(201,169,110,0.10)',
+      control: '#8A8A8A',
+      bg: '#060608',
+      bgGradient: 'linear-gradient(to bottom, #060610 0%, #080810 40%, #06060C 75%, #040406 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(6,6,18,1)' },
+        { pos: 0.40, color: 'rgba(8,10,24,1)' },
+        { pos: 0.75, color: 'rgba(10,8,20,1)' },
+        { pos: 1,    color: 'rgba(6,5,14,1)' },
       ],
     },
     night: {
@@ -4410,8 +4521,8 @@
     if (window.earth3d?.setTimeOfDay) {
       const nextEarth3DThemeKey = state.themeKey || 'night'
       if (lastSentEarth3DThemeKey !== nextEarth3DThemeKey) {
-        window.earth3d.setTimeOfDay(nextEarth3DThemeKey)
-        lastSentEarth3DThemeKey = nextEarth3DThemeKey
+        const applied = window.earth3d.setTimeOfDay(nextEarth3DThemeKey)
+        if (applied) lastSentEarth3DThemeKey = nextEarth3DThemeKey
       }
     } else {
       lastSentEarth3DThemeKey = null

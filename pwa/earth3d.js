@@ -150,7 +150,11 @@
 
       const loader = new THREE.TextureLoader()
       function configureEarthTexture(texture) {
-        texture.colorSpace = THREE.SRGBColorSpace
+        if ('colorSpace' in texture && THREE.SRGBColorSpace) {
+          texture.colorSpace = THREE.SRGBColorSpace
+        } else if (THREE.sRGBEncoding) {
+          texture.encoding = THREE.sRGBEncoding
+        }
         texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy())
         texture.minFilter = THREE.LinearMipmapLinearFilter
         texture.magFilter = THREE.LinearFilter
@@ -182,8 +186,6 @@
         )
       }
 
-      let cityLightsTexture = null
-
       earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x1a3a5c,
         shininess: 1,
@@ -191,21 +193,6 @@
       })
       earthGeometry = new THREE.SphereGeometry(2, 64, 64)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
-      const cityLightsMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0xfff7e8),
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        depthTest: true,
-        blending: THREE.AdditiveBlending,
-      })
-      const cityLightsMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(2.004, 64, 64),
-        cityLightsMaterial
-      )
-      cityLightsMesh.renderOrder = 5
-      cityLightsMesh.visible = false
-
       atmosphereMaterial = new THREE.MeshPhongMaterial({
         color: new THREE.Color('#88ccff'),
         transparent: true,
@@ -222,7 +209,6 @@
       earthGroup.position.set(0, -1.4, 0)
       // earthGroup.rotation.z = THREE.MathUtils.degToRad(23.4)
       earth.add(atmosphere)
-      earth.add(cityLightsMesh)
       earthGroup.add(earth)
 
       const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
@@ -666,6 +652,7 @@
 
       let currentTheme = null
       let pendingTheme = 'night'
+      let lastThemeAuditSignature = null
 
       function getRequiredTextures(themeKey) {
         const config = getThemeVisualConfig(themeKey)
@@ -675,15 +662,7 @@
         if (config.texture.map === 'day') required.add('day')
         if (config.texture.map === 'night') required.add('night')
         if (config.texture.emissiveMap === 'day') required.add('day')
-        if (
-          config.texture.emissiveMap === 'night'
-          && (
-            (config.lighting?.cityLightsOpacity || 0) <= 0
-            || (config.texture.nightBaseIntensity || 0) > 0
-          )
-        ) {
-          required.add('night')
-        }
+        if (config.texture.emissiveMap === 'night') required.add('night')
         return Array.from(required)
       }
 
@@ -697,10 +676,6 @@
         // where only the day layer is visible during startup.
         if (config.texture.emissiveMap === 'night') {
           required.add('night')
-        }
-
-        if ((config.lighting?.cityLightsOpacity || 0) > 0) {
-          required.add('cityLights')
         }
 
         return Array.from(required)
@@ -724,9 +699,54 @@
         for (const key of required) {
           if (key === 'day' && !dayTexture) return false
           if (key === 'night' && !nightTexture) return false
-          if (key === 'cityLights' && !cityLightsTexture) return false
         }
         return true
+      }
+
+      function getMissingTextures(requiredTextures) {
+        return requiredTextures.filter((key) => {
+          if (key === 'day') return !dayTexture
+          if (key === 'night') return !nightTexture
+          return true
+        })
+      }
+
+      function getMapMode(config) {
+        if (config.texture.map === 'day') return 'dayTexture'
+        if (config.texture.map === null) return 'null'
+        return 'unknown'
+      }
+
+      function getEmissiveMode(config) {
+        if (config.texture.emissiveMap === 'night') return 'nightTexture'
+        if (config.texture.emissiveMap === null) return 'null'
+        return 'unknown'
+      }
+
+      function logThemeAudit(themeKey, resolvedThemeKey, config, applyThemeResult, requiredTextures, missingTextures) {
+        const cityLightsOpacity = config.lighting?.cityLightsOpacity || 0
+        const audit = {
+          themeKey,
+          resolvedThemeKey,
+          applyThemeResult,
+          dayReady: Boolean(dayTexture),
+          nightReady: Boolean(nightTexture),
+          cityLightsReady: false,
+          mapMode: getMapMode(config),
+          emissiveMode: getEmissiveMode(config),
+          emissiveIntensity: config.texture.emissiveMap === 'night'
+            ? config.texture.emissiveIntensity
+            : 0,
+          cityLightsMeshExists: false,
+          cityLightsVisible: false,
+          cityLightsOpacity,
+          requiredTextures,
+          missingTextures,
+        }
+        const signature = JSON.stringify(audit)
+        if (signature === lastThemeAuditSignature) return
+        lastThemeAuditSignature = signature
+        console.log('[earth3d theme audit]', audit)
       }
 
       function syncRevealState(themeKey, applied) {
@@ -748,33 +768,27 @@
         if (currentTheme === resolvedTheme && options.force !== true) return true
 
         const config = getThemeVisualConfig(resolvedTheme)
-        if (!areRequiredTexturesReady(resolvedTheme)) {
+        const requiredTextures = getRequiredTextures(resolvedTheme)
+        const missingTextures = getMissingTextures(requiredTextures)
+        if (missingTextures.length) {
           pendingTheme = resolvedTheme
+          logThemeAudit(themeKey, resolvedTheme, config, false, requiredTextures, missingTextures)
           return false
         }
 
-        const cityLightsOpacity = config.lighting?.cityLightsOpacity || 0
-        const nightBaseIntensity = config.texture.nightBaseIntensity || 0
-        const shouldUseNightBase = config.texture.emissiveMap === 'night'
-          && (cityLightsOpacity <= 0 || nightBaseIntensity > 0)
+        const useNightEmissive = config.texture.emissiveMap === 'night'
 
         earthMaterial.map = config.texture.map === 'day' ? dayTexture : null
         earthMaterial.color.set(config.texture.mapColor)
-        earthMaterial.emissive.set(shouldUseNightBase ? config.texture.emissiveColor : 0x000000)
-        earthMaterial.emissiveMap = shouldUseNightBase ? nightTexture : null
-        earthMaterial.emissiveIntensity = shouldUseNightBase
-          ? (cityLightsOpacity > 0 ? nightBaseIntensity : config.texture.emissiveIntensity)
-          : 0
+        earthMaterial.emissive.set(useNightEmissive ? config.texture.emissiveColor : 0x000000)
+        earthMaterial.emissiveMap = useNightEmissive ? nightTexture : null
+        earthMaterial.emissiveIntensity = useNightEmissive ? config.texture.emissiveIntensity : 0
         earthMaterial.specular.set(config.material.specular)
         earthMaterial.shininess = config.material.shininess
         atmosphereMaterial.color.set(config.atmosphere.color)
         atmosphereMaterial.opacity = config.atmosphere.opacity
         ambientLight.intensity = config.lighting.ambient
         sunLight.intensity = config.lighting.sun
-        cityLightsMaterial.map = cityLightsTexture
-        cityLightsMaterial.opacity = cityLightsOpacity
-        cityLightsMaterial.needsUpdate = true
-        cityLightsMesh.visible = cityLightsOpacity > 0 && Boolean(cityLightsTexture)
         if (stars?.material) {
           stars.material.opacity = config.lighting.stars
           stars.material.needsUpdate = true
@@ -784,6 +798,7 @@
         pendingTheme = resolvedTheme
         earthMaterial.needsUpdate = true
         atmosphereMaterial.needsUpdate = true
+        logThemeAudit(themeKey, resolvedTheme, config, true, requiredTextures, missingTextures)
         return true
       }
 
@@ -820,29 +835,6 @@
             earthMaterial.emissiveMap = texture
             earthMaterial.needsUpdate = true
           }
-        }
-      )
-
-      loader.load(
-        '/assets/earth_city_lights_alpha_preview_v3.png',
-        (texture) => {
-          cityLightsTexture = configureEarthTexture(texture)
-          console.log('[earth3d] city lights texture loaded:', '/assets/earth_city_lights_alpha_preview_v3.png')
-          cityLightsMaterial.map = cityLightsTexture
-          cityLightsMaterial.needsUpdate = true
-
-          if (typeof applyTheme === 'function') {
-            const themeKey = pendingTheme || currentTheme || 'night'
-            const applied = applyTheme(themeKey, { force: true })
-            syncRevealState(themeKey, applied)
-          }
-        },
-        undefined,
-        () => {
-          console.warn('[earth3d] city lights texture unavailable:', '/assets/earth_city_lights_alpha_preview_v3.png')
-          cityLightsTexture = null
-          cityLightsMaterial.map = null
-          cityLightsMaterial.needsUpdate = true
         }
       )
 
@@ -951,11 +943,12 @@
           }
         },
         setTimeOfDay(themeKey) {
-          if (permanentlyUnavailable) return
+          if (permanentlyUnavailable) return false
           pendingTheme = themeKey
           const applied = applyTheme(themeKey, { force: true })
           syncRevealState(themeKey, applied)
           updateSunPosition(getThemeHour(themeKey))
+          return applied
         },
         dispose() {
           isReady = false
