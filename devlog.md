@@ -223,3 +223,73 @@
 - `nightBaseIntensity` 字段在 dawn/sunrise/evening/deepNight/night 配置中仍存在但不被代码读取，可下次整理时清理
 - `setDebugLocation()` 等调试入口已在前轮清理，确认无残留
 - 真实浏览器 deepNight/evening 视觉已通过 headless 验收，建议在真实设备再做一次感官确认
+
+## 2026-05-31 修复 resolveInitialPendingTheme 永远返回 night 的 bug
+
+### 做了什么
+- **根因定位**：`resolveInitialPendingTheme()` 第一行读 `window.__rodioVisualState?.themeKey`，该值由 index.html 初始化为 `'night'`，在 earth3d.js 加载前就已写入。因此时间段判断分支永远走不到，`pendingTheme` 始终为 `'night'`，与实际时间无关
+- **关联 bug**：纹理回调也优先读 `window.__rodioVisualState?.themeKey || pendingTheme`，当两张贴图在 API 返回前都加载完时，两个回调都拿到 `'night'`，导致地球以夜间模式 reveal，API 返回后再跳变到正确时段（如落日），用户看到视觉闪切
+- **修复 `resolveInitialPendingTheme()`**：删除 `window.__rodioVisualState?.themeKey` 检查，只保留时间段判断（5-8h: sunrise / 8-11h: morning / 11-15h: noon / 15-17h: afternoon / 17-20h: sunset / 20-23h: evening / else: deepNight）
+- **修复纹理回调**：两处 `themeKey` 读取改为 `pendingTheme || currentTheme || 'night'`，不再读 `__rodioVisualState.themeKey`
+- 运行 `node -c pwa/earth3d.js`，语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+
+### 遗留问题
+- 无痕模式冷启动仍需在真实浏览器验收：17:22 时段应以 sunset 模式直接 reveal，无夜间闪切
+
+## 2026-05-31 修复夜间主题地球完全不可见
+
+### 做了什么
+- **问题定位**：夜间（evening/deepNight/night）主题 `mapColor` 为纯黑（0x000000-0x010204），`ambient` 极低（0.004-0.010），导致地球球体本身几乎零亮度。唯一可见内容是城市灯光（emissive），但如果朝向稍偏（相机对准海洋），整个画面纯黑
+- **验证**：`earth_night_8k.jpg` 上海像素值 [255,255,255]（最大亮度），贴图正确；fallback astronomy 20:04 时给出 stars.visibility=0.32、月亮可见，但用户看不到星星和月亮 → 2D fallback 没运行 → `useEarth3D=true`（3D canvas 已 reveal）→ 3D scene 纯黑
+- **修复**：三个夜间主题统一提升基础可见性
+  - `mapColor`: 0x000000 → 0x040C1A / 0x050C1C / 0x060E1E（极深海军蓝，不再是纯黑）
+  - `ambient`: 0.004-0.010 → 0.14-0.18（地球球体轮廓可见）
+  - 大气层 `color` 提亮：'#040912' → '#0E1E3A' / '#0F2040' / '#152A50'
+  - 大气层 `opacity`: 0.022-0.042 → 0.16-0.18（大气层光晕可见）
+- 城市灯光（emissiveIntensity 1.55-2.0）在提高基础亮度后仍远亮于背景，对比度保持
+
+### 改动文件
+- `pwa/earth3d.js`
+
+### 遗留问题
+- 视觉效果需在真实浏览器确认：夜间地球应显示为深蓝色球体 + 明亮城市灯光
+
+## 2026-05-31 修复初始主题计算用 UTC 导致 CST 下夜间被判为落日
+
+### 做了什么
+- **根因确认**（来自控制台日志）：3D 地球在 20:33 时显示城市灯光、20:34 时显示白天地球，之后再跳回夜间 → 确认为主题闪变，不是渲染 bug
+- **根因定位**：`getPhaseWindows` 的默认日出/日落时间用 `Math.floor(nowMs/86400000)*86400000/1000 + 6*3600`，这是 UTC 零点 + 6h = 14:00 CST，导致 CST 20:34（= UTC 12:34）落入日落窗口 [14:30 CST, 18:40 CST] 中（default UTC sunset = UTC 18:00 + 40min = CST 02:40 次日），初始 `state.themeKey = 'sunset'`，3D 地球以白天贴图 reveal；API 返回真实日落时间（CST 19:00）后，主题跳到 `'night'`，引发闪变
+- **修复**：`defaultSunrise/defaultSunset` 改用 `new Date(nowMs).setHours(6,0,0,0)/1000` 和 `setHours(19,0,0,0)/1000`，即本地时区的 6:00 / 19:00，与同函数内 `setHours(11,30)` 和 `setHours(14,30)` 保持一致
+- **清理**：删除 `updateVisualTargetDir` 内每次 resize 触发时打印的 10+ 条调试日志
+
+### 改动文件
+- `pwa/index.html`（getPhaseWindows 默认日出日落改为本地时区）
+- `pwa/earth3d.js`（清理调试日志）
+
+### 遗留问题
+- 真实浏览器冷启动需再验：初始主题应在无 API 数据时即正确判为 'night'（20:34），API 返回后不发生跳变
+
+## 2026-05-31 根因修复：夜间主题改为 day+night 双贴图
+
+### 根因
+- `evening`/`deepNight`/`night` 三个主题均设 `map: null`，地球表面仅靠城市灯光（emissive）产生亮度
+- 历史上 20:33 能看到地球是因为 getPhaseWindows 的 UTC bug 导致实际应用了 `sunset` 主题（含 `map:'day'`，地球有颜色基底）
+- 修复 getPhaseWindows UTC→本地时区后，20:43 CST 正确应用 `night` 主题（map:null），相机朝向海洋区域时城市灯光为零 → 纯黑
+- 大量分析验证：TEXTURE_LON_OFFSET=90 映射正确，Shanghai 像素值 [255,255,255]，flipY 对齐，quaternionFromBasis 逻辑正确，问题确实是 map:null 导致无基底色
+
+### 修复
+- 将三个夜间主题的 `map: null` 改为 `map: 'day'`，保留日面贴图作为深色基底
+- 降低 `mapColor` 至极深蓝（0x030710–0x050912），配合低 `ambient`（0.04–0.06）使地球呈极暗深色
+- 提升 `emissiveIntensity` 至 2.0–2.5（原 1.55–2.0），城市灯光在深色背景上更突出
+- 删除不再需要的 `nightBaseIntensity` 字段残余
+
+### 效果
+- 地球球体在海洋区域也有极暗深蓝轮廓可见（来自日面贴图 × 极暗 mapColor × 低 ambient）
+- 城市密集区（上海、东京、北京等）以高亮白色灯光形式突出呈现
+- 视觉效果类似 NASA Black Marble，但始终有地球形状可识别
+
+### 改动文件
+- `pwa/earth3d.js`（evening/deepNight/night 主题配置）

@@ -1736,8 +1736,10 @@
   }
 
   function getPhaseWindows(nowMs, sunriseTs, sunsetTs) {
-    const defaultSunrise = Math.floor(nowMs / 86400000) * 86400000 / 1000 + 6 * 3600
-    const defaultSunset = Math.floor(nowMs / 86400000) * 86400000 / 1000 + 18 * 3600
+    // Use local-timezone 6am/7pm as fallback — the UTC-midnight+6h formula produces
+    // 14:00 CST in Shanghai, which puts evening hours into the "sunset" window.
+    const defaultSunrise = new Date(nowMs).setHours(6, 0, 0, 0) / 1000
+    const defaultSunset = new Date(nowMs).setHours(19, 0, 0, 0) / 1000
     const sunrise = (sunriseTs || defaultSunrise) * 1000
     const sunset = (sunsetTs || defaultSunset) * 1000
 

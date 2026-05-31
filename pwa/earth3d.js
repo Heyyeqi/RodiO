@@ -239,66 +239,15 @@
         const hit = new THREE.Vector3()
         const intersection = visualRaycaster.ray.intersectSphere(sphere, hit)
 
-        console.log(
-          '[earth3d] visual target ndc =',
-          VISUAL_TARGET_NDC.x.toFixed(3),
-          VISUAL_TARGET_NDC.y.toFixed(3)
-        )
-
-        console.log(
-          '[earth3d] earth center world =',
-          earthCenterWorld.x.toFixed(3),
-          earthCenterWorld.y.toFixed(3),
-          earthCenterWorld.z.toFixed(3)
-        )
-
-        console.log(
-          '[earth3d] visual ray origin =',
-          visualRaycaster.ray.origin.x.toFixed(3),
-          visualRaycaster.ray.origin.y.toFixed(3),
-          visualRaycaster.ray.origin.z.toFixed(3)
-        )
-
-        console.log(
-          '[earth3d] visual ray direction =',
-          visualRaycaster.ray.direction.x.toFixed(3),
-          visualRaycaster.ray.direction.y.toFixed(3),
-          visualRaycaster.ray.direction.z.toFixed(3)
-        )
-
-        console.log('[earth3d] visual target hit =', Boolean(intersection))
-
         if (!intersection) {
           visualTargetDir.set(0, 0, 1)
         } else {
-          console.log(
-            '[earth3d] visual hit world =',
-            hit.x.toFixed(3),
-            hit.y.toFixed(3),
-            hit.z.toFixed(3)
-          )
-
           const localHit = earth.worldToLocal(hit.clone())
-
-          console.log(
-            '[earth3d] visual hit local =',
-            localHit.x.toFixed(3),
-            localHit.y.toFixed(3),
-            localHit.z.toFixed(3)
-          )
-
           visualTargetDir.copy(localHit.normalize())
         }
 
         earth.quaternion.copy(savedQuaternion)
         earth.updateMatrixWorld(true)
-
-        console.log(
-          '[earth3d] visualTargetDir final =',
-          visualTargetDir.x.toFixed(3),
-          visualTargetDir.y.toFixed(3),
-          visualTargetDir.z.toFixed(3)
-        )
       }
 
       const debugCityMarkers = DEBUG_MARKERS_ENABLED
@@ -540,23 +489,24 @@
         evening: {
           themeHour: 20.2,
           texture: {
-            map: null,
+            // Keep day texture as a dark base so the globe shape is visible even
+            // over ocean. City lights (emissive) dominate in populated areas.
+            map: 'day',
             emissiveMap: 'night',
-            mapColor: 0x010204,
+            mapColor: 0x050912,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.75,
-            nightBaseIntensity: 0.40,
+            emissiveIntensity: 2.2,
           },
           material: {
             specular: 0x000102,
             shininess: 0.10,
           },
           atmosphere: {
-            color: '#061027',
-            opacity: 0.042,
+            color: '#152A50',
+            opacity: 0.18,
           },
           lighting: {
-            ambient: 0.010,
+            ambient: 0.06,
             sun: 0.04,
             stars: 0.78,
             cityLightsOpacity: 0.58,
@@ -565,23 +515,22 @@
         deepNight: {
           themeHour: 22.5,
           texture: {
-            map: null,
+            map: 'day',
             emissiveMap: 'night',
-            mapColor: 0x000000,
+            mapColor: 0x02050B,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 2.0,
-            nightBaseIntensity: 0.34,
+            emissiveIntensity: 2.5,
           },
           material: {
             specular: 0x000001,
             shininess: 0.08,
           },
           atmosphere: {
-            color: '#040912',
-            opacity: 0.022,
+            color: '#0E1E3A',
+            opacity: 0.16,
           },
           lighting: {
-            ambient: 0.004,
+            ambient: 0.025,
             sun: 0.008,
             stars: 0.94,
             cityLightsOpacity: 0.58,
@@ -590,23 +539,22 @@
         night: {
           themeHour: 22.5,
           texture: {
-            map: null,
+            map: 'day',
             emissiveMap: 'night',
-            mapColor: 0x000000,
+            mapColor: 0x040810,
             emissiveColor: 0xffffff,
-            emissiveIntensity: 1.55,
-            nightBaseIntensity: 0.38,
+            emissiveIntensity: 2.0,
           },
           material: {
             specular: 0x05070a,
             shininess: 1,
           },
           atmosphere: {
-            color: '#040912',
-            opacity: 0.028,
+            color: '#0F2040',
+            opacity: 0.17,
           },
           lighting: {
-            ambient: 0.006,
+            ambient: 0.05,
             sun: 0.03,
             stars: 0.9,
             cityLightsOpacity: 0.58,
@@ -657,7 +605,9 @@
 
       let currentTheme = null
       function resolveInitialPendingTheme() {
-        if (window.__rodioVisualState?.themeKey) return window.__rodioVisualState.themeKey
+        // Do NOT read window.__rodioVisualState.themeKey here — it always starts as
+        // 'night' (the index.html default) and would override the time-based guess.
+        // External callers update pendingTheme later via setTimeOfDay().
         const h = new Date().getHours()
         if (h >= 5 && h < 8) return 'sunrise'
         if (h >= 8 && h < 11) return 'morning'
@@ -826,7 +776,10 @@
           console.log('[earth3d] day texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const themeKey = window.__rodioVisualState?.themeKey || pendingTheme || currentTheme || 'night'
+            // Use pendingTheme as authoritative source: it was seeded from time-of-day
+            // at startup and updated by setTimeOfDay() when external state changes.
+            // Avoid reading __rodioVisualState.themeKey here — it starts as 'night'.
+            const themeKey = pendingTheme || currentTheme || 'night'
             const applied = applyTheme(themeKey, { force: true })
             syncRevealState(themeKey, applied)
           } else {
@@ -844,7 +797,7 @@
           console.log('[earth3d] night texture loaded:', usedPath)
 
           if (typeof applyTheme === 'function') {
-            const themeKey = window.__rodioVisualState?.themeKey || pendingTheme || currentTheme || 'night'
+            const themeKey = pendingTheme || currentTheme || 'night'
             const applied = applyTheme(themeKey, { force: true })
             syncRevealState(themeKey, applied)
           } else {
@@ -886,6 +839,167 @@
       function getThemeHour(themeKey) {
         const config = getThemeVisualConfig(themeKey)
         return config?.themeHour ?? THEME_VISUAL_CONFIG.night.themeHour
+      }
+
+      function getTextureDebugState(texture, expectedTexture) {
+        if (!texture) {
+          return {
+            exists: false,
+            imageWidth: null,
+            imageHeight: null,
+            encoding: null,
+            colorSpace: null,
+            isExpectedTexture: false,
+          }
+        }
+
+        const image = texture.image || {}
+        return {
+          exists: true,
+          imageWidth: Number.isFinite(image.width) ? image.width : null,
+          imageHeight: Number.isFinite(image.height) ? image.height : null,
+          encoding: texture.encoding ?? null,
+          colorSpace: texture.colorSpace ?? null,
+          isExpectedTexture: Boolean(expectedTexture && texture === expectedTexture),
+        }
+      }
+
+      function buildDebugState() {
+        const rendererCanvas = renderer?.domElement || null
+        const rendererContext = renderer?.getContext ? renderer.getContext() : null
+        const theme = {
+          currentTheme,
+          pendingTheme,
+          isReady,
+          isAvailable: isReady && !permanentlyUnavailable,
+        }
+        const texture = {
+          dayReady: Boolean(dayTexture),
+          nightReady: Boolean(nightTexture),
+          dayTextureExists: Boolean(dayTexture),
+          nightTextureExists: Boolean(nightTexture),
+          dayTextureImageWidth: Number.isFinite(dayTexture?.image?.width) ? dayTexture.image.width : null,
+          dayTextureImageHeight: Number.isFinite(dayTexture?.image?.height) ? dayTexture.image.height : null,
+          nightTextureImageWidth: Number.isFinite(nightTexture?.image?.width) ? nightTexture.image.width : null,
+          nightTextureImageHeight: Number.isFinite(nightTexture?.image?.height) ? nightTexture.image.height : null,
+          dayTextureEncoding: dayTexture?.encoding ?? null,
+          dayTextureColorSpace: dayTexture?.colorSpace ?? null,
+          nightTextureEncoding: nightTexture?.encoding ?? null,
+          nightTextureColorSpace: nightTexture?.colorSpace ?? null,
+        }
+        const material = {
+          mapExists: Boolean(earthMaterial?.map),
+          mapIsDayTexture: Boolean(earthMaterial?.map && earthMaterial.map === dayTexture),
+          emissiveMapExists: Boolean(earthMaterial?.emissiveMap),
+          emissiveMapIsNightTexture: Boolean(earthMaterial?.emissiveMap && earthMaterial.emissiveMap === nightTexture),
+          colorHex: earthMaterial?.color?.getHexString ? `#${earthMaterial.color.getHexString()}` : null,
+          emissiveHex: earthMaterial?.emissive?.getHexString ? `#${earthMaterial.emissive.getHexString()}` : null,
+          emissiveIntensity: Number.isFinite(earthMaterial?.emissiveIntensity) ? earthMaterial.emissiveIntensity : null,
+          opacity: Number.isFinite(earthMaterial?.opacity) ? earthMaterial.opacity : null,
+          transparent: Boolean(earthMaterial?.transparent),
+          needsUpdate: Boolean(earthMaterial?.needsUpdate),
+          visible: Boolean(earthMaterial?.visible),
+        }
+        const mesh = {
+          earthMeshVisible: Boolean(earth?.visible),
+          earthGroupVisible: Boolean(earthGroup?.visible),
+          earthMeshScale: earth?.scale
+            ? {
+                x: earth.scale.x,
+                y: earth.scale.y,
+                z: earth.scale.z,
+              }
+            : null,
+          earthGroupPosition: earthGroup?.position
+            ? {
+                x: earthGroup.position.x,
+                y: earthGroup.position.y,
+                z: earthGroup.position.z,
+              }
+            : null,
+        }
+        const rendererState = {
+          outputEncoding: renderer?.outputEncoding ?? null,
+          outputColorSpace: renderer?.outputColorSpace ?? null,
+          toneMapping: renderer?.toneMapping ?? null,
+          toneMappingExposure: renderer?.toneMappingExposure ?? null,
+          canvasWidth: rendererCanvas?.width ?? null,
+          canvasHeight: rendererCanvas?.height ?? null,
+          drawingBufferWidth: rendererContext?.drawingBufferWidth ?? null,
+          drawingBufferHeight: rendererContext?.drawingBufferHeight ?? null,
+          animationLoopActive: Boolean(renderer?.getAnimationLoop && renderer.getAnimationLoop()),
+        }
+        const lights = {
+          ambientLightIntensity: Number.isFinite(ambientLight?.intensity) ? ambientLight.intensity : null,
+          sunLightIntensity: Number.isFinite(sunLight?.intensity) ? sunLight.intensity : null,
+        }
+
+        return {
+          currentTheme: theme.currentTheme,
+          pendingTheme: theme.pendingTheme,
+          isReady: theme.isReady,
+          isAvailable: theme.isAvailable,
+          dayReady: texture.dayReady,
+          nightReady: texture.nightReady,
+          dayTextureExists: texture.dayTextureExists,
+          nightTextureExists: texture.nightTextureExists,
+          dayTextureImageWidth: texture.dayTextureImageWidth,
+          dayTextureImageHeight: texture.dayTextureImageHeight,
+          nightTextureImageWidth: texture.nightTextureImageWidth,
+          nightTextureImageHeight: texture.nightTextureImageHeight,
+          dayTextureEncoding: texture.dayTextureEncoding,
+          dayTextureColorSpace: texture.dayTextureColorSpace,
+          nightTextureEncoding: texture.nightTextureEncoding,
+          nightTextureColorSpace: texture.nightTextureColorSpace,
+          mapExists: material.mapExists,
+          mapIsDayTexture: material.mapIsDayTexture,
+          emissiveMapExists: material.emissiveMapExists,
+          emissiveMapIsNightTexture: material.emissiveMapIsNightTexture,
+          colorHex: material.colorHex,
+          emissiveHex: material.emissiveHex,
+          emissiveIntensity: material.emissiveIntensity,
+          opacity: material.opacity,
+          transparent: material.transparent,
+          needsUpdate: material.needsUpdate,
+          visible: material.visible,
+          earthMeshVisible: mesh.earthMeshVisible,
+          earthGroupVisible: mesh.earthGroupVisible,
+          earthMeshScale: mesh.earthMeshScale,
+          earthGroupPosition: mesh.earthGroupPosition,
+          outputEncoding: rendererState.outputEncoding,
+          outputColorSpace: rendererState.outputColorSpace,
+          toneMapping: rendererState.toneMapping,
+          toneMappingExposure: rendererState.toneMappingExposure,
+          canvasWidth: rendererState.canvasWidth,
+          canvasHeight: rendererState.canvasHeight,
+          drawingBufferWidth: rendererState.drawingBufferWidth,
+          drawingBufferHeight: rendererState.drawingBufferHeight,
+          animationLoopActive: rendererState.animationLoopActive,
+          ambientLightIntensity: lights.ambientLightIntensity,
+          sunLightIntensity: lights.sunLightIntensity,
+          theme: {
+            ...theme,
+          },
+          texture: {
+            ...texture,
+          },
+          textureBindings: {
+            dayTexture: getTextureDebugState(dayTexture, earthMaterial?.map),
+            nightTexture: getTextureDebugState(nightTexture, earthMaterial?.emissiveMap),
+          },
+          material: {
+            ...material,
+          },
+          mesh: {
+            ...mesh,
+          },
+          renderer: {
+            ...rendererState,
+          },
+          lights: {
+            ...lights,
+          },
+        }
       }
 
       function resize() {
@@ -965,6 +1079,9 @@
           syncRevealState(themeKey, applied)
           updateSunPosition(getThemeHour(themeKey))
           return applied
+        },
+        getDebugState() {
+          return buildDebugState()
         },
         dispose() {
           isReady = false
