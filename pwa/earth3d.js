@@ -621,8 +621,8 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x05070a,
-            shininess: 1,
+            specular: 0x06090f,
+            shininess: 1.05,
           },
           atmosphere: {
             color: '#88ccff',
@@ -645,8 +645,8 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x05070a,
-            shininess: 1,
+            specular: 0x091018,
+            shininess: 1.12,
           },
           atmosphere: {
             color: '#B7E3FF',
@@ -669,8 +669,8 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x04060a,
-            shininess: 0.9,
+            specular: 0x05080d,
+            shininess: 0.96,
           },
           atmosphere: {
             color: '#84bdf0',
@@ -693,8 +693,8 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x060402,
-            shininess: 0.75,
+            specular: 0x070503,
+            shininess: 0.68,
           },
           atmosphere: {
             color: '#c0a878',
@@ -959,7 +959,7 @@
       }
 
       function shouldUseOceanSpecularMap(themeKey) {
-        return ['morning', 'noon', 'afternoon'].includes(themeKey)
+        return ['morning', 'noon', 'afternoon', 'goldenApproach'].includes(themeKey)
       }
 
       function getSpecularMode(config, themeKey) {
