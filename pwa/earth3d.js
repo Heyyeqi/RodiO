@@ -115,6 +115,17 @@
     let earthGeometry = null
     let atmosphere = null
     let stars = null
+    let cloudGeometry = null
+    let cloudMaterial = null
+    let cloudMesh = null
+    let cloudTexture = null
+    let cloudTextureLoadState = 'idle'
+    let cloudTextureWarned = false
+    let cloudTexturePath = null
+    let cloudTextureError = null
+    let cloudVisibleRequested = true
+    let isDestroyed = false
+    const cloudRadius = 2.04
     let earthMaterial = null
     let atmosphereMaterial = null
     let dayTexture = null
@@ -253,6 +264,160 @@
         skyMaterial.uniforms.uColorBottom.value.set(preset.bottom)
         skyMaterial.uniforms.uOpacity.value = preset.opacity
         skyMaterial.uniforms.uEnabled.value = skyMesh?.visible ? 1 : 0
+      }
+
+      const CLOUD_OPACITY_BY_THEME = {
+        dawn: 0.06,
+        sunrise: 0.08,
+        earlyMorning: 0.1,
+        morning: 0.12,
+        noon: 0.14,
+        afternoon: 0.12,
+        goldenApproach: 0.1,
+        sunset: 0.08,
+        evening: 0.04,
+        lateEvening: 0.02,
+        deepNight: 0.01,
+        night: 0.01,
+      }
+
+      function normalizeCloudThemeKey(themeKey) {
+        return themeKey === 'night' ? 'deepNight' : themeKey
+      }
+
+      function getCloudOpacity(themeKey) {
+        const resolvedTheme = normalizeCloudThemeKey(
+          themeKey || currentTheme || pendingTheme || 'deepNight'
+        )
+        return CLOUD_OPACITY_BY_THEME[resolvedTheme] ?? CLOUD_OPACITY_BY_THEME.deepNight
+      }
+
+      function isLowCloudDevice() {
+        const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 820
+        const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+        const lowDpr = (window.devicePixelRatio || 1) <= 1.25
+        return smallViewport || coarsePointer || lowDpr
+      }
+
+      function getCloudAlphaTexturePaths() {
+        const highResPath = '/assets/earth/clouds/cloud_alpha_4096x2048_refined.png'
+        const lowResPath = '/assets/earth/clouds/cloud_alpha_2048x1024_refined.png'
+        return isLowCloudDevice()
+          ? [lowResPath, highResPath]
+          : [highResPath, lowResPath]
+      }
+
+      function configureCloudTexture(texture) {
+        if ('encoding' in texture && typeof THREE.LinearEncoding !== 'undefined') {
+          texture.encoding = THREE.LinearEncoding
+        }
+        texture.wrapS = THREE.ClampToEdgeWrapping
+        texture.wrapT = THREE.ClampToEdgeWrapping
+        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        texture.needsUpdate = true
+        return texture
+      }
+
+      function refreshCloudAppearance(themeKey = currentTheme || pendingTheme || 'deepNight') {
+        if (!cloudMaterial || !cloudMesh) return false
+        cloudMaterial.opacity = getCloudOpacity(themeKey)
+        cloudMesh.visible = cloudVisibleRequested && cloudTextureLoadState === 'ready'
+        return cloudMesh.visible
+      }
+
+      function loadCloudAlphaTextureIfExists(path) {
+        return fetch(path, { method: 'HEAD' })
+          .then((response) => {
+            if (!response.ok) return null
+            return new Promise((resolve) => {
+              loader.load(
+                path,
+                (texture) => {
+                  if (isDestroyed) {
+                    texture.dispose()
+                    resolve(null)
+                    return
+                  }
+                  resolve(configureCloudTexture(texture))
+                },
+                undefined,
+                () => resolve(null)
+              )
+            })
+          })
+          .catch(() => null)
+      }
+
+      async function loadCloudAlphaTexture() {
+        if (cloudTextureLoadState !== 'idle' || isDestroyed) return cloudTexture
+        cloudTextureLoadState = 'loading'
+        cloudTextureError = null
+
+        const [preferredPath, fallbackPath] = getCloudAlphaTexturePaths()
+        let texture = await loadCloudAlphaTextureIfExists(preferredPath)
+        let usedPath = preferredPath
+        if (!texture) {
+          texture = await loadCloudAlphaTextureIfExists(fallbackPath)
+          usedPath = fallbackPath
+        }
+
+        if (isDestroyed) {
+          if (texture) texture.dispose()
+          return null
+        }
+
+        if (texture) {
+          cloudTexture = texture
+          cloudTextureLoadState = 'ready'
+          cloudTexturePath = texture.image?.src || usedPath
+
+          if (!cloudGeometry) {
+            cloudGeometry = new THREE.SphereGeometry(cloudRadius, 64, 64)
+          }
+
+          if (!cloudMaterial) {
+            cloudMaterial = new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+              side: THREE.FrontSide,
+              transparent: true,
+              opacity: getCloudOpacity(),
+              alphaMap: cloudTexture,
+              depthWrite: false,
+              depthTest: true,
+            })
+          } else {
+            cloudMaterial.alphaMap = cloudTexture
+            cloudMaterial.transparent = true
+            cloudMaterial.depthWrite = false
+            cloudMaterial.depthTest = true
+            cloudMaterial.needsUpdate = true
+          }
+
+          if (!cloudMesh) {
+            cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial)
+            cloudMesh.renderOrder = 2
+            cloudMesh.frustumCulled = false
+            cloudMesh.visible = false
+            earthGroup.add(cloudMesh)
+          }
+
+          refreshCloudAppearance()
+          if (!permanentlyUnavailable && isReady) {
+            renderer.render(scene, camera)
+          }
+          return cloudTexture
+        }
+
+        cloudTextureLoadState = 'missing'
+        cloudTextureError = `cloud alpha map unavailable: ${preferredPath}${fallbackPath ? `, ${fallbackPath}` : ''}`
+        if (!cloudTextureWarned) {
+          cloudTextureWarned = true
+          console.warn('[earth3d] cloud alpha map unavailable; skipping')
+        }
+        return null
       }
 
       const loader = new THREE.TextureLoader()
@@ -1040,6 +1205,7 @@
           stars.material.needsUpdate = true
         }
         updateSkyTheme(resolvedTheme)
+        refreshCloudAppearance(resolvedTheme)
 
         currentTheme = resolvedTheme
         pendingTheme = resolvedTheme
@@ -1071,6 +1237,7 @@
       )
 
       loadOceanSpecularTexture()
+      loadCloudAlphaTexture()
 
       loadTextureWithFallback(
         '/assets/earth_night_8k.jpg',
@@ -1225,6 +1392,17 @@
           ambientLightIntensity: Number.isFinite(ambientLight?.intensity) ? ambientLight.intensity : null,
           sunLightIntensity: Number.isFinite(sunLight?.intensity) ? sunLight.intensity : null,
         }
+        const cloud = {
+          enabled: Boolean(cloudVisibleRequested),
+          visible: Boolean(cloudMesh?.visible),
+          loaded: cloudTextureLoadState === 'ready',
+          texturePath: cloudTexturePath,
+          opacity: Number.isFinite(cloudMaterial?.opacity) ? cloudMaterial.opacity : null,
+          radius: cloudRadius,
+          renderOrder: Number.isFinite(cloudMesh?.renderOrder) ? cloudMesh.renderOrder : null,
+          materialType: cloudMaterial?.type ?? null,
+          loadError: cloudTextureError,
+        }
         const sky = {
           skyMeshExists: Boolean(skyMesh),
           skyVisible: Boolean(skyMesh?.visible),
@@ -1327,6 +1505,9 @@
           lights: {
             ...lights,
           },
+          cloud: {
+            ...cloud,
+          },
         }
       }
 
@@ -1417,22 +1598,44 @@
           }
           return skyMesh.visible
         },
+        setCloudVisible(visible) {
+          cloudVisibleRequested = Boolean(visible)
+          if (cloudMesh) {
+            cloudMesh.visible = cloudVisibleRequested && cloudTextureLoadState === 'ready'
+          }
+          if (cloudMaterial) {
+            cloudMaterial.opacity = getCloudOpacity(currentTheme || pendingTheme || 'deepNight')
+          }
+          if (isReady && !permanentlyUnavailable) {
+            renderer.render(scene, camera)
+          }
+          return Boolean(cloudMesh?.visible)
+        },
         getDebugState() {
           return buildDebugState()
         },
         dispose() {
           isReady = false
+          isDestroyed = true
           renderer.setAnimationLoop(null)
           if (renderer?.domElement) renderer.domElement.style.opacity = '0'
           if (observer) observer.disconnect()
           if (skyGeometry) skyGeometry.dispose()
           if (skyMaterial) skyMaterial.dispose()
+          if (cloudMesh?.parent) cloudMesh.parent.remove(cloudMesh)
+          if (cloudGeometry) cloudGeometry.dispose()
+          if (cloudMaterial) cloudMaterial.dispose()
+          if (cloudTexture) cloudTexture.dispose()
           if (earthGeometry) earthGeometry.dispose()
           if (atmosphere?.geometry) atmosphere.geometry.dispose()
           if (stars?.geometry) stars.geometry.dispose()
           skyGeometry = null
           skyMaterial = null
           skyMesh = null
+          cloudGeometry = null
+          cloudMaterial = null
+          cloudMesh = null
+          cloudTexture = null
           if (earthMaterial) earthMaterial.dispose()
           if (atmosphereMaterial) atmosphereMaterial.dispose()
           if (stars?.material) stars.material.dispose()
