@@ -407,7 +407,7 @@
             shininess: 0.12,
           },
           atmosphere: {
-            color: '#6fb8ff',
+            color: '#5f8fa9',
             opacity: 0.082,
           },
           lighting: {
@@ -578,7 +578,7 @@
             shininess: 0.10,
           },
           atmosphere: {
-            color: '#254061',
+            color: '#203750',
             opacity: 0.18,
           },
           lighting: {
@@ -602,7 +602,7 @@
             shininess: 0.08,
           },
           atmosphere: {
-            color: '#112844',
+            color: '#0d2136',
             opacity: 0.16,
           },
           lighting: {
@@ -626,7 +626,7 @@
             shininess: 1,
           },
           atmosphere: {
-            color: '#1B3350',
+            color: '#15283f',
             opacity: 0.17,
           },
           lighting: {
