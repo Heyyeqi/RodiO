@@ -127,6 +127,7 @@
     let isDestroyed = false
     const cloudRadius = 2.04
     let cloudDriftLastTick = 0
+    let visibilityChangeHandler = null
     let earthMaterial = null
     let atmosphereMaterial = null
     let dayTexture = null
@@ -352,6 +353,14 @@
         if (deltaSeconds <= 0) return
 
         cloudMesh.rotation.y += speed * deltaSeconds * 60
+      }
+
+      function resetCloudDriftLastTick() {
+        cloudDriftLastTick = 0
+      }
+
+      function alignCloudDriftLastTick(now = performance.now()) {
+        cloudDriftLastTick = now
       }
 
       function getCloudAlphaTexturePaths() {
@@ -1602,6 +1611,15 @@
         renderer.render(scene, camera)
       })
 
+      visibilityChangeHandler = () => {
+        if (document.hidden) {
+          resetCloudDriftLastTick()
+          return
+        }
+        alignCloudDriftLastTick()
+      }
+      document.addEventListener('visibilitychange', visibilityChangeHandler)
+
       window.earth3d = {
         get isReady() {
           return isReady
@@ -1680,6 +1698,10 @@
           isReady = false
           isDestroyed = true
           renderer.setAnimationLoop(null)
+          if (visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', visibilityChangeHandler)
+            visibilityChangeHandler = null
+          }
           if (renderer?.domElement) renderer.domElement.style.opacity = '0'
           if (observer) observer.disconnect()
           if (skyGeometry) skyGeometry.dispose()
