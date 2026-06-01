@@ -126,6 +126,7 @@
     let cloudVisibleRequested = true
     let isDestroyed = false
     const cloudRadius = 2.04
+    let cloudDriftLastTick = 0
     let earthMaterial = null
     let atmosphereMaterial = null
     let dayTexture = null
@@ -294,11 +295,63 @@
         return clamp(baseOpacity * deviceScale, 0, 1)
       }
 
+      const CLOUD_DRIFT_BY_THEME = {
+        dawn: 0.000012,
+        sunrise: 0.000013,
+        earlyMorning: 0.000016,
+        morning: 0.00002,
+        noon: 0.000024,
+        afternoon: 0.000021,
+        goldenApproach: 0.000014,
+        sunset: 0.000008,
+        evening: 0.000003,
+        lateEvening: 0.0000015,
+        deepNight: 0.0000005,
+        night: 0.000001,
+      }
+      const CLOUD_DRIFT_LOW_DEVICE_SCALE = 0.5
+
       function isLowCloudDevice() {
         const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 820
         const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
         const lowDpr = (window.devicePixelRatio || 1) <= 1.25
         return smallViewport || coarsePointer || lowDpr
+      }
+
+      function getCloudDriftLowDeviceScale() {
+        return isLowCloudDevice() ? CLOUD_DRIFT_LOW_DEVICE_SCALE : 1
+      }
+
+      function getCloudDriftSpeed(themeKey) {
+        const resolvedTheme = normalizeCloudThemeKey(
+          themeKey || currentTheme || pendingTheme || 'deepNight'
+        )
+        const baseSpeed = CLOUD_DRIFT_BY_THEME[resolvedTheme] ?? CLOUD_DRIFT_BY_THEME.deepNight
+        return baseSpeed * getCloudDriftLowDeviceScale()
+      }
+
+      function updateCloudDrift(now = performance.now()) {
+        if (!cloudMesh || cloudTextureLoadState !== 'ready') {
+          cloudDriftLastTick = now
+          return
+        }
+
+        const speed = getCloudDriftSpeed(currentTheme || pendingTheme || 'deepNight')
+        if (!Number.isFinite(speed) || speed <= 0) {
+          cloudDriftLastTick = now
+          return
+        }
+
+        if (!cloudDriftLastTick) {
+          cloudDriftLastTick = now
+          return
+        }
+
+        const deltaSeconds = Math.min((now - cloudDriftLastTick) / 1000, 0.1)
+        cloudDriftLastTick = now
+        if (deltaSeconds <= 0) return
+
+        cloudMesh.rotation.y += speed * deltaSeconds * 60
       }
 
       function getCloudAlphaTexturePaths() {
@@ -1394,7 +1447,11 @@
           ambientLightIntensity: Number.isFinite(ambientLight?.intensity) ? ambientLight.intensity : null,
           sunLightIntensity: Number.isFinite(sunLight?.intensity) ? sunLight.intensity : null,
         }
+        const cloudDriftSpeed = getCloudDriftSpeed(currentTheme || pendingTheme || 'deepNight')
+        const cloudLowDeviceScale = getCloudDriftLowDeviceScale()
         const cloud = {
+          driftSpeed: cloudDriftSpeed,
+          lowDeviceScale: cloudLowDeviceScale,
           enabled: Boolean(cloudVisibleRequested),
           visible: Boolean(cloudMesh?.visible),
           loaded: cloudTextureLoadState === 'ready',
@@ -1404,6 +1461,8 @@
           renderOrder: Number.isFinite(cloudMesh?.renderOrder) ? cloudMesh.renderOrder : null,
           materialType: cloudMaterial?.type ?? null,
           loadError: cloudTextureError,
+          driftEnabled: Boolean(cloudMesh && cloudTextureLoadState === 'ready' && cloudDriftSpeed > 0),
+          rotationY: Number.isFinite(cloudMesh?.rotation?.y) ? cloudMesh.rotation.y : null,
         }
         const sky = {
           skyMeshExists: Boolean(skyMesh),
@@ -1538,6 +1597,7 @@
         const target = getTargetOrientation()
         earth.quaternion.slerp(target, 0.02)
         atmosphere.rotation.set(0, 0, 0)
+        updateCloudDrift()
 
         renderer.render(scene, camera)
       })
