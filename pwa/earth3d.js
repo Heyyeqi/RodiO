@@ -115,6 +115,10 @@
     let atmosphereMaterial = null
     let dayTexture = null
     let nightTexture = null
+    let oceanSpecularTexture = null
+    let oceanSpecularTextureLoadState = 'idle'
+    let oceanSpecularTextureWarned = false
+    let oceanSpecularTexturePath = null
     let isReady = false
     let permanentlyUnavailable = false
 
@@ -189,6 +193,78 @@
             )
           }
         )
+      }
+
+      function isLowSpecularDevice() {
+        const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 820
+        const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+        return smallViewport || coarsePointer
+      }
+
+      function getOceanSpecularTexturePaths() {
+        const highResPath = '/assets/earth/masks/ocean_specular_4096x2048.png'
+        const lowResPath = '/assets/earth/masks/ocean_specular_2048x1024.png'
+        return isLowSpecularDevice()
+          ? [lowResPath, highResPath]
+          : [highResPath, lowResPath]
+      }
+
+      function configureOceanSpecularTexture(texture) {
+        if ('encoding' in texture && typeof THREE.LinearEncoding !== 'undefined') {
+          texture.encoding = THREE.LinearEncoding
+        }
+        texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        texture.needsUpdate = true
+        return texture
+      }
+
+      function loadTextureIfExists(path) {
+        return fetch(path, { method: 'HEAD' })
+          .then((response) => {
+            if (!response.ok) return null
+            return new Promise((resolve) => {
+              loader.load(
+                path,
+                (texture) => resolve(configureOceanSpecularTexture(texture)),
+                undefined,
+                () => resolve(null)
+              )
+            })
+          })
+          .catch(() => null)
+      }
+
+      async function loadOceanSpecularTexture() {
+        if (oceanSpecularTextureLoadState !== 'idle') return oceanSpecularTexture
+        oceanSpecularTextureLoadState = 'loading'
+
+        const [preferredPath] = getOceanSpecularTexturePaths()
+        const texture = await loadTextureIfExists(preferredPath)
+
+        if (texture) {
+          oceanSpecularTexture = texture
+          oceanSpecularTextureLoadState = 'ready'
+          oceanSpecularTexturePath = texture.image?.src || preferredPath
+
+          const themeKey = pendingTheme || currentTheme || 'night'
+          if (shouldUseOceanSpecularMap(themeKey)) {
+            applyTheme(themeKey, { force: true })
+            if (!permanentlyUnavailable && isReady) {
+              renderer.render(scene, camera)
+            }
+          }
+          return oceanSpecularTexture
+        }
+
+        oceanSpecularTextureLoadState = 'missing'
+        if (!oceanSpecularTextureWarned) {
+          oceanSpecularTextureWarned = true
+          console.warn('[earth3d] ocean specular map unavailable; skipping')
+        }
+        return null
       }
 
       earthMaterial = new THREE.MeshPhongMaterial({
@@ -689,6 +765,15 @@
         return 'unknown'
       }
 
+      function shouldUseOceanSpecularMap(themeKey) {
+        return ['morning', 'noon', 'afternoon'].includes(themeKey)
+      }
+
+      function getSpecularMode(config, themeKey) {
+        if (!shouldUseOceanSpecularMap(themeKey)) return 'null'
+        return oceanSpecularTexture ? 'oceanSpecularTexture' : 'loading'
+      }
+
       function logThemeAudit(themeKey, resolvedThemeKey, config, applyThemeResult, requiredTextures, missingTextures) {
         const cityLightsOpacity = config.lighting?.cityLightsOpacity || 0
         const audit = {
@@ -700,6 +785,7 @@
           cityLightsReady: false,
           mapMode: getMapMode(config),
           emissiveMode: getEmissiveMode(config),
+          specularMode: getSpecularMode(config, resolvedThemeKey),
           emissiveIntensity: config.texture.emissiveMap === 'night'
             ? config.texture.emissiveIntensity
             : 0,
@@ -751,6 +837,7 @@
         earthMaterial.emissiveIntensity = useNightEmissive ? config.texture.emissiveIntensity : 0
         earthMaterial.specular.set(config.material.specular)
         earthMaterial.shininess = config.material.shininess
+        earthMaterial.specularMap = shouldUseOceanSpecularMap(resolvedTheme) ? oceanSpecularTexture : null
         atmosphereMaterial.color.set(config.atmosphere.color)
         atmosphereMaterial.opacity = config.atmosphere.opacity
         ambientLight.intensity = config.lighting.ambient
@@ -788,6 +875,8 @@
           }
         }
       )
+
+      loadOceanSpecularTexture()
 
       loadTextureWithFallback(
         '/assets/earth_night_8k.jpg',
@@ -886,12 +975,21 @@
           dayTextureColorSpace: dayTexture?.colorSpace ?? null,
           nightTextureEncoding: nightTexture?.encoding ?? null,
           nightTextureColorSpace: nightTexture?.colorSpace ?? null,
+          oceanSpecularTextureExists: Boolean(oceanSpecularTexture),
+          oceanSpecularTextureImageWidth: Number.isFinite(oceanSpecularTexture?.image?.width) ? oceanSpecularTexture.image.width : null,
+          oceanSpecularTextureImageHeight: Number.isFinite(oceanSpecularTexture?.image?.height) ? oceanSpecularTexture.image.height : null,
+          oceanSpecularTextureEncoding: oceanSpecularTexture?.encoding ?? null,
+          oceanSpecularTextureColorSpace: oceanSpecularTexture?.colorSpace ?? null,
         }
         const material = {
           mapExists: Boolean(earthMaterial?.map),
           mapIsDayTexture: Boolean(earthMaterial?.map && earthMaterial.map === dayTexture),
           emissiveMapExists: Boolean(earthMaterial?.emissiveMap),
           emissiveMapIsNightTexture: Boolean(earthMaterial?.emissiveMap && earthMaterial.emissiveMap === nightTexture),
+          specularMapExists: Boolean(earthMaterial?.specularMap),
+          specularMapIsOceanSpecularTexture: Boolean(earthMaterial?.specularMap && earthMaterial.specularMap === oceanSpecularTexture),
+          specularMapPath: oceanSpecularTexturePath,
+          specularMapLoadState: oceanSpecularTextureLoadState,
           colorHex: earthMaterial?.color?.getHexString ? `#${earthMaterial.color.getHexString()}` : null,
           emissiveHex: earthMaterial?.emissive?.getHexString ? `#${earthMaterial.emissive.getHexString()}` : null,
           emissiveIntensity: Number.isFinite(earthMaterial?.emissiveIntensity) ? earthMaterial.emissiveIntensity : null,
@@ -951,10 +1049,19 @@
           dayTextureColorSpace: texture.dayTextureColorSpace,
           nightTextureEncoding: texture.nightTextureEncoding,
           nightTextureColorSpace: texture.nightTextureColorSpace,
+          oceanSpecularTextureExists: texture.oceanSpecularTextureExists,
+          oceanSpecularTextureImageWidth: texture.oceanSpecularTextureImageWidth,
+          oceanSpecularTextureImageHeight: texture.oceanSpecularTextureImageHeight,
+          oceanSpecularTextureEncoding: texture.oceanSpecularTextureEncoding,
+          oceanSpecularTextureColorSpace: texture.oceanSpecularTextureColorSpace,
           mapExists: material.mapExists,
           mapIsDayTexture: material.mapIsDayTexture,
           emissiveMapExists: material.emissiveMapExists,
           emissiveMapIsNightTexture: material.emissiveMapIsNightTexture,
+          specularMapExists: material.specularMapExists,
+          specularMapIsOceanSpecularTexture: material.specularMapIsOceanSpecularTexture,
+          specularMapPath: material.specularMapPath,
+          specularMapLoadState: material.specularMapLoadState,
           colorHex: material.colorHex,
           emissiveHex: material.emissiveHex,
           emissiveIntensity: material.emissiveIntensity,
@@ -986,6 +1093,7 @@
           textureBindings: {
             dayTexture: getTextureDebugState(dayTexture, earthMaterial?.map),
             nightTexture: getTextureDebugState(nightTexture, earthMaterial?.emissiveMap),
+            oceanSpecularTexture: getTextureDebugState(oceanSpecularTexture, earthMaterial?.specularMap),
           },
           material: {
             ...material,
@@ -1096,6 +1204,7 @@
           if (stars?.material) stars.material.dispose()
           if (dayTexture) dayTexture.dispose()
           if (nightTexture) nightTexture.dispose()
+          if (oceanSpecularTexture) oceanSpecularTexture.dispose()
           renderer.dispose()
           mountEl.innerHTML = ''
           delete window.earth3d
