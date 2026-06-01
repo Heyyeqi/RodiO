@@ -267,18 +267,18 @@
       }
 
       const CLOUD_OPACITY_BY_THEME = {
-        dawn: 0.06,
-        sunrise: 0.08,
-        earlyMorning: 0.1,
-        morning: 0.12,
-        noon: 0.14,
-        afternoon: 0.12,
+        dawn: 0.08,
+        sunrise: 0.09,
+        earlyMorning: 0.095,
+        morning: 0.1,
+        noon: 0.15,
+        afternoon: 0.13,
         goldenApproach: 0.1,
         sunset: 0.08,
         evening: 0.04,
-        lateEvening: 0.02,
-        deepNight: 0.01,
-        night: 0.01,
+        lateEvening: 0.025,
+        deepNight: 0.018,
+        night: 0.025,
       }
 
       function normalizeCloudThemeKey(themeKey) {
@@ -289,7 +289,9 @@
         const resolvedTheme = normalizeCloudThemeKey(
           themeKey || currentTheme || pendingTheme || 'deepNight'
         )
-        return CLOUD_OPACITY_BY_THEME[resolvedTheme] ?? CLOUD_OPACITY_BY_THEME.deepNight
+        const baseOpacity = CLOUD_OPACITY_BY_THEME[resolvedTheme] ?? CLOUD_OPACITY_BY_THEME.deepNight
+        const deviceScale = isLowCloudDevice() ? 0.95 : 1
+        return clamp(baseOpacity * deviceScale, 0, 1)
       }
 
       function isLowCloudDevice() {
