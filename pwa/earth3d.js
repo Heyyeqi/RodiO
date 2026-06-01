@@ -108,6 +108,10 @@
 
     let renderer = null
     let observer = null
+    let skyGeometry = null
+    let skyMaterial = null
+    let skyMesh = null
+    let skyRadius = 300
     let earthGeometry = null
     let atmosphere = null
     let stars = null
@@ -156,6 +160,100 @@
       const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 1000)
       camera.position.set(0, 0, 4.8)
       camera.lookAt(0, 0, 0)
+
+      function getSkyThemePreset(themeKey) {
+        switch (themeKey) {
+          case 'dawn':
+            return {
+              top: '#04050d',
+              horizon: '#5f8fa9',
+              bottom: '#3c1e4a',
+              opacity: 0.96,
+            }
+          case 'sunrise':
+            return {
+              top: '#111830',
+              horizon: '#8ad0ff',
+              bottom: '#432048',
+              opacity: 0.95,
+            }
+          case 'earlyMorning':
+            return {
+              top: '#182e5c',
+              horizon: '#d0e4f2',
+              bottom: '#4a72aa',
+              opacity: 0.94,
+            }
+          case 'morning':
+            return {
+              top: '#123270',
+              horizon: '#c4dcf0',
+              bottom: '#3e76b8',
+              opacity: 0.94,
+            }
+          case 'noon':
+            return {
+              top: '#0c2c68',
+              horizon: '#cce2f4',
+              bottom: '#3272b0',
+              opacity: 0.93,
+            }
+          case 'afternoon':
+            return {
+              top: '#12347a',
+              horizon: '#d0dcc8',
+              bottom: '#0f2e6e',
+              opacity: 0.93,
+            }
+          case 'goldenApproach':
+            return {
+              top: '#0f2e6e',
+              horizon: '#dcc070',
+              bottom: '#eee8dc',
+              opacity: 0.93,
+            }
+          case 'sunset':
+            return {
+              top: '#0c1a38',
+              horizon: '#d0b070',
+              bottom: '#542238',
+              opacity: 0.95,
+            }
+          case 'evening':
+            return {
+              top: '#060a18',
+              horizon: '#202c50',
+              bottom: '#0c142e',
+              opacity: 0.97,
+            }
+          case 'lateEvening':
+            return {
+              top: '#04070f',
+              horizon: '#162840',
+              bottom: '#1c2a48',
+              opacity: 0.98,
+            }
+          case 'night':
+          case 'deepNight':
+          default:
+            return {
+              top: '#020308',
+              horizon: '#0b1220',
+              bottom: '#060a14',
+              opacity: 0.98,
+            }
+        }
+      }
+
+      function updateSkyTheme(themeKey) {
+        if (!skyMaterial || !skyMaterial.uniforms) return
+        const preset = getSkyThemePreset(themeKey)
+        skyMaterial.uniforms.uColorTop.value.set(preset.top)
+        skyMaterial.uniforms.uColorHorizon.value.set(preset.horizon)
+        skyMaterial.uniforms.uColorBottom.value.set(preset.bottom)
+        skyMaterial.uniforms.uOpacity.value = preset.opacity
+        skyMaterial.uniforms.uEnabled.value = skyMesh?.visible ? 1 : 0
+      }
 
       const loader = new THREE.TextureLoader()
       function configureEarthTexture(texture) {
@@ -291,6 +389,53 @@
       // earthGroup.rotation.z = THREE.MathUtils.degToRad(23.4)
       earth.add(atmosphere)
       earthGroup.add(earth)
+
+      skyGeometry = new THREE.SphereGeometry(skyRadius, 32, 32)
+      skyMaterial = new THREE.ShaderMaterial({
+        transparent: false,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+        uniforms: {
+          uColorTop: { value: new THREE.Color('#020308') },
+          uColorHorizon: { value: new THREE.Color('#0b1220') },
+          uColorBottom: { value: new THREE.Color('#060a14') },
+          uOpacity: { value: 0.98 },
+          uEnabled: { value: 1 },
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+          void main() {
+            vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          precision mediump float;
+
+          uniform vec3 uColorTop;
+          uniform vec3 uColorHorizon;
+          uniform vec3 uColorBottom;
+          uniform float uOpacity;
+          uniform float uEnabled;
+          varying vec3 vWorldPosition;
+
+          void main() {
+            if (uEnabled < 0.5) discard;
+            vec3 viewDir = normalize(vWorldPosition - cameraPosition);
+            float t = clamp(1.0 - viewDir.y, 0.0, 1.0);
+            float horizonMix = smoothstep(0.0, 0.72, t);
+            float bottomMix = smoothstep(0.72, 1.0, t);
+            vec3 color = mix(uColorTop, uColorHorizon, horizonMix);
+            color = mix(color, uColorBottom, bottomMix);
+            gl_FragColor = vec4(color, uOpacity * uEnabled);
+          }
+        `,
+      })
+      skyMesh = new THREE.Mesh(skyGeometry, skyMaterial)
+      skyMesh.renderOrder = -1000
+      skyMesh.frustumCulled = false
+      scene.add(skyMesh)
 
       const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
       const visualRaycaster = new THREE.Raycaster()
@@ -538,6 +683,30 @@
             cityLightsOpacity: 0,
           },
         },
+        goldenApproach: {
+          themeHour: 16.5,
+          texture: {
+            map: 'day',
+            emissiveMap: null,
+            mapColor: 0xeee8dc,
+            emissiveColor: 0x000000,
+            emissiveIntensity: 0,
+          },
+          material: {
+            specular: 0x060402,
+            shininess: 0.75,
+          },
+          atmosphere: {
+            color: '#c0a878',
+            opacity: 0.1,
+          },
+          lighting: {
+            ambient: 0.052,
+            sun: 0.88,
+            stars: 0,
+            cityLightsOpacity: 0,
+          },
+        },
         sunset: {
           themeHour: 18.2,
           texture: {
@@ -585,6 +754,30 @@
             ambient: 0.06,
             sun: 0.04,
             stars: 0.78,
+            cityLightsOpacity: 0.58,
+          },
+        },
+        lateEvening: {
+          themeHour: 21.0,
+          texture: {
+            map: 'day',
+            emissiveMap: 'night',
+            mapColor: 0x030710,
+            emissiveColor: 0xffc068,
+            emissiveIntensity: 2.35,
+          },
+          material: {
+            specular: 0x000102,
+            shininess: 0.09,
+          },
+          atmosphere: {
+            color: '#162840',
+            opacity: 0.17,
+          },
+          lighting: {
+            ambient: 0.038,
+            sun: 0.015,
+            stars: 0.72,
             cityLightsOpacity: 0.58,
           },
         },
@@ -846,6 +1039,7 @@
           stars.material.opacity = config.lighting.stars
           stars.material.needsUpdate = true
         }
+        updateSkyTheme(resolvedTheme)
 
         currentTheme = resolvedTheme
         pendingTheme = resolvedTheme
@@ -1031,8 +1225,34 @@
           ambientLightIntensity: Number.isFinite(ambientLight?.intensity) ? ambientLight.intensity : null,
           sunLightIntensity: Number.isFinite(sunLight?.intensity) ? sunLight.intensity : null,
         }
+        const sky = {
+          skyMeshExists: Boolean(skyMesh),
+          skyVisible: Boolean(skyMesh?.visible),
+          skyRenderOrder: Number.isFinite(skyMesh?.renderOrder) ? skyMesh.renderOrder : null,
+          skyRadius,
+          skyDepthWrite: Boolean(skyMaterial?.depthWrite),
+          skyDepthTest: Boolean(skyMaterial?.depthTest),
+          skyMaterialReady: Boolean(skyGeometry && skyMaterial && skyMesh),
+          skyUsesShaderMaterial: Boolean(skyMaterial?.isShaderMaterial),
+          skyOpacity: Number.isFinite(skyMaterial?.uniforms?.uOpacity?.value) ? skyMaterial.uniforms.uOpacity.value : null,
+          currentThemeKey: currentTheme,
+          supportsGoldenApproach: Boolean(THEME_VISUAL_CONFIG.goldenApproach),
+          supportsLateEvening: Boolean(THEME_VISUAL_CONFIG.lateEvening),
+        }
 
         return {
+          skyMeshExists: sky.skyMeshExists,
+          skyVisible: sky.skyVisible,
+          skyRenderOrder: sky.skyRenderOrder,
+          skyRadius: sky.skyRadius,
+          skyDepthWrite: sky.skyDepthWrite,
+          skyDepthTest: sky.skyDepthTest,
+          skyMaterialReady: sky.skyMaterialReady,
+          skyUsesShaderMaterial: sky.skyUsesShaderMaterial,
+          skyOpacity: sky.skyOpacity,
+          currentThemeKey: sky.currentThemeKey,
+          supportsGoldenApproach: sky.supportsGoldenApproach,
+          supportsLateEvening: sky.supportsLateEvening,
           currentTheme: theme.currentTheme,
           pendingTheme: theme.pendingTheme,
           isReady: theme.isReady,
@@ -1188,6 +1408,15 @@
           updateSunPosition(getThemeHour(themeKey))
           return applied
         },
+        setSkyVisible(visible) {
+          if (!skyMesh || !skyMaterial?.uniforms) return false
+          skyMesh.visible = Boolean(visible)
+          skyMaterial.uniforms.uEnabled.value = skyMesh.visible ? 1 : 0
+          if (isReady && !permanentlyUnavailable) {
+            renderer.render(scene, camera)
+          }
+          return skyMesh.visible
+        },
         getDebugState() {
           return buildDebugState()
         },
@@ -1196,9 +1425,14 @@
           renderer.setAnimationLoop(null)
           if (renderer?.domElement) renderer.domElement.style.opacity = '0'
           if (observer) observer.disconnect()
+          if (skyGeometry) skyGeometry.dispose()
+          if (skyMaterial) skyMaterial.dispose()
           if (earthGeometry) earthGeometry.dispose()
           if (atmosphere?.geometry) atmosphere.geometry.dispose()
           if (stars?.geometry) stars.geometry.dispose()
+          skyGeometry = null
+          skyMaterial = null
+          skyMesh = null
           if (earthMaterial) earthMaterial.dispose()
           if (atmosphereMaterial) atmosphereMaterial.dispose()
           if (stars?.material) stars.material.dispose()
