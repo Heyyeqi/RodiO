@@ -293,3 +293,15 @@
 
 ### 改动文件
 - `pwa/earth3d.js`（evening/deepNight/night 主题配置）
+
+## 2026-06-01 云层后续能力规划补充
+
+### 做了什么
+- 补充了云层路线文档中的后续规划，明确 E1-C 云层慢速流动、E1-D 主题联动、E1-E / E1-F 天气联动与硬化边界
+- 强调本轮只做规划，不接入天气 API，不修改现有 cloud 参数、不改动画逻辑、不改播放器、不做大范围重构
+
+### 改动文件
+- `docs/assets/clouds/cloud_layer_implementation_plan.md`
+
+### 遗留问题
+- 天气 API 与动态云动画仍属于后续阶段，本轮未实现
