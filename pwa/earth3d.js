@@ -322,7 +322,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x667780,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffe6b6,
             emissiveIntensity: 0.72,
             nightBaseIntensity: 0.34,
           },
@@ -347,7 +347,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x96a6ae,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffe3b0,
             emissiveIntensity: 0.46,
             nightBaseIntensity: 0.20,
           },
@@ -372,7 +372,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0xc3d1da,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffddb0,
             emissiveIntensity: 0.10,
           },
           material: {
@@ -428,7 +428,7 @@
             shininess: 1,
           },
           atmosphere: {
-            color: '#88ccff',
+            color: '#B7E3FF',
             opacity: 0.15,
           },
           lighting: {
@@ -468,7 +468,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0xb4c2cb,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffdca3,
             emissiveIntensity: 0.16,
           },
           material: {
@@ -494,7 +494,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x050912,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffd08a,
             emissiveIntensity: 2.2,
           },
           material: {
@@ -502,7 +502,7 @@
             shininess: 0.10,
           },
           atmosphere: {
-            color: '#152A50',
+            color: '#254061',
             opacity: 0.18,
           },
           lighting: {
@@ -518,7 +518,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x02050B,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffbe63,
             emissiveIntensity: 2.5,
           },
           material: {
@@ -526,7 +526,7 @@
             shininess: 0.08,
           },
           atmosphere: {
-            color: '#0E1E3A',
+            color: '#112844',
             opacity: 0.16,
           },
           lighting: {
@@ -542,7 +542,7 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x040810,
-            emissiveColor: 0xffffff,
+            emissiveColor: 0xffc86e,
             emissiveIntensity: 2.0,
           },
           material: {
@@ -550,7 +550,7 @@
             shininess: 1,
           },
           atmosphere: {
-            color: '#0F2040',
+            color: '#1B3350',
             opacity: 0.17,
           },
           lighting: {
