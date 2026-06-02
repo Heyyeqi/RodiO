@@ -305,3 +305,17 @@
 
 ### 遗留问题
 - 天气 API 与动态云动画仍属于后续阶段，本轮未实现
+
+## 2026-06-01 白天海水 specular 快修验收失败并恢复
+
+### 做了什么
+- 尝试将 morning/noon/afternoon 三个主题的 shininess（1→16/24/18）和 specular（近黑→冷蓝灰）提升，以激活现有 oceanSpecularMap
+- 在浏览器验收后发现：海洋出现大面积浅青灰塑料膜感，日本/台湾/菲律宾附近出现明显黑色锯齿块状边界
+- 立即恢复三个主题参数至修改前原值（morning: shininess=1.05, specular=0x06090f；noon: shininess=1.12, specular=0x091018；afternoon: shininess=0.96, specular=0x05080d）
+
+### 改动文件
+- `pwa/earth3d.js`（已恢复，净改动为零）
+
+### 遗留问题
+- 现有 oceanSpecularMap 边界质量不足以支撑高 shininess/specular 组合，此路线封闭
+- 白天海水质感问题未解决，后续方向：ocean tint mesh 叠加层、更高质量海洋资源、或着色管线升级

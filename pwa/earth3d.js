@@ -1,5 +1,8 @@
 (function () {
   const TEXTURE_LON_OFFSET = 90
+  // A/B 测试开关：切换候选 dayTexture。修改此值后刷新浏览器即生效。
+  // 'current' | 'bmng_b' | 'bmng_c' | 'bmng_d2'
+  const DAY_TEXTURE_VARIANT = 'bmng_d2'
   const DEBUG_MARKERS_ENABLED = false
   const DEBUG_CITIES = [
     { name: 'Shanghai', lon: 121.4737, lat: 31.2304, color: 0xff3300 },
@@ -136,6 +139,11 @@
     let oceanSpecularTextureLoadState = 'idle'
     let oceanSpecularTextureWarned = false
     let oceanSpecularTexturePath = null
+    let oceanMaskTexture = null
+    let oceanMaskTextureLoadState = 'idle'
+    let oceanTintGeometry = null
+    let oceanTintMaterial = null
+    let oceanTintMesh = null
     let isReady = false
     let permanentlyUnavailable = false
 
@@ -178,81 +186,81 @@
         switch (themeKey) {
           case 'dawn':
             return {
-              top: '#04050d',
-              horizon: '#5f8fa9',
-              bottom: '#3c1e4a',
+              top: '#03040a',
+              horizon: '#567f95',
+              bottom: '#341932',
               opacity: 0.96,
             }
           case 'sunrise':
             return {
-              top: '#111830',
-              horizon: '#8ad0ff',
-              bottom: '#432048',
+              top: '#0f1629',
+              horizon: '#7ab6d8',
+              bottom: '#38203f',
               opacity: 0.95,
             }
           case 'earlyMorning':
             return {
-              top: '#182e5c',
-              horizon: '#d0e4f2',
-              bottom: '#4a72aa',
+              top: '#16284f',
+              horizon: '#c6d8e5',
+              bottom: '#456995',
               opacity: 0.94,
             }
           case 'morning':
             return {
-              top: '#123270',
-              horizon: '#c4dcf0',
-              bottom: '#3e76b8',
+              top: '#113062',
+              horizon: '#c0d5e7',
+              bottom: '#356ca5',
               opacity: 0.94,
             }
           case 'noon':
             return {
-              top: '#0c2c68',
-              horizon: '#cce2f4',
-              bottom: '#3272b0',
+              top: '#0b295d',
+              horizon: '#c7dcee',
+              bottom: '#2d689b',
               opacity: 0.93,
             }
           case 'afternoon':
             return {
-              top: '#12347a',
-              horizon: '#d0dcc8',
-              bottom: '#0f2e6e',
+              top: '#10306e',
+              horizon: '#c8d2c4',
+              bottom: '#0d285e',
               opacity: 0.93,
             }
           case 'goldenApproach':
             return {
-              top: '#0f2e6e',
-              horizon: '#dcc070',
-              bottom: '#eee8dc',
+              top: '#0e2a62',
+              horizon: '#d2bb78',
+              bottom: '#e6e1d6',
               opacity: 0.93,
             }
           case 'sunset':
             return {
-              top: '#0c1a38',
-              horizon: '#d0b070',
-              bottom: '#542238',
+              top: '#0a162f',
+              horizon: '#c7a665',
+              bottom: '#4a1d30',
               opacity: 0.95,
             }
           case 'evening':
             return {
-              top: '#060a18',
-              horizon: '#202c50',
-              bottom: '#0c142e',
+              top: '#040812',
+              horizon: '#182239',
+              bottom: '#09101e',
               opacity: 0.97,
             }
           case 'lateEvening':
             return {
-              top: '#04070f',
-              horizon: '#162840',
-              bottom: '#1c2a48',
+              top: '#03050b',
+              horizon: '#101a2b',
+              bottom: '#111a2e',
               opacity: 0.98,
             }
           case 'night':
           case 'deepNight':
           default:
             return {
-              top: '#020308',
-              horizon: '#0b1220',
-              bottom: '#060a14',
+              top: '#010205',
+              horizon: '#070d17',
+              bottom: '#03060c',
               opacity: 0.98,
             }
         }
@@ -266,6 +274,18 @@
         skyMaterial.uniforms.uColorBottom.value.set(preset.bottom)
         skyMaterial.uniforms.uOpacity.value = preset.opacity
         skyMaterial.uniforms.uEnabled.value = skyMesh?.visible ? 1 : 0
+      }
+
+      // 白天 tint 仍置 0（A/B 测试阶段，不干扰 dayTexture 判断）。
+      // 夜晚主题补充极弱冷深蓝，给海洋添加暗部层次，不影响城市灯光。
+      const OCEAN_TINT_BY_THEME = {
+        morning:    { color: 0x164556, strength: 0 },
+        noon:       { color: 0x1a4f5f, strength: 0 },
+        afternoon:  { color: 0x123847, strength: 0 },
+        evening:    { color: 0x071827, strength: 0.08 },
+        lateEvening:{ color: 0x061522, strength: 0.09 },
+        deepNight:  { color: 0x04101A, strength: 0.10 },
+        night:      { color: 0x061624, strength: 0.09 },
       }
 
       const CLOUD_OPACITY_BY_THEME = {
@@ -528,6 +548,16 @@
         return smallViewport || coarsePointer
       }
 
+      function getDayTexturePaths() {
+        const candidates = {
+          current: ['/assets/earth_day_8k.jpg',                           '/assets/bluemarble.jpg'],
+          bmng_b:  ['/assets/earth/candidates/bmng_b_8192x4096.jpg',      '/assets/bluemarble.jpg'],
+          bmng_c:  ['/assets/earth/candidates/bmng_c_8192x4096.jpg',      '/assets/bluemarble.jpg'],
+          bmng_d2: ['/assets/earth/candidates/bmng_d2_8192x4096.jpg',     '/assets/bluemarble.jpg'],
+        }
+        return candidates[DAY_TEXTURE_VARIANT] || candidates.current
+      }
+
       function getOceanSpecularTexturePaths() {
         const highResPath = '/assets/earth/masks/ocean_specular_4096x2048.png'
         const lowResPath = '/assets/earth/masks/ocean_specular_2048x1024.png'
@@ -594,6 +624,56 @@
         return null
       }
 
+      async function loadOceanMaskTexture() {
+        if (oceanMaskTextureLoadState !== 'idle') return oceanMaskTexture
+        oceanMaskTextureLoadState = 'loading'
+
+        const path = '/assets/earth/masks/ocean_mask_4096x2048_soft.png'
+        const texture = await loadTextureIfExists(path)
+
+        if (isDestroyed) {
+          if (texture) texture.dispose()
+          return null
+        }
+
+        if (texture) {
+          oceanMaskTexture = texture
+          oceanMaskTextureLoadState = 'ready'
+
+          if (!oceanTintGeometry) {
+            oceanTintGeometry = new THREE.SphereGeometry(2.002, 64, 64)
+          }
+          if (!oceanTintMaterial) {
+            oceanTintMaterial = new THREE.MeshBasicMaterial({
+              color: 0x164556,
+              alphaMap: oceanMaskTexture,
+              transparent: true,
+              opacity: 0,
+              depthWrite: false,
+              depthTest: true,
+            })
+          }
+          if (!oceanTintMesh) {
+            oceanTintMesh = new THREE.Mesh(oceanTintGeometry, oceanTintMaterial)
+            oceanTintMesh.renderOrder = 1
+            oceanTintMesh.frustumCulled = false
+            oceanTintMesh.visible = false
+            earthGroup.add(oceanTintMesh)
+          }
+
+          const themeKey = pendingTheme || currentTheme || 'night'
+          applyOceanTint(themeKey)
+          if (!permanentlyUnavailable && isReady) {
+            renderer.render(scene, camera)
+          }
+          return oceanMaskTexture
+        }
+
+        oceanMaskTextureLoadState = 'missing'
+        console.warn('[earth3d] ocean mask unavailable; ocean tint skipped')
+        return null
+      }
+
       earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x1a3a5c,
         shininess: 1,
@@ -602,9 +682,9 @@
       earthGeometry = new THREE.SphereGeometry(2, 64, 64)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
       atmosphereMaterial = new THREE.MeshPhongMaterial({
-        color: new THREE.Color('#88ccff'),
+        color: new THREE.Color('#7ab8e6'),
         transparent: true,
-        opacity: 0.13,
+        opacity: 0.12,
         depthWrite: false,
         side: THREE.BackSide,
       })
@@ -724,13 +804,13 @@
       atmosphere.rotation.order = 'YXZ'
 
       stars = new THREE.Points(
-        buildStarField(1200, 60),
+        buildStarField(900, 60),
         new THREE.PointsMaterial({
           color: 0xffffff,
-          size: 0.05,
+          size: 0.038,
           sizeAttenuation: true,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.78,
         })
       )
       scene.add(stars)
@@ -781,13 +861,13 @@
             shininess: 0.12,
           },
           atmosphere: {
-            color: '#5f8fa9',
-            opacity: 0.082,
+            color: '#567f95',
+            opacity: 0.078,
           },
           lighting: {
             ambient: 0.032,
             sun: 0.18,
-            stars: 0.55,
+            stars: 0.42,
             cityLightsOpacity: 0.60,
           },
         },
@@ -806,13 +886,13 @@
             shininess: 0.16,
           },
           atmosphere: {
-            color: '#8ad0ff',
-            opacity: 0.115,
+            color: '#7ab6d8',
+            opacity: 0.106,
           },
           lighting: {
             ambient: 0.055,
             sun: 0.48,
-            stars: 0.24,
+            stars: 0.2,
             cityLightsOpacity: 0.26,
           },
         },
@@ -830,13 +910,13 @@
             shininess: 0.55,
           },
           atmosphere: {
-            color: '#8ecfff',
-            opacity: 0.12,
+            color: '#86c4e6',
+            opacity: 0.11,
           },
           lighting: {
             ambient: 0.052,
             sun: 0.72,
-            stars: 0.12,
+            stars: 0.08,
             cityLightsOpacity: 0.10,
           },
         },
@@ -854,13 +934,13 @@
             shininess: 1.05,
           },
           atmosphere: {
-            color: '#88ccff',
-            opacity: 0.15,
+            color: '#83c3e7',
+            opacity: 0.142,
           },
           lighting: {
             ambient: 0.06,
             sun: 1.05,
-            stars: 0.08,
+            stars: 0.04,
             cityLightsOpacity: 0,
           },
         },
@@ -878,13 +958,13 @@
             shininess: 1.12,
           },
           atmosphere: {
-            color: '#B7E3FF',
-            opacity: 0.15,
+            color: '#b0d9ed',
+            opacity: 0.14,
           },
           lighting: {
             ambient: 0.09,
             sun: 1.25,
-            stars: 0.02,
+            stars: 0.01,
             cityLightsOpacity: 0,
           },
         },
@@ -902,13 +982,13 @@
             shininess: 0.96,
           },
           atmosphere: {
-            color: '#84bdf0',
-            opacity: 0.14,
+            color: '#7eb6e1',
+            opacity: 0.13,
           },
           lighting: {
             ambient: 0.048,
             sun: 0.96,
-            stars: 0.01,
+            stars: 0.008,
             cityLightsOpacity: 0,
           },
         },
@@ -926,8 +1006,8 @@
             shininess: 0.68,
           },
           atmosphere: {
-            color: '#c0a878',
-            opacity: 0.1,
+            color: '#b7a169',
+            opacity: 0.095,
           },
           lighting: {
             ambient: 0.052,
@@ -950,13 +1030,13 @@
             shininess: 0.18,
           },
           atmosphere: {
-            color: '#6a9fd1',
-            opacity: 0.075,
+            color: '#628fb5',
+            opacity: 0.072,
           },
           lighting: {
             ambient: 0.046,
             sun: 0.40,
-            stars: 0.34,
+            stars: 0.26,
             cityLightsOpacity: 0.18,
           },
         },
@@ -976,13 +1056,13 @@
             shininess: 0.10,
           },
           atmosphere: {
-            color: '#203750',
-            opacity: 0.18,
+            color: '#162234',
+            opacity: 0.154,
           },
           lighting: {
             ambient: 0.06,
             sun: 0.04,
-            stars: 0.78,
+            stars: 0.68,
             cityLightsOpacity: 0.58,
           },
         },
@@ -1000,13 +1080,13 @@
             shininess: 0.09,
           },
           atmosphere: {
-            color: '#162840',
-            opacity: 0.17,
+            color: '#101826',
+            opacity: 0.142,
           },
           lighting: {
             ambient: 0.038,
             sun: 0.015,
-            stars: 0.72,
+            stars: 0.62,
             cityLightsOpacity: 0.58,
           },
         },
@@ -1024,13 +1104,13 @@
             shininess: 0.08,
           },
           atmosphere: {
-            color: '#0d2136',
-            opacity: 0.16,
+            color: '#08131f',
+            opacity: 0.13,
           },
           lighting: {
             ambient: 0.025,
             sun: 0.008,
-            stars: 0.94,
+            stars: 0.82,
             cityLightsOpacity: 0.58,
           },
         },
@@ -1048,13 +1128,13 @@
             shininess: 1,
           },
           atmosphere: {
-            color: '#15283f',
-            opacity: 0.17,
+            color: '#0c1521',
+            opacity: 0.138,
           },
           lighting: {
             ambient: 0.05,
             sun: 0.03,
-            stars: 0.9,
+            stars: 0.78,
             cityLightsOpacity: 0.58,
           },
         },
@@ -1187,6 +1267,19 @@
         return 'unknown'
       }
 
+      function applyOceanTint(themeKey) {
+        if (!oceanTintMesh || !oceanTintMaterial) return
+        const config = OCEAN_TINT_BY_THEME[themeKey]
+        if (config) {
+          oceanTintMaterial.color.set(config.color)
+          oceanTintMaterial.opacity = config.strength
+          oceanTintMesh.visible = true
+        } else {
+          oceanTintMesh.visible = false
+        }
+        oceanTintMaterial.needsUpdate = true
+      }
+
       function shouldUseOceanSpecularMap(themeKey) {
         return ['morning', 'noon', 'afternoon', 'goldenApproach'].includes(themeKey)
       }
@@ -1270,6 +1363,7 @@
         }
         updateSkyTheme(resolvedTheme)
         refreshCloudAppearance(resolvedTheme)
+        applyOceanTint(resolvedTheme)
 
         currentTheme = resolvedTheme
         pendingTheme = resolvedTheme
@@ -1279,9 +1373,10 @@
         return true
       }
 
+      const [_dayPrimary, _dayFallback] = getDayTexturePaths()
       loadTextureWithFallback(
-        '/assets/earth_day_8k.jpg',
-        '/assets/bluemarble.jpg',
+        _dayPrimary,
+        _dayFallback,
         (texture, usedPath) => {
           dayTexture = texture
           console.log('[earth3d] day texture loaded:', usedPath)
@@ -1301,6 +1396,7 @@
       )
 
       loadOceanSpecularTexture()
+      loadOceanMaskTexture()
       loadCloudAlphaTexture()
 
       loadTextureWithFallback(
@@ -1726,6 +1822,10 @@
           if (dayTexture) dayTexture.dispose()
           if (nightTexture) nightTexture.dispose()
           if (oceanSpecularTexture) oceanSpecularTexture.dispose()
+          if (oceanTintMesh?.parent) oceanTintMesh.parent.remove(oceanTintMesh)
+          if (oceanTintGeometry) oceanTintGeometry.dispose()
+          if (oceanTintMaterial) oceanTintMaterial.dispose()
+          if (oceanMaskTexture) oceanMaskTexture.dispose()
           renderer.dispose()
           mountEl.innerHTML = ''
           delete window.earth3d
