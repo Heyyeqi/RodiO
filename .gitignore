@@ -3,8 +3,12 @@ cache/
 db/
 node_modules/
 .DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
 pwa/assets/source/
 pwa/assets/earth_city_lights_alpha_preview.png
 pwa/assets/earth_city_lights_alpha_preview_v2.png
+d5b_processor_v3/d5b_output/
 
 .venv/
