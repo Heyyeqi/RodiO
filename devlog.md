@@ -319,3 +319,134 @@
 ### 遗留问题
 - 现有 oceanSpecularMap 边界质量不足以支撑高 shininess/specular 组合，此路线封闭
 - 白天海水质感问题未解决，后续方向：ocean tint mesh 叠加层、更高质量海洋资源、或着色管线升级
+
+## 2026-06-02/03 Bathy A-3 系列：D4a 收尾 + D5a→D5x 候选生成
+
+### 做了什么
+
+**A-3 / D4a 验收（收尾）：**
+- D4a 保守近海修复上球验收，核心区域 B_std 提升仅 0–2%，路线关闭
+
+**Bathy-0 审计 + Bathy-1 ETOPO1 验证：**
+- ETOPO1_Ice_g_gdal.grd 下载验证通过（890MB，21601×10801，north_first，无需重投影）
+- 写入 devlog：docs/devlog_bathy_1_etopo_validation.md
+
+**Bathy-2 / D5a：**
+- 生成首张 bathymetry-tinted 候选，方向验证有效
+- 上球审计：bathymetry 路线有效，但存在青绿滤镜感、局部 map 感
+
+**Bathy-3 / D5b：**
+- 权重收敛版（0.14/0.11/0.08/0.03/0.00），blur sigma=12+8
+- 上球测试：比 D5a 更克制，但与 D5a 差异过弱，视觉收益不足
+
+**Bathy-3 / D5c / Ocean Palette v6.1：**
+- 权重回弹（0.16/0.13/0.09），热带锚点 #8ED8C8（v5 anchor），EA 专用 palette
+- 上球测试：仍与 D5b 差异不足，视觉无决定性收益
+
+**Bathy-3 / D5x Diagnostic Strong：**
+- 诊断版（0.20/0.16/0.12/0.04/0.00），验证贴图层上限
+- Diff 指标：D5x vs D5b pct_gt3=1.19%（低于预期 2.4%，因 sat cap 钳制）
+- 关键区域有效：波斯湾 +10/+8/+2，渤海 +8/+9/+7
+- 未注册到 earth3d.js，等待浏览器视觉决策
+
+**earth3d.js 浏览器测试入口：**
+- 增加 localhost-only ?dayTexture= URL 参数切换机制
+- 注册 d5a_bathy / d5b_bathy / d5c_palette_v6_1_bathy
+- D5x 候选文件在 candidates/ 但未注册
+
+### 改动文件
+- pwa/earth3d.js（URL 参数切换 + 候选注册）
+- pwa/assets/earth/candidates/（d5a/d5b/d5c/d5x 候选贴图）
+- pwa/assets/source/bmng_staging/（D5a/D5b/D5c/D5x 源文件）
+- pwa/assets/source/bathy/（ETOPO1 数据）
+- docs/devlog_bathy_1_etopo_validation.md
+- docs/devlog_bathy_3_d5b_candidate.md
+- docs/devlog_bathy_3_d5c_palette_v6_1_candidate.md
+- docs/devlog_bathy_3_d5x_diagnostic_strong_candidate.md
+- scripts/（validate_etopo1_bathy / generate_d5a/b/c/x 脚本）
+
+### 遗留问题
+- D5x 需要浏览器上球诊断验收（注册后用 ?dayTexture=d5x_diagnostic_strong_bathy）
+- 若 D5x 仍无明显视觉效果，考虑转 shader 路线
+- 南极过曝：非贴图问题，在 THEME_VISUAL_CONFIG noon/afternoon 光照层处理
+- 大堡礁/马尔代夫精细化：需 GEBCO 15"，列为 Bathy-4
+- nightBaseIntensity 死代码清理 pending
+
+---
+
+## 2026-06-03 Bathy-3/A-3 D6 topo-blend 候选生成
+
+### 做了什么
+- 新建 `scripts/generate_d6_topo_blend.py`：以 D5a 为基础，用 bmng_topo_bathy_oct 8k 的 ocean luminance 作为深度 proxy，直接 blend 到 D5a
+- 策略：topo 亮度高（浅海）→ 权重高（最高 0.30）；深海（>1000m）ETOPO1 硬保护权重=0
+- 目标色即 topo 图像自身 RGB（NASA 预调色，不重设调色板）
+- 22/22 zone 全部通过；深海 Δ≈0；陆地/雪冰精确保留；anti-荧光 reverted 仅 105 px
+- 注册 `d6_topo_blend` 到 earth3d.js candidates（浏览器 URL 参数可测）
+- 关键观测：topo ocean lum p95=0.251，意味着浅海层次效果集中在最浅 5% 像素（黄海、波斯湾、北海），总体权重均值 0.006，效果保守
+
+### 改动文件
+- `scripts/generate_d6_topo_blend.py`（新增）
+- `pwa/earth3d.js`（candidates 注册 d6_topo_blend，注释更新）
+- `pwa/assets/source/bmng_staging/bmng_processed_8192x4096_natural_d6_topo_blend.jpg`（9MB，新增）
+- `pwa/assets/earth/candidates/d6_topo_blend_8192x4096.jpg`（新增，供浏览器测试）
+- `pwa/assets/source/bathy/d6_topo_blend_metrics.json`（22 zone 对比）
+- `pwa/assets/source/bathy/d6_topo_blend_preview_global.jpg`
+- `pwa/assets/source/bathy/d6_topo_blend_preview_regions.jpg`（11 crops）
+
+### 遗留问题
+- 浏览器上球验收：http://localhost:8080/?dayTexture=d6_topo_blend
+- 若视觉效果不足（权重过小），下一轮候选方向：
+  (A) 增强权重曲线（bp_w 上调 2×），保守扩大浅海影响半径
+  (B) 使用 21k 原始 topo 提升浅海细节精度（牺牲内存/速度）
+  (C) 转 shader 路线（per-fragment 深度驱动）
+
+---
+
+## 2026-06-03 D5b_design_v3 系列完整开发（v3 → v3.2.1 formal 8K）
+
+### 做了什么
+
+#### 工具链搭建（d5b_processor_v3/）
+- 新建 8 个 Python 模块：config.py / masks.py / adjustments.py / enhancement.py / metrics.py / preview.py / make_small.py / main.py
+- 架构：41 个 OCEAN_REGIONS（按 priority 排序）+ 25 个 ISLAND_HALOS（含 deep_gate v3 强化）+ 全局增强（polar compress + land sharpen）
+- 支持 per-region feather_px、out_dir 参数化输出路由、可扩展 metrics regions
+
+#### v3 基础版 dry-run
+- 发现 2 个 bug：`compress_polar_highlights` 把低通道也提升到 threshold（Antarctica max=56）；JSON 序列化 numpy float32 报错
+
+#### v3.1 修复版（formal 8K 已生成）
+- 修复 `enhancement.py` polar compress bug（仅压缩超 threshold 通道）
+- 降低 southern_ocean/ross_weddell offset；polar_highlight_threshold 238→240/compress 0.95
+- 收紧 10 个 island halo（radius/strength 各降 15-25%）
+- 新增 4 个 Patch（D5b_v3_patch.md）：输出目录路由、halo ocean mask 限制、有效区域统计、heatmap 防除零
+- Antarctica max_abs_diff: 56 → 23
+- Formal 8K: `d5b_output/formal_8k/bmng_processed_8192x4096_natural_d5b_design_v3_1.jpg`
+- Candidate: `pwa/assets/earth/candidates/d5b_design_v3_1_8192x4096.jpg`，URL: `?dayTexture=d5b_design_v3_1`
+
+#### v3.2 Coastline feather 扩展版（dry-run 只）
+- main.py：`feather_px=cfg.get("feather_px", 20)` per-region 支持
+- polar_highlight_threshold 240 → 238
+- 10 个区域新增 feather_px（最大 40）
+- 问题：southern_ocean=30 和 bahamas=40 导致 blue broadening（SO max=28, Bahamas max=21）
+
+#### v3.2.1 Narrow Correction 版（formal 8K 已生成，当前正式候选）
+- 仅回调 3 参数：southern_ocean.feather_px 30→24，ross_weddell.feather_px 40→30，bahamas_shelf.feather_px 40→30
+- 保留 v3.2 的 8 个有效 feather 和 polar_highlight_threshold=238
+- 8K metrics：Antarctica=25，Southern Ocean=21（< v3.1 的 23），Bahamas=17（= v3.1）
+- Formal 8K: `d5b_output/formal_8k_v3_2_1/bmng_processed_8192x4096_natural_d5b_design_v3_2_1.jpg`
+- Candidate: `pwa/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg`，URL: `?dayTexture=d5b_design_v3_2_1`
+- Codex 审核：Category A，pass to browser globe test
+
+### 改动文件
+- `d5b_processor_v3/`（全新目录：8 个模块 + 5 个包装脚本 + d5b_output/）
+- `pwa/earth3d.js`（新增 candidates：d5b_design_v3_1, d5b_design_v3_2_1）
+- `pwa/assets/earth/candidates/d5b_design_v3_1_8192x4096.jpg`（8.0MB）
+- `pwa/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg`（8.0MB）
+
+### 遗留问题
+- 浏览器上球视觉验收：
+  - 主测：http://localhost:8080/?dayTexture=d5b_design_v3_2_1
+  - 对比：http://localhost:8080/?dayTexture=d5b_design_v3_1
+- 验收通过后：修改 DAY_TEXTURE_VARIANT = 'd5b_design_v3_2_1' 并 commit
+- D6 topo-blend 也待上球验收（独立路线）：?dayTexture=d6_topo_blend
+- 南极过曝（光照层问题）、大堡礁/马尔代夫精细化（需 GEBCO）仍在积压

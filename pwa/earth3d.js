@@ -1,7 +1,8 @@
 (function () {
   const TEXTURE_LON_OFFSET = 90
   // A/B 测试开关：切换候选 dayTexture。修改此值后刷新浏览器即生效。
-  // 'current' | 'bmng_b' | 'bmng_c' | 'bmng_d2'
+  // 'current' | 'bmng_b' | 'bmng_c' | 'bmng_d2' | 'd5a_bathy' | 'd5b_bathy' | 'd5c_palette_v6_1_bathy' | 'd6_topo_blend' | 'd5b_design_v3_1' | 'd5b_design_v3_2_1'
+  // localhost 测试：?dayTexture=d5b_bathy 可覆盖，不影响生产环境。
   const DAY_TEXTURE_VARIANT = 'bmng_d2'
   const DEBUG_MARKERS_ENABLED = false
   const DEBUG_CITIES = [
@@ -550,12 +551,33 @@
 
       function getDayTexturePaths() {
         const candidates = {
-          current: ['/assets/earth_day_8k.jpg',                           '/assets/bluemarble.jpg'],
-          bmng_b:  ['/assets/earth/candidates/bmng_b_8192x4096.jpg',      '/assets/bluemarble.jpg'],
-          bmng_c:  ['/assets/earth/candidates/bmng_c_8192x4096.jpg',      '/assets/bluemarble.jpg'],
-          bmng_d2: ['/assets/earth/candidates/bmng_d2_8192x4096.jpg',     '/assets/bluemarble.jpg'],
+          current:   ['/assets/earth_day_8k.jpg',                              '/assets/bluemarble.jpg'],
+          bmng_b:    ['/assets/earth/candidates/bmng_b_8192x4096.jpg',         '/assets/bluemarble.jpg'],
+          bmng_c:    ['/assets/earth/candidates/bmng_c_8192x4096.jpg',         '/assets/bluemarble.jpg'],
+          bmng_d2:   ['/assets/earth/candidates/bmng_d2_8192x4096.jpg',        '/assets/bluemarble.jpg'],
+          d5a_bathy: ['/assets/earth/candidates/d5a_bathy_8192x4096.jpg',      '/assets/bluemarble.jpg'],
+          d5b_bathy:              ['/assets/earth/candidates/d5b_bathy_8192x4096.jpg',              '/assets/bluemarble.jpg'],
+          d5c_palette_v6_1_bathy: ['/assets/earth/candidates/d5c_palette_v6_1_bathy_8192x4096.jpg', '/assets/bluemarble.jpg'],
+          d6_topo_blend:          ['/assets/earth/candidates/d6_topo_blend_8192x4096.jpg',          '/assets/bluemarble.jpg'],
+          d5b_design_v3_1:        ['/assets/earth/candidates/d5b_design_v3_1_8192x4096.jpg',        '/assets/bluemarble.jpg'],
+          d5b_design_v3_2_1:      ['/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg',      '/assets/bluemarble.jpg'],
         }
-        return candidates[DAY_TEXTURE_VARIANT] || candidates.current
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+        const urlParam = isLocalhost
+          ? new URLSearchParams(location.search).get('dayTexture')
+          : null
+        let variant = DAY_TEXTURE_VARIANT
+        if (urlParam) {
+          if (candidates[urlParam]) {
+            variant = urlParam
+          } else {
+            console.warn('[RodiO] unknown dayTexture variant from URL, fallback to ' + DAY_TEXTURE_VARIANT + ':', urlParam)
+          }
+        }
+        const paths = candidates[variant] || candidates.current
+        console.log('[RodiO] dayTexture variant:', variant)
+        console.log('[RodiO] dayTexture path:', paths[0])
+        return paths
       }
 
       function getOceanSpecularTexturePaths() {
