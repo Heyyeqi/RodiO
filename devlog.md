@@ -450,3 +450,24 @@
 - 验收通过后：修改 DAY_TEXTURE_VARIANT = 'd5b_design_v3_2_1' 并 commit
 - D6 topo-blend 也待上球验收（独立路线）：?dayTexture=d6_topo_blend
 - 南极过曝（光照层问题）、大堡礁/马尔代夫精细化（需 GEBCO）仍在积压
+
+---
+
+## 2026-06-07 E1-R1 当前贴图指标测量定稿与归档
+
+### 做了什么
+- 对 d5b_design_v3_2_1_8192x4096.jpg 执行 51 个采样点量化测量（A–J 十类区域）
+- 完成 E1-R1A Photorealism/Anti-Cartoon Audit 数据整合
+- 完成六大问题域风险判定
+- 补充 RW 对 4 项暂定阈值的正式确认意见（E 类沙漠分区、F 类 std_L 豁免范围、H 类 L* 下限放宽、A 类 L* 悬置）
+- 定稿报告并归档三文件
+
+### 改动文件
+- `docs/e1_r1_current_metrics_audit.md`（新建，E1-R1 量化审计报告，含 RW 阈值确认意见）
+- `docs/metrics/e1_r1_current_metrics.json`（新建，51 点结构化指标）
+- `docs/metrics/e1_r1_current_metrics.csv`（新建，CSV 格式）
+
+### 遗留问题
+- E1-R2 Noon Runtime Exposure Audit 尚未执行（须浏览器 noon 截图归因沙漠/极地过曝）
+- D5z 前置条件 4（E1-R2 归因）尚未满足，仍禁止进入候选生成
+- Sentinel-2 A1/A2/A4 样本、Google Maps REF-01/02/03 尚未采集
