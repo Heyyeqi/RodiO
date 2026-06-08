@@ -179,7 +179,64 @@ D5z 候选生成必须满足以下所有前置条件：
 
 ---
 
-## 8. 与父文档的关系
+## 8. D5z 候选后的 Regional Visual Preview 要求
+
+任何 D5z 候选生成后，必须同步生成区域预览，不得只输出全局贴图和指标。
+**没有 Regional Visual Preview，不得进入 E1-R5，也不得进入 production decision。**
+
+### 8.1 必须输出
+
+**① 平面区域对比图**
+
+三列并排，同尺寸、同裁剪范围：
+- bmng_d2
+- d5b_design_v3_2_1
+- d5z_candidate
+
+**② 差异图**
+
+- abs diff：d5z_candidate vs d5b_design_v3_2_1
+- saturation diff
+- Lab L* diff
+- RGB channel diff summary
+
+**③ 重点区域放大图**
+
+```
+必须改善区：长滩岛、马尔代夫、大堡礁、巴哈马、红海、帕劳、夏威夷
+必须保护区：波斯湾、黄海、东海、日本海、亚马逊河口
+不得误伤区：太平洋深海、南极、格陵兰、撒哈拉、澳洲内陆
+```
+
+**④ 固定视角上球截图**
+
+- 固定 noon 模式（`window.earth3d.setTimeOfDay("noon")`）
+- 固定相机视角
+- 同一区域分别截图 d5b_design_v3_2_1 与 d5z_candidate
+- 每张截图写明 URL 参数、定位坐标、截图路径
+
+### 8.2 通过条件
+
+| 类别 | 条件 |
+|---|---|
+| A 类目标区 | 浅海层次改善，色相向 H°=195–210° 方向修正 |
+| B 类浑浊区 | 没有热带化（S% 不超出保护阈值） |
+| D 类深海区 | 没有发灰、发脏或新增纹理（std_L 不超出 BMNG 基线水平） |
+| F 类极地区 | 没有更白（L* 不升高，p95_L 不升高） |
+| E 类沙漠区 | 没有更亮（L* 不升高，p95_L 不升高） |
+| 所有陆地区 | 无可见误伤（ΔS ≤ 2%，ΔL* ≤ 2） |
+| RW 主观判断 | 配色方向可接受，不更动画、不更制图化 |
+
+### 8.3 输出路径
+
+```
+docs/d5z_r4a_regional_preview_v[N].md      ← 预览报告
+pwa/assets/source/bathy/preview/d5z_v[N]/  ← 所有预览图文件
+```
+
+---
+
+## 9. 与父文档的关系
 
 ```
 e1_day_master_reference_metrics_baseline.md（父文档）

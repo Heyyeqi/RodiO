@@ -673,7 +673,7 @@ Step 1：从 d5b_design_v3_2_1.jpg 测量 F 类贴图 L*（不在浏览器）
 
 ---
 
-## 8. E1 后续拆分（7 个子轮次）
+## 8. E1 后续拆分（8 个子轮次）
 
 ### E1-R0：Reference & Metrics Baseline（本文件）
 
@@ -734,6 +734,57 @@ Step 1：从 d5b_design_v3_2_1.jpg 测量 F 类贴图 L*（不在浏览器）
 
 **目标：** 对 E1-R3 候选重新测量 50 点，与 E1-R1 基线对比。
 **完成标志：** 所有问题域 risk_level 降低或不变；无新 High Risk。
+
+---
+
+### E1-R4A：Regional Visual Preview（区域效果图预览）
+
+**目标：**
+在任何 E1-R3 / D5z / Day Master 候选生成后，必须先生成区域视觉预览图，让 RW 判断配色、真实感、局部改动和误伤情况。**没有 Regional Visual Preview，不得进入 E1-R5，也不得进入 production decision。**
+
+**允许：**
+- 读取 bmng_d2、d5b_design_v3_2_1、新候选贴图；
+- 生成区域裁图；
+- 生成 before / after / diff 对比图；
+- 生成 saturation diff、Lab L* diff、RGB diff summary；
+- 输出预览目录和 Markdown 报告。
+
+**禁止：**
+- 在 E1-R4A 中继续修改贴图；
+- 在 E1-R4A 中调整生成参数；
+- 在 E1-R4A 中修改 earth3d.js；
+- 在 E1-R4A 中直接 production 化。
+
+**必须输出：**
+1. 平面区域对比图（bmng_d2 / d5b_design_v3_2_1 / new_candidate，三列并排，同裁剪范围）；
+2. 差异图（abs diff / saturation diff / Lab L* diff / RGB channel diff summary）；
+3. 局部放大图（必看区域见下）；
+4. 固定视角上球截图（noon 模式，固定相机，写明 URL 参数 + 定位坐标 + 截图路径）；
+5. 区域 pass / fail 判断清单；
+6. RW 人工确认项列表。
+
+**必看区域分三类：**
+
+A. 必须改善区：
+长滩岛 / Boracay、马尔代夫、巴哈马、大堡礁、帕劳、夏威夷、红海。
+
+B. 必须保护区（不得热带化/不得新增伪影）：
+波斯湾、黄海、长江口、孟加拉湾、亚马逊河口、太平洋深海、印度洋深海。
+
+C. 不得误伤区：
+南极、格陵兰、撒哈拉、阿拉伯半岛、澳洲内陆、亚马逊雨林、青藏高原。
+
+**通过标准：**
+- 目标区域确有改善；
+- 非目标区域无可见变化；
+- 深海不发灰；
+- 浑浊水域不热带化；
+- 极地不更白；
+- 沙漠不更亮；
+- 陆地无误伤；
+- 颜色方向不变得更动画、更制图化。
+
+**产物：** `docs/e1_r4a_regional_preview_[候选版本号].md`，含所有预览图路径与 pass/fail 判断。
 
 ---
 
