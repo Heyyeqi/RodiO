@@ -1,0 +1,11 @@
+region_id,region_name,category,lon,lat,texture_mean_L,texture_p95_L,texture_S_pct,screen_mean_L,screen_p5_L,screen_p50_L,screen_p95_L,screen_S_pct,screen_V_pct,screen_H,delta_L,visual_judgment,attribution,needs_phase7,sample_valid
+E1,Sahara_Libya,desert,15.0,23.0,71.5,80.8,32.5,71.4,66.3,71.5,76.1,31,73,36,-0.1,正常/偏暗,贴图层基线,否,true
+E2,Arabian_Desert,desert,45.0,24.0,70.7,75.6,27.7,71.1,65.8,71.2,76.7,29,73,36,+0.4,正常/偏暗,贴图层基线,否,true
+E3,Australia_Simpson,desert,137.0,-24.5,53.2,68.8,43.9,48.1,42.0,47.8,57.9,35,56,26,-5.1,正常/偏暗,贴图层基线,否,true
+F1,Antarctica_Inland,polar,0.0,-80.0,89.6,91.3,1.6,81.7,62.1,82.8,93.6,3,86,207,-7.9,正常,贴图层基线,否,true
+F2,Greenland_Inland,polar,-40.0,72.0,91.9,92.1,1.4,90.5,83.7,90.9,93.5,2,90,48,-1.4,正常,贴图层基线,否,true
+F3,Ross_Ice_Shelf,polar,-175.0,-80.0,81.8,92.4,9.4,47.3,38.2,46.8,52.0,30,52,207,-34.5,采样无效,采样中心偏移至Southern Ocean，非冰盖,不适用,false
+D1,Pacific_Deep,deep,165.0,15.0,21.4,39.1,57.3,31.3,22.5,30.8,46.2,36,37,212,+9.9,偏亮,runtime 层为主,是,true
+D2,Indian_Deep,deep,75.0,-10.0,20.8,36.4,57.6,43.1,35.4,43.0,52.0,39,50,207,+22.3,偏亮（atm提亮）,runtime 层（atmosphere）,是,true
+A4,Bahamas,tropical,-77.0,24.2,44.9,60.0,43.9,40.9,29.8,40.2,58.0,20,40,182,-4.0,正常,贴图层色相/饱和问题,否,true
+A1,Boracay,tropical,121.93,11.97,43.5,52.7,46.3,45.0,36.9,44.8,54.3,36,51,207,+1.5,正常,贴图层色相/饱和问题,否,true

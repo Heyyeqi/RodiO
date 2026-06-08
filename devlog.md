@@ -471,3 +471,47 @@
 - E1-R2 Noon Runtime Exposure Audit 尚未执行（须浏览器 noon 截图归因沙漠/极地过曝）
 - D5z 前置条件 4（E1-R2 归因）尚未满足，仍禁止进入候选生成
 - Sentinel-2 A1/A2/A4 样本、Google Maps REF-01/02/03 尚未采集
+
+---
+
+## 2026-06-08 E1-R4A Regional Visual Preview 规则补充
+
+### 做了什么
+- 在 docs/e1_day_master_reference_metrics_baseline.md 的 E1 后续拆分中新增 E1-R4A 阶段（8 个子轮次，原 7 个）
+- E1-R4A 明确：任何候选生成后必须生成区域视觉预览，无 Regional Visual Preview 不得进入 E1-R5 或 production decision
+- 在 docs/d5z_nearshore_spec.md 新增 Section 8（D5z 候选后的 Regional Visual Preview 要求），原 Section 8 重编为 Section 9
+- 在 docs/e1_r1_current_metrics_audit.md Section 3 补充"父文档定义 50 个采样点"说明语句
+
+### 改动文件
+- `docs/e1_day_master_reference_metrics_baseline.md`（新增 E1-R4A 节，更新子轮次计数）
+- `docs/d5z_nearshore_spec.md`（新增 Section 8 D5z 候选预览要求）
+- `docs/e1_r1_current_metrics_audit.md`（补充 Section 3 采样点说明）
+
+### 遗留问题
+- E1-R2 Noon Runtime Exposure Audit 尚未执行
+- D5z 前置条件 4（E1-R2 归因）尚未满足，仍禁止进入候选生成
+- Sentinel-2 A1/A2/A4 样本、Google Maps REF-01/02/03 尚未采集
+
+---
+
+## 2026-06-08 E1-R2 Noon Runtime Exposure Audit
+
+### 做了什么
+- 在 Chrome 独立调试实例（--remote-debugging-port=9222）中，对 d5b_design_v3_2_1 在 noon 模式下进行 10 点浏览器截图测量
+- 使用 Chrome DevTools Protocol（Page.captureScreenshot + Runtime.evaluate）采集 2400×1488 截图，提取 canvas 中心 100×100px 的 CIE Lab L* / HSV 数据
+- 初次截图发现前 4 点在 TUNE IN 覆盖层（night 模式）下采集，确认 noon 模式（ambient=0.09, sun=1.25）后重新采集
+- 对全部 10 点进行归因分析：沙漠 ΔL≈0（贴图层主因），深海 ΔL=+10~+22（runtime atmosphere 主因），热带/极地 ΔL≈0（贴图层主因）
+- Ross_Ice_Shelf 采样中心偏至 Southern Ocean，标记 sample_valid=false
+- 写入 E1-R2 审计报告和结构化数据文件
+
+### 改动文件
+- `docs/e1_r2_noon_exposure_audit.md`（新建，E1-R2 完整审计报告，待 RW 确认）
+- `docs/metrics/e1_r2_noon_runtime_measurements.json`（新建，10 点测量数据）
+- `docs/metrics/e1_r2_noon_runtime_measurements.csv`（新建，CSV 格式）
+- `devlog.md`（本记录）
+
+### 遗留问题
+- E1-R2 报告、JSON、CSV 待 RW 确认后 commit
+- D5z 前置条件 4（E1-R2 归因）现已满足（待确认提交）
+- Phase 7 工作项已明确：深海 atmosphere.opacity 调整（0.14→建议 0.08–0.10）
+- Sentinel-2 A1/A2/A4 样本、Google Maps REF-01/02/03 尚未采集
