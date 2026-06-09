@@ -109,6 +109,36 @@ D5z parameter tuning is now closed. No further D5z_c generation.
 
 ---
 
+## Production Deployment Verification
+
+**Production URL:** `https://web-production-a5193.up.railway.app`  
+**Verification Date:** 2026-06-09  
+**Result:** PASS
+
+| Check | Expected | Actual |
+|---|---|---|
+| Page HTTP status | 200 | 200 ✓ |
+| Console variant log | `d5z_b` | `d5z_b` ✓ |
+| Runtime texture path | `/assets/earth/production/d5z_b_8192x4096.jpg` | `/assets/earth/production/d5z_b_8192x4096.jpg` ✓ |
+| Texture HTTP status | 200 | 200 ✓ |
+| Texture dimensions | 8192×4096 | 8192×4096 ✓ |
+| earth3d.isReady | true | true ✓ |
+| TUNE IN overlay | dismissed | dismissed ✓ |
+| Console errors | none | none ✓ |
+| noon screenshot | normal | `production_default_noon.png` 458 KB ✓ |
+| afternoon screenshot | normal | `production_default_afternoon.png` 445 KB ✓ |
+
+Screenshots in `previews/e1_r6_production_deployment_verification/`.
+
+**Final Status:**
+
+E1 Day Earth Master is production verified.  
+D5z_b is the current online 8K stable day texture.  
+D5z phase is closed.  
+Remaining color, ocean, terrain, and atmosphere refinements are deferred to the Global Color Grading / BMNG-RDL phase.
+
+---
+
 ## Next Phase Recommendation
 
 **Global Color Grading / BMNG-RDL Phase**
