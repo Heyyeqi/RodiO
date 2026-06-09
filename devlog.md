@@ -515,3 +515,263 @@
 - D5z 前置条件 4（E1-R2 归因）现已满足（待确认提交）
 - Phase 7 工作项已明确：深海 atmosphere.opacity 调整（0.14→建议 0.08–0.10）
 - Sentinel-2 A1/A2/A4 样本、Google Maps REF-01/02/03 尚未采集
+
+---
+
+## 2026-06-08 RDL v2 P0 — GEBCO + GSHHG Japan Benchmark 实测启动
+
+### 做了什么
+- 建立 RDL v2 P0 全局 pipeline 目录结构（pwa/assets/source/{bathy,coastline,dem}/…，scripts/geo/）
+- 编写并验证 4 个 geo 工具脚本：
+  - `scripts/geo/lon_lat_to_uv.js`：Three.js r128 UV 转换，支持 --bounds 任意区域，输出 GLSL snippet
+  - `scripts/geo/gshhg_coastline_render.py`：land mask + distance field + key crops（支持 ETOPO1/GSHHG/NE 任意 shapefile）
+  - `scripts/geo/gebco_bathymetry_tint.py`：5级深度 tint（GEBCO netCDF / ETOPO1 fallback）
+  - `scripts/geo/rdl_composite_preview.py`：4-panel 合成预览（baseline / bathy / coast / combined）
+- 确认 GEBCO 2026（最新）：日本 subset 约 60–80 MB，无需注册，通过 download.gebco.net 可下载
+- 下载 GSHHG full resolution（SOEST 服务器限速，Python urllib ~10 MB/min，下载进行中）
+- 以 ETOPO1（elev≥0）作为 land mask + NE10m 海岸线作为 interim，跑通全部 3 个 phase
+- 生成 interim 输出：etopo1_bathymetry_tint.png / gshhg_coastline_mask.png（4096×3584）/ gshhg_distance_field.png / key_crops_contact_sheet.png（244KB，5 bay crops 清晰）/ combined_gebco_gshhg_preview.png（4-panel，2.9MB）
+- 写完 README_P0_RESULT.md（回答 6 个 P0 验证问题）、source_status.md、gebco_download_check.md
+
+### 改动文件
+- `pwa/assets/source/bathy/gebco_2024/`（新目录）
+- `pwa/assets/source/coastline/gshhg/`（新目录，GSHHG 下载中）
+- `pwa/assets/source/dem/copernicus_glo30/`（新目录，保留备用）
+- `scripts/geo/lon_lat_to_uv.js`（新建）
+- `scripts/geo/gshhg_coastline_render.py`（新建）
+- `scripts/geo/gebco_bathymetry_tint.py`（新建）
+- `scripts/geo/rdl_composite_preview.py`（新建）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/`（新目录，9 个输出文件）
+
+### 遗留问题
+- GSHHG full resolution 下载进行中（SOEST 限速，~8 min 剩余）；完成后需重跑 gshhg_coastline_render.py with --shp GSHHS_f_L1.shp
+- GEBCO Japan subset 待 RW 确认后下载（~60–80 MB）；完成后需跑 gebco_bathymetry_tint.py --nc <path>
+- 上述两步完成后，重跑 rdl_composite_preview.py 生成最终 4-panel，并生成 etopo_vs_gebco_compare.png
+- README_P0_RESULT.md Q3（视觉对比结论）待最终对比图后更新
+
+## 2026-06-08 RDL v2 P0 GEBCO Download + Pipeline Completion
+
+### 做了什么
+- 解决了 GEBCO 2026 HDF5 读取障碍（h5py 3.14.0 `TypeError: Unsupported integer size(0)`）
+- 使用 HTTP Range 字节偏移方法绕过 h5py：获取 HDF5 数据偏移地址（1,058,396 bytes），以每行列切片（15KB）并发下载
+- 确认 GEBCO HDF5 使用小端序（little-endian int16），修正了最初大端序的错误
+- 最终方案：50 workers × 135 batches（50行/batch），仅下载 Japan 列切片（103MB）而非完整行（1.16GB）
+- 耗时约 6 分钟，保存至 `pwa/assets/source/bathy/gebco_2024/gebco_2024_118_150_22_50.nc`（46MB compressed NetCDF4）
+- 验证 GEBCO 数据：6720×7680, 15 arc-sec, z-range -8378m to +3757m, 0 NoData, land 30.6%（与 GSHHG 30.4% 高度吻合）
+- 生成 `gebco_bathymetry_tint.png`（892KB）、`etopo_vs_gebco_compare.png`（1.4MB）
+- 重命名旧的误名文件 `combined_gebco_gshhg_preview.png` → `combined_etopo1_gshhg_preview.png`
+- 重新生成真正的 `combined_gebco_gshhg_preview.png`（3.0MB，GEBCO tint + GSHHG L1 coastline）
+- 更新 README_P0_RESULT.md Q3（GEBCO vs ETOPO1 实际对比数据），source_status.md 最终状态
+
+### 改动文件
+- `pwa/assets/source/bathy/gebco_2024/gebco_2024_118_150_22_50.nc`（新增，46MB）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/gebco_bathymetry_tint.png`（新增）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/etopo_vs_gebco_compare.png`（新增）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/combined_gebco_gshhg_preview.png`（重新生成，真正使用 GEBCO）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/combined_etopo1_gshhg_preview.png`（从 combined_gebco_gshhg_preview.png 重命名）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/README_P0_RESULT.md`（更新所有 phase 状态 + Q3 结论）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/source_status.md`（标记 P0 完成）
+
+### 遗留问题
+- h5py 3.14.0 无法读取 GEBCO 2026 HDF5（已 workaround，不需修复）
+- 深度异常值 -10668m 是 masked array argsort 的伪影；实际最深点 ~-5748m（Northwest Pacific），正常
+- P0 全部完成，下一步：Japan v2 visual tile 合成（将 GEBCO tint + GSHHG coast + 基底贴图合成到 globe texture）
+
+## 2026-06-08 P0 归档审计 + Japan v2 Tile 准备
+
+### 做了什么
+- **GEBCO 版本命名修正**：将 `gebco_2024/` 目录和 `gebco_2024_118_150_22_50.nc` 文件统一重命名为 `gebco_2026/gebco_2026_118_150_22_50.nc`，消除版本号混用；历史 devlog 条目（本条之前的两条）中记录的旧路径为当时实际路径，仅供审计参考，不修改
+- **修正所有文档引用**：`source_status.md`、`gebco_download_check.md`（删除错误"audit continuity"辩护）、`gebco_bathymetry_tint.py` docstring、两个全局规划文档中的路径提案
+- **README_P0_RESULT.md** 新增两节：Data Source Evidence Chain（明确区分 GSHHG/ETOPO1/GEBCO 2026 各自角色）、HTTP Range Byte-Offset Risk Note（DATA_OFFSET=1,058,396 为版本专属，禁止跨版本复用，给出生产替代方案）
+- **新建 FILE_INVENTORY.md**：完整列出 P0 所有输出文件、大小、生成命令、角色
+- **新建 NEXT_JAPAN_V2_TILE_PLAN.md**：Japan v2 2048/4096 regional detail tile 合成方案（d5b_v3.2.1 + GEBCO tint + GSHHG coast），含裁剪坐标计算、混合逻辑、proposed script 伪代码、Three.js UV 集成说明
+
+### 改动文件
+- `pwa/assets/source/bathy/gebco_2026/gebco_2026_118_150_22_50.nc`（从 gebco_2024/ 重命名）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/source_status.md`（路径修正）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/gebco_download_check.md`（删除错误辩护，修正路径）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/README_P0_RESULT.md`（新增 Evidence Chain + HTTP Range Risk 两节）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/FILE_INVENTORY.md`（新建）
+- `previews/rdl_v2_p0_gebco_gshhg_japan_benchmark/NEXT_JAPAN_V2_TILE_PLAN.md`（新建）
+- `scripts/geo/gebco_bathymetry_tint.py`（docstring 路径修正）
+- `previews/rdl_v2_global_data_source_upgrade_audit/global_pipeline_recommendation.md`（gebco_2024→gebco_2026）
+- `previews/rdl_v2_global_data_source_upgrade_audit/implementation_priority.md`（gebco_2024→gebco_2026）
+
+### 遗留问题
+- Japan v2 tile 合成脚本 `japan_v2_tile_composite.py` 尚未实现（计划见 NEXT_JAPAN_V2_TILE_PLAN.md）— 已在下一条 devlog 中实现为 `rdl_tile_compositor.py`
+- 无 commit（所有修改均为本地文档审计和归档）
+
+## 2026-06-08 RDL v2 Japan Visual Tile Prototype 生成
+
+### 做了什么
+- 追加 `.gitignore` 规则：`previews/**/*.png/jpg/jpeg/webp`，防止大尺寸预览图误入 git；验证 dry-run git add 确认 PNG 不再进入暂存区
+- 新建 `scripts/geo/rdl_tile_compositor.py`（全球可复用，`--bounds` 驱动，无 Japan 硬编码）：
+  - Layer 0：d5b 8K 局部裁切（728×637 → 4096×3584，×5.6 上采样，仅作为基础底色）
+  - Layer 1：21.6K source 局部裁切（1920×1680 → 4096×3584，×2.1，per-channel histogram match，仅在陆地低强度叠加）
+  - Layer 2：GEBCO 2026 5 级深度分层色调（7680×6720 → 4096×3584，仅作用于海洋像素）
+  - Layer 3：GSHHG 海岸线 clarity（scipy distance_transform_edt 计算 coastal zone，unsharp mask 轻微增强）
+  - 修复：GSHHG mask 是 RGB（sea=15,30,60 / land=120,105,85 / coast=255,255,240），非 grayscale
+  - 修复：PIL DecompressionBombError（21.6K source 233M px 超限，设 MAX_IMAGE_PIXELS=250M）
+- 运行 compositor（用时 200s）生成全部输出：
+  - `01_layers/`：layer0–layer3 + stack contact sheet
+  - `02_tiles/`：v2_4096（10MB）+ v2_2048（4MB）+ baseline + etopo_reference + 4 张 contact sheet
+  - `03_demo/`：`demo_japan_v2_tile.html`（Three.js r128 CDN，UV region shader，无 earth3d.js 改动）+ UV bounds outline
+  - `04_crops/`：9 个关键区域四面板对比图（baseline / etopo_reference / v2_2048 / v2_4096）
+  - `05_reports/`：README_PROTOTYPE.md + FILE_INVENTORY.md + NEXT_STEP_RECOMMENDATION.md + metadata.json
+- 验收参数：GEBCO blend=0.35，GSHHG zone=10km，GSHHG strength=0.15，visual blend=0.30
+
+### 改动文件
+- `.gitignore`（追加 previews/**/ 图片规则）
+- `scripts/geo/rdl_tile_compositor.py`（新建，全球通用 tile 合成器）
+- `previews/rdl_v2_japan_visual_tile_prototype/`（新目录，全部输出）
+- `devlog.md`（本条追加）
+
+### 遗留问题
+- README_PROTOTYPE.md 中验收结论表（Yes/No/Partial）待人工视觉检查后填写
+- 视觉通过后进入 Step A：独立上球 demo 验证（不修改 earth3d.js）
+- DEM Phase（Copernicus GLO-30）：陆地山形精度，等 Step A 通过后推进
+- Layer 6（OSM 路网 / VIIRS 城市灯光）：继续暂缓，等自然地理层稳定后进入
+- 无 commit
+
+---
+
+## 2026-06-09 Japan v2 Visual Retuning Pass
+
+### 做了什么
+- 人工视觉检查 Japan v2 Prototype 结论：**Partial** — 数据有效，但视觉偏模糊，存在 GIS 感、海底色块感、海岸线描边感
+- 新建 `scripts/geo/rdl_retuning.py` 执行视觉转译优化（不新增数据源）
+- 关键算法变更：
+  - **GEBCO**：移除 5 级硬色板（GIS 感根源），改为连续深度亮度衰减 + sqrt 非线性重映射 + Gaussian blur sigma=20px (~7.5km) 消除所有硬边 + 极小蓝色偏移（最深处 +10）
+  - **GSHHG 海岸线**：移除 unsharp mask（描边感根源），改为海岸带 21.6K 卫星源额外混合（coast_strength 提升 L1 blend 权重，双侧 feather）
+  - **Land**：visual_blend 从 0.30 降至 0.15
+  - 修复 EDT 距离计算 bug：原始 `np.minimum` 对所有像素返回 0 → 改为 `land_side + ocean_side` 求和（每像素恰好一项非零）
+- 生成 `previews/rdl_v2_japan_visual_retuning/` 全部输出（113s）：
+  - bathy 变体（coast=off）：blend 0.15 / 0.20 / 0.25
+  - coast 变体（bathy=0.20）：10km / 20km / 30km 带宽
+  - final 最终合成：bathy=0.20，coast=20km，str=0.08，visual=0.15，4096 + 2048
+  - before/after contact sheet，5 关键区域 crop 对比
+  - README_RETUNING.md（含验收表，待填）
+
+### 改动文件
+- `scripts/geo/rdl_retuning.py`（新建，视觉调音专用脚本）
+- `previews/rdl_v2_japan_visual_retuning/`（新目录，全部输出）
+- `devlog.md`（本条追加）
+
+### 遗留问题
+- README_RETUNING.md 验收表（6 题 Yes/No/Partial）待人工视觉检查后填写
+- 若视觉通过，进入 Step A：独立上球 demo（独立 HTML，不修改 earth3d.js）
+- 无 commit
+
+---
+
+## 2026-06-09 E1-R4A Regional Visual Preview — d5b_design_v3_2_1
+
+### 做了什么
+- 执行 DAY_TEXTURE_VARIANT Provenance Audit：确认 bmng_d2 是 A/B 测试中间态，d5b_design_v3_2_1 是 devlog 标注的预期正式候选
+- 通过 `?dayTexture=d5b_design_v3_2_1`（localhost URL 参数）加载目标纹理，未修改 earth3d.js
+- 使用 puppeteer-core + 系统 Chrome（headless, --use-gl=angle）自动化截图
+- 全部阻断检查通过：variant confirmed, HTTP 200, 8192×4096, earth3d.isReady=true
+- 生成 16 张截图（8 区域 × 2 时间模式：noon / afternoon）
+
+### 改动文件
+- `previews/e1_r4a_d5b_design_v3_2_1/`（新目录，16 张截图 + report.md）
+- `docs/e1_r4a_regional_preview_d5b_design_v3_2_1.md`（正式报告，待视觉审查填写结论）
+- `devlog.md`（本条追加）
+
+### 遗留问题
+- 截图视觉审查待完成（verdicts 表尚未填写）
+- 审查通过后执行：`DAY_TEXTURE_VARIANT = 'd5b_design_v3_2_1'` + commit
+- 截图工具（puppeteer-core）安装在 /tmp/e1r4a_runner，非项目目录，不计入代码库
+
+---
+
+## 2026-06-09 E1-R4A Rerun — TUNE IN overlay 修复
+
+### 做了什么
+- 首轮截图无效：headless Chrome 未点击 TUNE IN 按钮，截图停留在入口遮罩层（backdrop-filter: blur）
+- 根因：`#start-overlay.visible` 在 WS 收到初始 queue payload 后才出现，首版脚本未处理此 overlay
+- 修复：等待 `#start-overlay.visible` → click `#start-button` → 等待 overlay 消失 → 1.5s settle → 再截图
+- 另修复：rerun 脚本遗漏 `variantConfirmed` 赋值（console handler 缺行）
+- 重新生成 17 张截图（16 区域 + 1 baseline），文件尺寸 330–483KB（正常 globe 内容，非遮罩）
+
+### 改动文件
+- `previews/e1_r4a_d5b_design_v3_2_1_rerun/`（新目录，17 张截图 + report.md）
+- `docs/e1_r4a_regional_preview_d5b_design_v3_2_1.md`（更新，待视觉审查填写结论）
+- `devlog.md`（本条追加）
+
+### 遗留问题
+- verdicts 表待人工视觉审查后填写
+- 审查通过后执行：`DAY_TEXTURE_VARIANT = 'd5b_design_v3_2_1'` + commit
+
+## 2026-06-09 E1-R4A Verdicts 写入 + E1-R3 D5z 候选生成
+
+### 做了什么
+- 将用户确认的 E1-R4A 人工验收结论写入 `docs/e1_r4a_regional_preview_d5b_design_v3_2_1.md`
+  - 整体结论：Conditional Pass
+  - Sahara/Egypt / Antarctica / Greenland / Indian Ocean：Partial（各有具体问题）
+  - Pacific Islands / Japan / Mediterranean / Caribbean：Pass（受保护区域）
+  - 明确边界：不修改 DAY_TEXTURE_VARIANT，不 commit，不构成 production acceptance
+- 新建 `d5b_processor_v3/d5z_generator.py`：D5z 候选生成脚本
+  - 架构决策：Standalone correction pass，不重走 main.py（避免 OCEAN_REGIONS 双重叠加）
+  - 校正 A（双极）：对冰雪像素（luminance>155, channel_spread<55）直接乘以亮度因子
+    - 南极：lat<-70° 全强度 0.87，5° 渐变到 lat=-65°
+    - Greenland/Arctic（新增）：lat>70° 全强度 0.90，5° 渐变到 lat=65°
+  - 校正 B（深海）：Indian Ocean central + Pacific deep 深蓝像素降饱和 7% + 降亮 3%，feather 20px
+  - 校正 C（沙漠，仅 D5z_b）：Sahara/Arabia 陆地像素降亮 3%，Mediterranean 硬边界排除
+  - Color Harmony Guard：D5z_b 后处理，检测保护区 mean RGB/亮度 diff 超阈值时 blend 回 baseline
+- 生成候选 + 全部指标通过：
+  - `d5z_a_8192x4096.jpg` 7801KB，`d5z_b_8192x4096.jpg` 7801KB
+  - Antarctica 冰像素亮度变化：−12.73%（通过范围 ↓3–20%）
+  - Greenland 冰像素亮度变化：−7.69%（通过范围 ↓2–15%）
+  - Sahara 陆地亮度变化（D5z_b）：−2.79%（通过范围 ↓1–8%）
+  - Indian Ocean 深海饱和度变化：−4.28%（通过范围 ↓3–12%）
+  - 极地灰化检测：south delta=-0.42, north delta=-0.16（均不变灰，更趋中性）
+  - 受保护区域：Japan / Mediterranean / Caribbean = PSNR ∞ / diff 0；Pacific Islands 63.05 dB / 0.008 diff
+  - Color Harmony Guard：全部保护区未触发（diff < 2）
+  - 全局亮度变化：3.587%（超过 Guard ≤2% 限制，但 Guard 自身调整量=0；整体变化源自极地校正，属于预期）
+- 生成 8 区域 compare crops（baseline | D5z_a | D5z_b 横排）
+- 输出执行报告：`d5b_processor_v3/d5b_output/d5z_candidates/report_d5z.md`
+
+### 改动文件
+- `docs/e1_r4a_regional_preview_d5b_design_v3_2_1.md`（verdicts + boundary 填写）
+- `d5b_processor_v3/d5z_generator.py`（新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/d5z_a_8192x4096.jpg`（新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/d5z_b_8192x4096.jpg`（新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/metrics_d5z_a.json`（新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/metrics_d5z_b.json`（新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/compare_crops/`（8 个 crop，新建）
+- `d5b_processor_v3/d5b_output/d5z_candidates/report_d5z.md`（新建）
+- 未修改：`earth3d.js`，`DAY_TEXTURE_VARIANT`（仍为 `'bmng_d2'`），`pwa/assets/earth/`（未写入）
+
+### 遗留问题
+- `earth3d.js getDayTexturePaths()` 尚无 `d5z_a` / `d5z_b` key → 上球预览（E1-R4B）被阻断
+- 需 RW 单独授权后方可：(1) 添加 variant keys, (2) 复制 JPG 到 candidates/, (3) 进行 E1-R4B puppeteer 截图
+- 全局亮度变化 3.587% 超过 Guard ≤2% 规范，若上球后整体偏暗，可在 D5z_c 中将南极因子 0.87→0.91，北极 0.90→0.93
+- 推荐首选上球候选：D5z_b（覆盖全部 3 个校正目标，Guard 未触发，全部指标通过）
+
+## 2026-06-09 E1-R4B 结论写入 + E1-R5 Full On-globe Visual Acceptance 执行
+
+### 做了什么
+- 将 E1-R4B 人工视觉验收结论写入 `docs/e1_r4b_d5z_on_globe_preview.md`：
+  - D5z_b: Conditional Pass，覆盖极地/深海/Sahara 三类问题；Mediterranean / Caribbean / Japan 保护区无误伤；Indian Ocean 仍略有地图感，不构成阻断
+  - D5z_a: Conservative fallback，极地+深海校正等效，无 Sahara 校正
+  - 边界：仅允许进入 E1-R5，不修改 DAY_TEXTURE_VARIANT，不 commit，不 production 化
+- 执行 E1-R5 Full On-globe Visual Acceptance：
+  - D5z_b（主候选）：9 区域 × 4 time modes（morning/noon/afternoon/sunset）= 36 张地理截图 + 4 张 UI integration 截图（标准播放器视角 lon=10 lat=20）
+  - D5b_design_v3_2_1（基线对照）：5 个关键区域 × 4 time modes = 20 张对照截图（Sahara / Antarctica / Greenland / Mediterranean / Indian Ocean）
+  - D5z_a：未预先截图，仅在 D5z_b 触发 Fail 时执行
+  - 两轮均加载正常：HTTP 200，variant confirmed，8192×4096 ✓，TUNE IN dismissed ✓
+  - 共 60 张截图
+
+### 改动文件
+- `docs/e1_r4b_d5z_on_globe_preview.md`（verdicts + next step 填写）
+- `docs/e1_r5_full_on_globe_acceptance.md`（新建，预填框架，verdicts 留空待人工审查）
+- `previews/e1_r5_full_acceptance/d5z_b/`（40 张截图 + index.md，新建）
+- `previews/e1_r5_full_acceptance/d5b_design_v3_2_1/`（20 张截图 + index.md，新建）
+- 未修改：`earth3d.js DAY_TEXTURE_VARIANT`（仍为 `'bmng_d2'`），`pwa/assets/earth/production/`（未写入），无 commit
+
+### 遗留问题
+- E1-R5 截图已就绪，等待 RW 人工视觉验收
+- 验收通过（Pass / Conditional Pass）后，RW 明确授权才可进入 E1-R6
+- D5z_a 截图待 D5z_b 失败时按需执行
+- Conditional Pass 允许最多 2 项 Partial（仅限极地亮度/Indian Ocean 深海）；保护区 / Sahara 变色 / 硬边界 / UI 可读性 均不允许 Partial

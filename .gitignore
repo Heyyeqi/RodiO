@@ -12,3 +12,9 @@ pwa/assets/earth_city_lights_alpha_preview_v2.png
 d5b_processor_v3/d5b_output/
 
 .venv/
+
+previews/**/*.png
+previews/**/*.jpg
+previews/**/*.jpeg
+previews/**/*.webp
+pwa/assets/earth/candidates/
