@@ -3,7 +3,7 @@
   // A/B 测试开关：切换候选 dayTexture。修改此值后刷新浏览器即生效。
   // 'current' | 'bmng_b' | 'bmng_c' | 'bmng_d2' | 'd5a_bathy' | 'd5b_bathy' | 'd5c_palette_v6_1_bathy' | 'd6_topo_blend' | 'd5b_design_v3_1' | 'd5b_design_v3_2_1'
   // localhost 测试：?dayTexture=d5b_bathy 可覆盖，不影响生产环境。
-  const DAY_TEXTURE_VARIANT = 'bmng_d2'
+  const DAY_TEXTURE_VARIANT = 'd5z_b'
   const DEBUG_MARKERS_ENABLED = false
   const DEBUG_CITIES = [
     { name: 'Shanghai', lon: 121.4737, lat: 31.2304, color: 0xff3300 },
@@ -561,6 +561,8 @@
           d6_topo_blend:          ['/assets/earth/candidates/d6_topo_blend_8192x4096.jpg',          '/assets/bluemarble.jpg'],
           d5b_design_v3_1:        ['/assets/earth/candidates/d5b_design_v3_1_8192x4096.jpg',        '/assets/bluemarble.jpg'],
           d5b_design_v3_2_1:      ['/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg',      '/assets/bluemarble.jpg'],
+          d5z_a:                  ['/assets/earth/candidates/d5z_a_8192x4096.jpg',                  '/assets/bluemarble.jpg'],
+          d5z_b:                  ['/assets/earth/production/d5z_b_8192x4096.jpg',                   '/assets/bluemarble.jpg'],
         }
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
         const urlParam = isLocalhost
