@@ -11,6 +11,9 @@ pwa/assets/earth_city_lights_alpha_preview.png
 pwa/assets/earth_city_lights_alpha_preview_v2.png
 d5b_processor_v3/d5b_output/
 
+# External source cache for manually downloaded/exported datasets
+d5b_processor_v3/source_cache/
+
 .venv/
 
 previews/**/*.png

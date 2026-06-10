@@ -895,3 +895,195 @@
 - B-6.2S 规划文档未 commit（等待授权）
 - B-5.3 代码实施等待授权（最高价值未阻塞任务）
 - d6_noon_air_earth_generator.py（B-5.1+B-5.2）仍 unstaged
+
+## 2026-06-10 B-6.2S-1 Special Sea Water-Only Masks
+
+### 做了什么
+- 提交 B-6.2S plan + B-6.3H validation 文档：commit `4333b92`
+- 提交 devlog 更新：commit `2df8b59`
+- 修改 `scripts/generate_b6_structure_masks.py`，新增 11 个 special sea water-only masks
+- 重新生成 2K structure masks（23 masks total），commit `957f375`
+
+### 新增 masks（全部 land_leak_pixels = 0）
+| Mask | px | depth_gate |
+|---|---|---|
+| red_sea_water_mask | 899 | none |
+| yellow_sea_water_mask | 1,550 | z >= -100 |
+| east_china_sea_water_mask | 3,094 | none |
+| japan_sea_water_mask | 3,725 | none |
+| mediterranean_water_mask | 8,583 | none |
+| aegean_sea_water_mask | 301 | none |
+| caribbean_water_mask | 12,085 | none |
+| persian_gulf_water_mask | 532 | z >= -100 |
+| north_sea_water_mask | 2,311 | z >= -200 |
+| baltic_sea_water_mask | 1,536 | none |
+| south_china_sea_water_mask | 9,937 | none |
+
+### 关键验证
+- land_leak_pixels = 0（所有 11 个）✓
+- land+ocean = 1.0 ✓
+- depth_on_land = 0 ✓
+- Antarctica sanity: land=1.0, ocean=0.0 ✓
+- NPZ：23 masks，8.1 MB，gitignored
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，commit `957f375`）
+- `d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- B-6.2S-2（shelf/bank masks）等待授权
+- B-5.3 代码实施等待授权（最高价值未阻塞任务）
+- d6 generator（B-5.1+B-5.2）仍 unstaged
+
+## 2026-06-10 B-6.2G-2B Terrain / Relief Minimal Prototype
+
+### 做了什么
+- 在 `scripts/generate_b6_structure_masks.py` 中新增 `make_terrain_masks()` 函数，实现 4 个 terrain / relief proxy masks：
+  - `high_mountain_mask`：ETOPO1 z > 2500m ∩ land ∩ ¬inland_water；feather σ=1
+  - `plateau_refined_mask`：gaussian_filter(z, σ=5)（≈100km 平滑）in [800, 4500]m ∩ land ∩ ¬inland_water；feather σ=1
+  - `lowland_or_basin_proxy`：z ≤ 300m ∩ land ∩ ¬inland_water；feather σ=1（proxy）
+  - `hill_or_relief_proxy`：300 < z ≤ 1500m ∩ land ∩ ¬inland_water；feather σ=1（elevation band proxy）
+- 新增 `_TERRAIN_THRESHOLDS` 模块级常量，记录每个 mask 的 method、rationale
+- 更新 `compute_metrics()`、`build_metadata()`、`save_previews()`（新增 Preview #8 terrain overview）
+- 以 2048×1024 运行；输出至 `d5b_output/structure_masks/`（gitignored）
+
+### 关键输出（2048×1024）
+| Mask | 硬像素（pre-feather）| post-feather px | cov% |
+|------|:-------------------:|:---------------:|:----:|
+| high_mountain_mask | 128,343 | 127,185 | 6.065% |
+| plateau_refined_mask | 292,743 | 293,734 | 14.006% |
+| lowland_or_basin_proxy | 255,467 | 252,723 | 12.051% |
+| hill_or_relief_proxy | 255,998 | 255,570 | 12.187% |
+
+- NPZ：31 masks，13040 KB
+- 所有安全确认通过；inland_water_mask 值与 B-6.2G-1B 完全一致
+- plateau_refined_mask 使用高斯平滑排除孤立山峰，保留 Tibetan Plateau、Altiplano、Ethiopian Highlands 等宽阔高原
+
+### Known limitations（记录于 metadata）
+- 所有 terrain masks 均为 ETOPO1 高程带 proxy，非地貌分类数据集
+- Ethiopian Highlands (~1800-2500m) 部分低于 high_mountain 阈值
+- Congo Basin (~300-500m) 部分超出 lowland 阈值（≤300m）
+- hill_or_relief_proxy 为高程带，非真实坡度/地形粗糙度量
+- plateau_refined 与 hill 在 800-1500m 区间有重叠（设计如此）
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，未 commit）
+- `d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- B-6.2G-2C：terrain mask validation audit 文档待写
+- B-6.2G-1B/1C 文档及脚本 commit 仍待显式授权
+- B-6.2S-2（shelf/bank masks）等待授权
+- d6 generator（B-5.1+B-5.2）仍 unstaged
+
+## 2026-06-10 B-6.2G-2B-P Terrain Post-Feather Land/Inland Clipping Patch
+
+### 做了什么
+- 修复 B-6.2G-2C 发现的 post-feather ocean leakage 问题（lowland 2,017 px、hill 7 px 漏入 ocean）
+- 新增 `apply_terrain_domain()` helper，在 feather 之后对所有 terrain masks 执行：
+  - soft multiply by `land_mask`（float）— 保证 ocean 区域（land < 0.5）terrain hard px 归零
+  - hard binary exclude `inland_water_hard`（bool）— 精确清零所有 inland water 像素
+- `_TERRAIN_THRESHOLDS` method 字符串更新，注明 post-feather clip 来自 B-6.2G-2B-P
+- `compute_metrics()` 对每个 terrain mask 记录 `ocean_overlap_pixels` 和 `inland_water_overlap_pixels`
+- `build_metadata()` 记录 `land_only_after_feather: true` / `inland_water_excluded_after_feather: true` / `domain_clip_policy`
+- `make_terrain_masks()` stats 新增 `pre_feather_hard_px` / `post_clip_hard_px` / `domain_overlap_px`
+- 重新生成 2K masks；输出至 `d5b_output/structure_masks/`（gitignored）
+
+### 关键输出（B-6.2G-2B-P，2048×1024）
+| Mask | pre-feather px | post-clip px | ocean∩ | iw∩ |
+|------|:-:|:-:|:-:|:-:|
+| high_mountain_mask | 128,343 | 126,882 | **0** | **0** |
+| plateau_refined_mask | 292,743 | 292,538 | **0** | **0** |
+| lowland_or_basin_proxy | 255,467 | 246,680 | **0** | **0** |
+| hill_or_relief_proxy | 255,998 | 253,271 | **0** | **0** |
+
+- NPZ: 31 masks, 12,401 KB
+- inland_water_mask: 15,976 px (与 B-6.2G-1B/1C 一致)
+- domain integrity PASS: terrain ∩ ocean = 0, terrain ∩ inland_water = 0
+- 未新增 mask 类别；未改变 terrain thresholds；未修改 d6
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，未 commit）
+- `d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- B-6.2G-2C：terrain mask validation audit 文档建议 rerun
+- B-6.2G-1B/1C 文档及脚本 commit 仍待显式授权
+
+## 2026-06-10 B-6.2G-3B Major River Proxy Prototype
+
+### 做了什么
+- 在 `scripts/generate_b6_structure_masks.py` 新增：
+  - `WDBII_BASE` 路径常量
+  - `_draw_polyline()` module-level helper（Polyline shapeType=3）
+  - `make_river_masks()` — 读取 WDBII h/L01（55 shapes），生成：
+    - `major_river_proxy`：1px 折线栅格，domain clip，feather σ=1
+    - `river_buffer_proxy`：binary_dilation（3x3 square，1 iter）→ 约 3px 走廊，domain clip，feather σ=1
+  - 更新 `compute_metrics()` / `build_metadata()` / `save_previews()`（Preview #9）/ `main()`
+- 修复 domain clip 策略：exclusion 由 `inland_water_hard`（pre-feather binary）→ `masks['inland_water_mask'] > 0.5`（feathered threshold），防止 feather halo 跨边界渗漏
+- `apply_terrain_domain()` 参数更名为 `inland_water_exclude`，文档说明使用 feathered threshold
+
+### 关键输出（B-6.2G-3B，2048×1024）
+| Mask | raw px | post-clip px | ocean∩ | iw∩ |
+|------|:-:|:-:|:-:|:-:|
+| major_river_proxy | 3,063 | 1,890 | **0** | **0** |
+| river_buffer_proxy | 8,243 | 8,014 | **0** | **0** |
+
+- NPZ: 33 masks，12530 KB
+- WDBII: h/L01，55 shapes，22,889 points
+- Buffer: 3x3 square binary_dilation，1 iteration（约 60km 走廊）
+- L02 未使用；river proxy 未合并入 inland_water_mask
+- domain integrity PASS：所有 river ∩ ocean = 0，river ∩ inland_water = 0
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，未 commit）
+- `d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- B-6.2G-3C：major river proxy validation audit 文档待写
+- B-6.2G-2C：terrain validation audit 建议 rerun（domain clip 策略已改）
+- B-6.2G-1B/1C 文档及脚本 commit 仍待显式授权
+
+---
+
+## 2026-06-10 B-6.2G-3B-R L01+L02 Coverage Supplement
+
+### 背景
+B-6.2G-3C validation 发现 WDBII h/L01 baseline（55 shapes）中 Nile / Mississippi / Danube 覆盖率为 0。根因：L01 仅含 55 条主要水道，上述三条大河在 L02 中（Nile ~90 shapes，Mississippi ~81，Danube ~100）。
+
+### 做了什么
+- 在 `make_river_masks()` 中新增 L01+L02 variant：`major_river_proxy_l01_l02`、`river_buffer_proxy_l01_l02`
+  - 加载 L01 + L02 分别光栅化后 pixel-wise max 合并
+  - 与 L01 baseline 同等 domain clip 策略：post-feather soft land clip + hard inland_water exclude
+- 新增 `_rasterize_wdbii_level()` helper（L01 和 L02 共用）
+- 新增 `_make_pair()` inner function（L01 / L01+L02 共用 major+buffer 生成流程）
+- 新增 density check per `_RIVER_DENSITY_REGIONS`（8 个地区，阈值 30%）
+- 更新 `compute_metrics()`：4 mask 循环，variant 字段
+- 更新 `save_previews()` Preview #9：yellow=L01 major, orange=L01 buffer, cyan=L01+L02 major, blue-green=L01+L02 buffer
+- 更新 `build_metadata()`：phase=B-6.2G-3B-R，wdbii_l02 source 记录 B-6.2G-3C failure，4 mask river_masks 条目，thresholds / known_limitations / safety_assertions 全部更新
+- 更新 `main()`：banner 更新，WDBII L02 input check，4-mask river 输出表，density check 表，growth ratio，completion 标语
+
+### 关键输出（B-6.2G-3B-R，2048×1024）
+
+| Mask | raw px | post-clip px | ocean∩ | iw∩ | variant |
+|------|:-:|:-:|:-:|:-:|:-:|
+| major_river_proxy | 3,063 | 1,890 | **0** | **0** | L01 baseline |
+| river_buffer_proxy | 8,243 | 8,014 | **0** | **0** | L01 baseline |
+| major_river_proxy_l01_l02 | 12,256 | 5,458 | **0** | **0** | L01+L02 |
+| river_buffer_proxy_l01_l02 | 35,009 | 34,282 | **0** | **0** | L01+L02 |
+
+- NPZ: **35 masks**，13204 KB（+2 masks / +674 KB vs B-6.2G-3B）
+- L01: 55 shapes，22,889 pts；L02: 2371 shapes，56,972 pts
+- Growth（L01 → L01+L02）：major ×2.89，buffer ×4.28
+- Density check（L01+L02 buffer / land px，8 地区）：max 11.3%，均低于 30% 阈值
+- L01+L02 assessment: **USABLE**（无 OVERDENSE 地区）
+- Domain integrity PASS：所有 4 masks ∩ ocean = 0，∩ inland_water = 0
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，未 commit）
+- `d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- B-6.2G-3C-R：L01+L02 variant validation audit 文档（Nile/Mississippi/Danube 覆盖确认，density 详细分析）
+- B-6.2G-2C：terrain validation audit 建议 rerun（domain clip 策略 B-6.2G-2B-P 已改）
+- scripts/generate_b6_structure_masks.py commit 仍待显式授权
