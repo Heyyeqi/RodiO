@@ -50,6 +50,14 @@ assert not OUT_DIR.is_relative_to(CAND_DIR), "OUT_DIR must not be inside candida
 RES_2K = (2048, 1024)
 RES_8K = (8192, 4096)
 
+# ── Global color intensity multiplier ─────────────────────────────────────────
+# Single dial for all color adjustment modules. 1.0 = full spec strength.
+# Start conservative for calibration; increase toward 1.0 after guard passes.
+# Applied to: GLOBAL_BASE params, ocean/shelf/island/polar/desert/land/mountain/
+#             special_seas HSL-deltas, RGB blend weights, atmosphere opacity.
+# Does NOT affect: mask shapes, guard thresholds, safety assertions.
+NOON_AIR_INTENSITY = 0.38
+
 # ── Global base adjustment parameters (spec §4.1) ─────────────────────────────
 GLOBAL_BASE = {
     "brightness":   +0.04,    # +3% to +6%, midpoint
@@ -484,6 +492,11 @@ def ensure_safe_output_path(out_dir: Path, log: list):
 def load_source(res: tuple, log: list) -> np.ndarray:
     w, h = res
     log.append(f"[LOAD] Loading source: {SOURCE_PATH}")
+    # Disable PIL decompression bomb guard for this known first-party source only.
+    # The 21600×10800 source (2.33 × 10^8 px) exceeds PIL's default 1.79 × 10^8 limit.
+    # This is safe here because SOURCE_PATH is our own fixed asset, not user-uploaded input.
+    # Do NOT copy this pattern for arbitrary or user-supplied image paths.
+    Image.MAX_IMAGE_PIXELS = None
     img = Image.open(SOURCE_PATH).convert("RGB")
     sw, sh = img.size
     log.append(f"[LOAD] Source size: {sw}×{sh}")
@@ -515,8 +528,9 @@ def load_baseline_d5zb(res: tuple, baseline_path: Path, log: list) -> np.ndarray
 
 def apply_global_base_adjustment(f32: np.ndarray, log: list) -> np.ndarray:
     out = f32.copy()
-    p = GLOBAL_BASE
-    log.append("[MODULE 1] global_base_adjustment...")
+    i = NOON_AIR_INTENSITY
+    p = {k: v * i for k, v in GLOBAL_BASE.items()}
+    log.append(f"[MODULE 1] global_base_adjustment (intensity={i:.2f})...")
 
     # Brightness: multiplicative
     out = out * (1.0 + p["brightness"])
@@ -574,10 +588,11 @@ def apply_ocean_system(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
         if combined.sum() < 10:
             continue
 
+        i = NOON_AIR_INTENSITY
         out = apply_hsl_delta(out, combined,
-                              hue_shift=r["hue_shift"],
-                              sat_delta=r["sat_delta"],
-                              lit_delta=r["lit_delta"])
+                              hue_shift=r["hue_shift"] * i,
+                              sat_delta=r["sat_delta"] * i,
+                              lit_delta=r["lit_delta"] * i)
 
     log.append(f"[MODULE 2] ocean_system — {len(NOON_AIR_OCEAN_REGIONS)} regions processed")
     return out
@@ -605,12 +620,13 @@ def apply_shallow_water_shelf(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     shallow_proxy = ocean * np.clip((lum - shelf_threshold) / 0.25, 0.0, 1.0)
 
     # Shelf brightening pass
-    shelf_gain = shallow_proxy[:, :, np.newaxis] * 0.06
+    i = NOON_AIR_INTENSITY
+    shelf_gain = shallow_proxy[:, :, np.newaxis] * 0.06 * i
     out = np.clip(out * (1.0 + shelf_gain), 0, 255)
 
     # Additional hue shift toward cyan in shallow zones
-    out = apply_hsl_delta(out, shallow_proxy * 0.6,
-                          hue_shift=+3, sat_delta=+0.04, lit_delta=0.0)
+    out = apply_hsl_delta(out, shallow_proxy * 0.6 * i,
+                          hue_shift=+3, sat_delta=+0.04 * i, lit_delta=0.0)
 
     log.append("[MODULE 3] shallow_water_shelf — done")
     return out
@@ -651,11 +667,12 @@ def apply_island_halos(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
         # Apply only to ocean pixels within halo
         ocean = ocean_px(out)
         effective = cmask * ocean
+        i = NOON_AIR_INTENSITY
 
-        out = apply_hsl_delta(out, effective * halo["blend"],
-                              hue_shift=hue_shift,
-                              sat_delta=halo["sat_delta"],
-                              lit_delta=halo["lit_delta"])
+        out = apply_hsl_delta(out, effective * halo["blend"] * i,
+                              hue_shift=hue_shift * i,
+                              sat_delta=halo["sat_delta"] * i,
+                              lit_delta=halo["lit_delta"] * i)
 
     log.append(f"[MODULE 4] island_halos — {len(NOON_AIR_ISLAND_HALOS)} halos processed")
     return out
@@ -673,13 +690,16 @@ def apply_polar_correction(f32: np.ndarray, LAT: np.ndarray, log: list) -> np.nd
     ice = ice_px(out)
 
     # Antarctica: compress brightness of ice pixels below -65°
-    for outer, inner, scale in [(-70, -65, 0.87), (70, 65, 0.90)]:
+    i = NOON_AIR_INTENSITY
+    for outer, inner, full_scale in [(-70, -65, 0.87), (70, 65, 0.90)]:
         if outer < 0:
             strength = np.clip((inner - LAT) / abs(inner - outer), 0.0, 1.0)
         else:
             strength = np.clip((LAT - inner) / abs(outer - inner), 0.0, 1.0)
+        # Scale correction: interpolate between no-op (1.0) and full_scale by NOON_AIR_INTENSITY
+        effective_scale = 1.0 - (1.0 - full_scale) * i
         blend = (ice * strength)[:, :, np.newaxis]
-        out = out * (1.0 - blend * (1.0 - scale))
+        out = out * (1.0 - blend * (1.0 - effective_scale))
 
     # Antarctica: push ice toward blue-white tone (#DDECF2)
     ant_mask = (LAT <= -60).astype(np.float32)
@@ -687,15 +707,15 @@ def apply_polar_correction(f32: np.ndarray, LAT: np.ndarray, log: list) -> np.nd
     ice_ant = ice * ant_mask
 
     # Shift Antarctica ice toward blue-white (#DDECF2 ≈ H=200, S=0.35, L=0.89)
-    out = apply_hsl_delta(out, ice_ant * 0.4,
-                          hue_shift=+8, sat_delta=-0.05, lit_delta=0.0)
+    out = apply_hsl_delta(out, ice_ant * 0.4 * i,
+                          hue_shift=+8 * i, sat_delta=-0.05 * i, lit_delta=0.0)
 
     # Greenland: lighter touch
     gl_mask = (LAT >= 60).astype(np.float32)
     gl_mask = feather_mask(gl_mask, scale_feather(20, W))
     ice_gl = ice * gl_mask
-    out = apply_hsl_delta(out, ice_gl * 0.3,
-                          hue_shift=+5, sat_delta=-0.03, lit_delta=0.0)
+    out = apply_hsl_delta(out, ice_gl * 0.3 * i,
+                          hue_shift=+5 * i, sat_delta=-0.03 * i, lit_delta=0.0)
 
     out = np.clip(out, 0, 255)
     log.append("[MODULE 5] polar_correction — Antarctica + Greenland done")
@@ -714,6 +734,7 @@ def apply_desert_correction(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
 
     land = land_px(out)
     lum  = luminance(out)
+    i = NOON_AIR_INTENSITY
 
     # Sahara / Egypt: darken overly bright desert pixels
     sahara_rm = region_mask_rect(LAT, LON, 15, 35, -15, 45,
@@ -722,8 +743,9 @@ def apply_desert_correction(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     # Pixels above brightness threshold get pulled down proportionally
     bright_mask = np.clip((lum - 180) / 75.0, 0.0, 1.0)
     apply_mask = sahara_land * bright_mask
-    out = out * (1.0 - apply_mask[:, :, np.newaxis] * 0.06) + \
-          out * 0.94 * apply_mask[:, :, np.newaxis]
+    darken = 0.06 * i
+    out = out * (1.0 - apply_mask[:, :, np.newaxis] * darken) + \
+          out * (1.0 - darken) * apply_mask[:, :, np.newaxis]
     out = np.clip(out, 0, 255)
 
     # Arabia
@@ -732,24 +754,25 @@ def apply_desert_correction(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     arabia_land = land * arabia_rm
     bright_mask2 = np.clip((lum - 185) / 70.0, 0.0, 1.0)
     apply_mask2 = arabia_land * bright_mask2
-    out = out * (1.0 - apply_mask2[:, :, np.newaxis] * 0.05) + \
-          out * 0.95 * apply_mask2[:, :, np.newaxis]
+    darken2 = 0.05 * i
+    out = out * (1.0 - apply_mask2[:, :, np.newaxis] * darken2) + \
+          out * (1.0 - darken2) * apply_mask2[:, :, np.newaxis]
     out = np.clip(out, 0, 255)
 
     # Central Asia / Tibetan Plateau: suppress over-yellowing
     plateau_rm = region_mask_rect(LAT, LON, 28, 42, 68, 105,
                                   feather_px=scale_feather(20, W))
     plateau_land = land * plateau_rm
-    out = apply_hsl_delta(out, plateau_land * 0.5,
-                          hue_shift=-5, sat_delta=-0.06, lit_delta=0.0,
+    out = apply_hsl_delta(out, plateau_land * 0.5 * i,
+                          hue_shift=-5 * i, sat_delta=-0.06 * i, lit_delta=0.0,
                           hue_range=(30, 80))
 
     # Australia outback: slight reddening
     aus_rm = region_mask_rect(LAT, LON, -35, -16, 115, 140,
                                feather_px=scale_feather(20, W))
     aus_land = land * aus_rm
-    out = apply_hsl_delta(out, aus_land * 0.3,
-                          hue_shift=-8, sat_delta=+0.03, lit_delta=0.0,
+    out = apply_hsl_delta(out, aus_land * 0.3 * i,
+                          hue_shift=-8 * i, sat_delta=+0.03 * i, lit_delta=0.0,
                           hue_range=(20, 60))
 
     log.append("[MODULE 6] desert_correction — Sahara/Arabia/Plateau/Australia done")
@@ -767,10 +790,11 @@ def apply_land_vegetation(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     log.append("[MODULE 7] land_vegetation...")
 
     land = land_px(out)
+    i = NOON_AIR_INTENSITY
 
     # Global green desaturation pass on land
-    out = apply_hsl_delta(out, land * 0.6,
-                          hue_shift=0, sat_delta=-0.08, lit_delta=0.0,
+    out = apply_hsl_delta(out, land * 0.6 * i,
+                          hue_shift=0, sat_delta=-0.08 * i, lit_delta=0.0,
                           hue_range=(80, 160))
 
     # Tropical rainforest: push toward deep olive-green
@@ -783,8 +807,8 @@ def apply_land_vegetation(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
 
     for rm in [amazon_rm, congo_rm, sea_rm]:
         rf_land = land * rm
-        out = apply_hsl_delta(out, rf_land * 0.5,
-                              hue_shift=+5, sat_delta=-0.08, lit_delta=-0.04,
+        out = apply_hsl_delta(out, rf_land * 0.5 * i,
+                              hue_shift=+5 * i, sat_delta=-0.08 * i, lit_delta=-0.04 * i,
                               hue_range=(80, 145))
 
     log.append("[MODULE 7] land_vegetation — done")
@@ -802,12 +826,13 @@ def apply_mountains_plateaus(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     log.append("[MODULE 8] mountains_plateaus...")
 
     land = land_px(out)
+    i = NOON_AIR_INTENSITY
 
     # Himalayas: ensure cool-toned; suppress over-warming
     himalaya_rm = region_mask_rect(LAT, LON, 27, 36, 72, 102,
                                     feather_px=scale_feather(12, W))
-    out = apply_hsl_delta(out, land * himalaya_rm * 0.4,
-                          hue_shift=-3, sat_delta=-0.03, lit_delta=0.0)
+    out = apply_hsl_delta(out, land * himalaya_rm * 0.4 * i,
+                          hue_shift=-3 * i, sat_delta=-0.03 * i, lit_delta=0.0)
 
     # Alps / Rockies / Andes: preserve relief, don't over-process
     alps_rm    = region_mask_rect(LAT, LON, 44, 48, 5, 16,
@@ -818,8 +843,8 @@ def apply_mountains_plateaus(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
                                    feather_px=scale_feather(12, W))
 
     for rm in [alps_rm, rockies_rm, andes_rm]:
-        out = apply_hsl_delta(out, land * rm * 0.2,
-                              hue_shift=0, sat_delta=-0.02, lit_delta=0.0)
+        out = apply_hsl_delta(out, land * rm * 0.2 * i,
+                              hue_shift=0, sat_delta=-0.02 * i, lit_delta=0.0)
 
     log.append("[MODULE 8] mountains_plateaus — done")
     return out
@@ -848,10 +873,11 @@ def apply_special_seas(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
         combined = rmask * ocean
         if combined.sum() < 10:
             continue
+        i = NOON_AIR_INTENSITY
         out = apply_hsl_delta(out, combined,
-                              hue_shift=sea["hue_shift"],
-                              sat_delta=sea["sat_delta"],
-                              lit_delta=sea["lit_delta"])
+                              hue_shift=sea["hue_shift"] * i,
+                              sat_delta=sea["sat_delta"] * i,
+                              lit_delta=sea["lit_delta"] * i)
 
     log.append(f"[MODULE 9] special_seas — {len(NOON_AIR_SPECIAL_SEAS)} seas processed")
     return out
@@ -984,7 +1010,8 @@ def extract_crop(arr: np.ndarray, lon: float, lat: float, w: int, h: int) -> np.
 
 
 def generate_preview_crops(noon_arr: np.ndarray, baseline_arr: np.ndarray,
-                            crops_dir: Path, res_tag: str, log: list):
+                            crops_dir: Path, res_tag: str, log: list,
+                            file_prefix: str = "noon_air_v1"):
     log.append("[OUTPUT] Generating benchmark compare crops...")
     crops_dir.mkdir(parents=True, exist_ok=True)
     label_h = 26
@@ -1013,14 +1040,14 @@ def generate_preview_crops(noon_arr: np.ndarray, baseline_arr: np.ndarray,
         draw.text((4,         5), f"[{region_name}] d5z_b baseline", fill=(180, 180, 180))
         draw.text((cw + gap + 4, 5), f"[{region_name}] noon_air_v1",    fill=(120, 200, 150))
 
-        out_path = crops_dir / f"{region_name}_d5zb_vs_noon_air_v1.jpg"
+        out_path = crops_dir / f"{region_name}_d5zb_vs_{file_prefix}.jpg"
         canvas.save(out_path, "JPEG", quality=90)
 
     # Global preview
     global_w = min(1024, noon_arr.shape[1])
     global_h = global_w // 2
     global_img = Image.fromarray(noon_arr).resize((global_w, global_h), Image.LANCZOS)
-    global_img.save(crops_dir.parent / f"noon_air_v1_{res_tag}_preview_global.jpg",
+    global_img.save(crops_dir.parent / f"{file_prefix}_{res_tag}_preview_global.jpg",
                     "JPEG", quality=88)
 
     # Diff heatmap
@@ -1036,7 +1063,7 @@ def generate_preview_crops(noon_arr: np.ndarray, baseline_arr: np.ndarray,
     diff_img = Image.fromarray(diff_rgb)
     if diff_img.size[0] > 1024:
         diff_img = diff_img.resize((1024, 512), Image.LANCZOS)
-    diff_img.save(crops_dir.parent / f"noon_air_v1_{res_tag}_diff_vs_d5zb.jpg",
+    diff_img.save(crops_dir.parent / f"{file_prefix}_{res_tag}_diff_vs_d5zb.jpg",
                   "JPEG", quality=85)
 
     log.append(f"[OUTPUT] {len(BENCHMARK_CROPS)} compare crops saved to {crops_dir}")
@@ -1050,7 +1077,9 @@ def generate_preview_crops(noon_arr: np.ndarray, baseline_arr: np.ndarray,
 def write_summary_report(noon_f32: np.ndarray, baseline_f32: np.ndarray,
                           LAT: np.ndarray, LON: np.ndarray,
                           guard_result: dict, res_tag: str,
-                          out_dir: Path, log: list):
+                          out_dir: Path, log: list,
+                          file_prefix: str = "noon_air_v1",
+                          calibration: bool = False):
     log.append("[OUTPUT] Computing metrics...")
 
     noon_lum  = float(luminance(noon_f32).mean())
@@ -1091,9 +1120,17 @@ def write_summary_report(noon_f32: np.ndarray, baseline_f32: np.ndarray,
             "pass":     guard_result["pass"],
             "warnings": guard_result["warnings"],
         },
+        "calibration_status": (
+            "CALIBRATION ONLY — BASELINE FLOOR GUARD FAILED. "
+            "NOT ELIGIBLE FOR 8K. NOT ELIGIBLE FOR FRONTEND REGISTRATION. "
+            "NOT ELIGIBLE FOR PRODUCTION."
+            if calibration and not guard_result["pass"]
+            else ("CALIBRATION (guard passed)" if calibration else "STANDARD")
+        ),
+        "noon_air_intensity": NOON_AIR_INTENSITY,
     }
 
-    metrics_path = out_dir / f"noon_air_v1_{res_tag}_metrics.json"
+    metrics_path = out_dir / f"{file_prefix}_{res_tag}_metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
     log.append(f"[OUTPUT] Metrics saved: {metrics_path.name}")
     return metrics
@@ -1105,7 +1142,7 @@ def write_summary_report(noon_f32: np.ndarray, baseline_f32: np.ndarray,
 
 def apply_atmosphere_overlay(f32: np.ndarray, log: list) -> np.ndarray:
     out = f32 / 255.0
-    opacity = min(ATMOSPHERE["opacity"], 0.10)
+    opacity = min(ATMOSPHERE["opacity"] * NOON_AIR_INTENSITY, 0.10)
     ar, ag, ab = [c / 255.0 for c in ATMOSPHERE["color_rgb"]]
     blend_r = np.full(out.shape[:2], ar, dtype=np.float32)
     blend_g = np.full(out.shape[:2], ag, dtype=np.float32)
@@ -1141,27 +1178,61 @@ def parse_args():
                    help="Generate crops and metrics without saving full candidate JPG")
     p.add_argument("--dry-run",    action="store_true",
                    help="Validate assets and report paths without any processing")
+    p.add_argument("--calibration", action="store_true",
+                   help=(
+                       "Allow saving 2K calibration outputs even when d5z_b baseline floor "
+                       "guard fails. This is for human visual review only and is NOT eligible "
+                       "for 8K, frontend registration (?dayTexture=), candidates/ copy, or "
+                       "production promotion. Incompatible with --full-res."
+                   ))
     return p.parse_args()
+
+
+_CALIB_WARNINGS = [
+    "CALIBRATION ONLY — BASELINE FLOOR GUARD FAILED",
+    "NOT ELIGIBLE FOR 8K",
+    "NOT ELIGIBLE FOR FRONTEND REGISTRATION (?dayTexture=)",
+    "NOT ELIGIBLE FOR candidates/ COPY",
+    "NOT ELIGIBLE FOR PRODUCTION",
+]
 
 
 def main():
     args = parse_args()
 
-    out_dir      = Path(args.output_dir)
+    # --calibration + --full-res is a hard conflict
+    if args.calibration and args.full_res:
+        sys.exit(
+            "[ABORT] --calibration and --full-res cannot be used together. "
+            "Calibration mode is strictly 2K only. "
+            "Remove --full-res to run a calibration pass."
+        )
+
     baseline_pth = Path(args.baseline)
+
+    # Calibration mode uses a separate subdirectory and file prefix
+    if args.calibration:
+        out_dir     = Path(args.output_dir) / "calibration"
+        file_prefix = "noon_air_v1_calibration"
+    else:
+        out_dir     = Path(args.output_dir)
+        file_prefix = "noon_air_v1"
 
     log = []
     ts  = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     log.append("=== Noon Air Earth Generator v1 ===")
     log.append(f"Timestamp: {ts}")
+    if args.calibration:
+        log.append("Mode: CALIBRATION 2K (guard FAIL does not abort; outputs marked CALIBRATION ONLY)")
+    elif args.full_res:
+        log.append("Mode: 2K + 8K (--full-res)")
+    else:
+        log.append("Mode: DRY-RUN 2K (2048×1024 only)")
 
     resolutions = [RES_2K]
     if args.full_res:
         resolutions.append(RES_8K)
-        log.append("Mode: 2K + 8K (--full-res)")
-    else:
-        log.append("Mode: DRY-RUN 2K (2048×1024 only)")
 
     # Asset validation (aborts if baseline missing)
     validate_assets(baseline_pth, log)
@@ -1170,7 +1241,7 @@ def main():
     if args.dry_run:
         log.append("[DRY-RUN] --dry-run flag set. Aborting before any processing.")
         out_dir.mkdir(parents=True, exist_ok=True)
-        _flush_log(log, out_dir / "noon_air_v1_dry_run_log.txt")
+        _flush_log(log, out_dir / f"{file_prefix}_dry_run_log.txt")
         print("\n".join(log))
         return
 
@@ -1178,7 +1249,7 @@ def main():
     (out_dir / "compare_crops").mkdir(parents=True, exist_ok=True)
 
     for res in resolutions:
-        w, h   = res
+        w, h    = res
         res_tag = f"{w}x{h}"
         log.append(f"\n--- Resolution: {res_tag} ---")
 
@@ -1206,42 +1277,56 @@ def main():
                                         LAT, LON, log)
         f32 = apply_atmosphere_overlay(f32, log)
 
-        noon_arr   = np.clip(f32, 0, 255).astype(np.uint8)
-        base_f32   = baseline_arr.astype(np.float32)
+        noon_arr = np.clip(f32, 0, 255).astype(np.uint8)
+        base_f32 = baseline_arr.astype(np.float32)
 
-        # Baseline floor guard — must pass before any output is saved
+        # Baseline floor guard — always runs; abort behavior differs by mode
         guard_result = run_baseline_floor_guard(f32, base_f32, LAT, LON, log)
+
         if not guard_result["pass"]:
-            warn_lines = "\n".join(f"  - {w}" for w in guard_result["warnings"])
-            _flush_log(log, out_dir / f"noon_air_v1_{res_tag}_GUARD_FAIL_log.txt")
-            sys.exit(
-                f"[GUARD] ABORT: Baseline floor guard FAILED for {res_tag}. "
-                f"Output NOT saved.\n"
-                f"Failing regions:\n{warn_lines}\n"
-                f"Review the guard log and adjust color parameters before retrying."
-            )
+            if args.calibration:
+                # Calibration mode: warn prominently, but continue to save outputs
+                for line in _CALIB_WARNINGS:
+                    log.append(f"[CALIB] !!! {line} !!!")
+                    print(f"[CALIB] !!! {line} !!!")
+            else:
+                # Standard mode: hard abort, no output saved
+                warn_lines = "\n".join(f"  - {w}" for w in guard_result["warnings"])
+                _flush_log(log, out_dir / f"{file_prefix}_{res_tag}_GUARD_FAIL_log.txt")
+                sys.exit(
+                    f"[GUARD] ABORT: Baseline floor guard FAILED for {res_tag}. "
+                    f"Output NOT saved.\n"
+                    f"Failing regions:\n{warn_lines}\n"
+                    f"Review the guard log and adjust color parameters before retrying."
+                )
 
         # Preview crops and metrics
         crops_dir = out_dir / "compare_crops"
-        generate_preview_crops(noon_arr, baseline_arr, crops_dir, res_tag, log)
+        generate_preview_crops(noon_arr, baseline_arr, crops_dir, res_tag, log,
+                               file_prefix=file_prefix)
         write_summary_report(f32, base_f32, LAT, LON, guard_result,
-                             res_tag, out_dir, log)
+                             res_tag, out_dir, log,
+                             file_prefix=file_prefix,
+                             calibration=args.calibration)
 
         # Save candidate JPG
         if not args.preview_only:
-            candidate_path = out_dir / f"noon_air_v1_{res_tag}.jpg"
+            candidate_path = out_dir / f"{file_prefix}_{res_tag}.jpg"
             Image.fromarray(noon_arr).save(candidate_path, "JPEG", quality=92, subsampling=0)
             size_kb = candidate_path.stat().st_size // 1024
             log.append(f"[OUTPUT] Saved: {candidate_path.name} ({size_kb}KB)")
 
     log.append("\n=== COMPLETE ===")
     log.append(f"Output: {out_dir}")
+    if args.calibration:
+        for line in _CALIB_WARNINGS:
+            log.append(f"[CALIB] {line}")
     log.append("Confirm: earth3d.js NOT modified.")
     log.append("Confirm: DAY_TEXTURE_VARIANT NOT modified.")
     log.append("Confirm: production/ NOT written.")
     log.append("Confirm: No git operations performed.")
 
-    _flush_log(log, out_dir / f"noon_air_v1_log.txt")
+    _flush_log(log, out_dir / f"{file_prefix}_log.txt")
     print("\n".join(log))
 
 
