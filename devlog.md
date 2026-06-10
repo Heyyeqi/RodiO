@@ -775,3 +775,123 @@
 - 验收通过（Pass / Conditional Pass）后，RW 明确授权才可进入 E1-R6
 - D5z_a 截图待 D5z_b 失败时按需执行
 - Conditional Pass 允许最多 2 项 Partial（仅限极地亮度/Indian Ocean 深海）；保护区 / Sahara 变色 / 硬边界 / UI 可读性 均不允许 Partial
+
+## 2026-06-10 B-6.1 Asset Audit
+
+### 做了什么
+- 执行 `docs/phase_b6_1_asset_audit_task_brief.md` 定义的 7 个审计任务（read-only）
+- 确认 ETOPO1 Ice 全球 NetCDF4（890MB，21601×10801，MD5=36edc15...）可用
+- 确认 GSHHG 2.3.7 全 5 层级（f/h/i/l/c）已解压，L1 full 179,837 shapes，pyshp 可读
+- 确认 GEBCO 仅为 Japan subset（lon 118–150, lat 22–50），不可作为全球 B-6 基础
+- 确认核心 Python 依赖：numpy/Pillow/scipy/netCDF4/h5py/xarray/shapefile/shapely 全部 INSTALLED
+- 确认 4 个可选依赖缺失（geopandas/rasterio/pyproj/skimage），均不影响 B-6.2 最小集
+- 生成正式审计文档 `docs/phase_b6_1_asset_audit.md`（10 section）
+- B-6.2 Go/No-Go 判断：READY_TO_PROCEED
+
+### 改动文件
+- `docs/phase_b6_1_asset_audit.md`（新建，~300 行，未 commit）
+- 未修改：`d6_noon_air_earth_generator.py`（仍 unstaged），`pwa/`，`previews/`
+
+### 遗留问题
+- `d6_noon_air_earth_generator.py`（B-5.1+B-5.2）仍 unstaged，等待人工授权后 commit
+- B-5.3 代码实施（`apply_island_reef_floor` 圆形 mask）等待人工授权
+- B-6.2 可立即开始：新建 `scripts/generate_b6_structure_masks.py`，生成 P0 mask set at 2K
+  - 等待人工明确授权后方可实施
+
+## 2026-06-10 B-6.2 Structure Mask Prototype
+
+### 做了什么
+- 新建 `scripts/generate_b6_structure_masks.py`（独立脚本，不 import d6，不写 pwa）
+- 执行 `python3 scripts/generate_b6_structure_masks.py --resolution 2048x1024 --gshhg-tier h`
+- 生成 9 个 float32 [0,1] 2K structure masks：land/ocean/deep_ocean/mid_ocean/continental_shelf/shallow_sea/coastline_distance + mountain/plateau
+- 输出到 `d5b_processor_v3/d5b_output/structure_masks/`（gitignored）
+- 生成 structure_mask_metadata.json / structure_mask_metrics.json / 4 张 preview JPG
+- commit B-6.2 脚本 `0dfdb87`
+
+### 关键 metrics
+- land_mask: 25.3% (GSHHG) vs 33.9% (ETOPO1) — 差异主要来自南极/格陵兰冰架（ETOPO1 Ice Variant z>0 = 陆地）
+- ocean_mask: 74.7%
+- deep_ocean: 40.2%, mid_ocean: 15.4%, shelf: 3.7%, shallow: 4.3%
+- depth 互斥检查: overlap=0 px ✓
+- land+ocean = 1.0 ✓
+- ETOPO1/GSHHG 不一致率: 11.8%（主要为冰架区域）
+- coastline_distance: max 319px ≈ 6,200 km（太平洋中心），pixel units only
+- 总用时: 20.7s（ETOPO1 12.3s + GSHHG 5.6s + 掩码生成 1.2s）
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（新建，已 commit `0dfdb87`）
+- `d5b_processor_v3/d5b_output/structure_masks/`（生成物，gitignored，未 commit）
+- 未修改：`d6_noon_air_earth_generator.py`、`pwa/`、`earth3d.js`
+
+### 遗留问题
+- NPZ 8.5MB（gitignored），适合本地使用，不入库
+- 11.8% GSHHG/ETOPO1 不一致：主要为南极冰架，对 Noon Air 色彩的影响区域在极地（已有 polar correction 模块）
+- coastline_distance 暂为 pixel 单位，km 校正推迟至 B-6.3
+- B-6.3：将 structure masks 集成进 d6 generator（B-5.3 实施后才进入 B-6.3）
+- B-5.3 代码实施（apply_island_reef_floor）仍等待人工授权
+
+## 2026-06-10 B-6.2P Polar / Antarctica Land-Ice Patch
+
+### 做了什么
+- 发现 critical issue：GSHHG L1 不覆盖南极洲内部（lat -70 to -90），导致 Antarctica interior 被误判为 ocean
+- 提交 B-6.3 审计文档 `a71779e`
+- 修改 `scripts/generate_b6_structure_masks.py`：
+  - 新增 polar supplement：`antarctica_ice_mask = (lat < -60) & (ETOPO1 z > 0)`
+  - 新增 `greenland_ice_mask = bbox (lat 59.5–84.5, lon -74 to -11) & (z > 0)`
+  - `land_mask = max(GSHHG_rasterized, polar_land_ice_supplement)`
+  - 所有 depth mask 基于修正后的 ocean_mask 重新计算
+  - 新增 polar sanity checks、depth_on_land 检查、before/after disagreement 对比
+  - 新增 `polar_ice_supplement_preview.jpg`
+- 重新生成 2K structure masks，共 12 个 masks
+- 提交脚本修改 `f1478d8`
+
+### 关键 metrics（修复后）
+- land_mask: 35.5%（GSHHG 25.3% + 极地补充 10.2%）
+- ocean_mask: 64.5%
+- ETOPO1/land 不一致率：11.83% → **1.60%**（减少 214,556 px）
+- depth_on_land_pixels: **0** ✓
+- antarctica_depth_mask_pixels: **0** ✓
+- depth overlap: **0** ✓
+- land+ocean = 1.0 ✓
+
+### Polar sanity checks（全部 PASS）
+- Antarctica interior (0°, -80°): land=1.000, ocean=0.000, ant_ice=1.000 **PASS**
+- Greenland (−42°, 72°): land=1.000 **PASS**
+- Antarctic coast (0°, -70°): land=1.000 **PASS**
+- Southern Ocean (0°, -55°): ocean=1.000 **PASS**
+
+### 改动文件
+- `scripts/generate_b6_structure_masks.py`（修改，commit `f1478d8`）
+- `docs/phase_b6_3_structure_mask_validation_audit.md`（commit `a71779e`）
+- `d5b_processor_v3/d5b_output/structure_masks/`（重新生成，gitignored，未 commit）
+
+### 遗留问题
+- 残余 1.60% ETOPO1/land 不一致：主要为小岛/海岸线像素级差异，不影响主要目标
+- coastline_distance 仍为 pixel 单位，km 校正推迟至 B-6.3 integration
+- B-6.3：structure mask 集成进 d6 generator（B-5.3 实施后）
+- B-5.3 代码实施等待授权
+- d6_noon_air_earth_generator.py（B-5.1+B-5.2 修改）仍 unstaged，等待授权 commit
+
+## 2026-06-10 B-6.2S Structure Mask Supplement Planning
+
+### 做了什么
+- 提交 B-6.3R 重新验证文档 `40135b2`
+- 生成 B-6.2S 补强规划文档 `docs/phase_b6_2s_structure_mask_supplement_plan.md`
+- 未改代码，未重新生成 masks，未运行 d6
+
+### 规划核心结论
+- Group A（Special Sea water-only masks）：11 个 bbox+ocean_mask，低风险，建议立即实施（B-6.2S-1）
+- Group B（Shelf/Bank masks）：5 个 ETOPO1 深度门控，中等风险，B-6.2S-2
+- Group C（Island/Reef proxy）：需 GSHHG f tier，实验性，B-6.2S-3
+- GBR reef / Red Sea reef：缓实施，需 GEBCO global（7.8 GB，未下载）
+- B-5.3 与 B-6.2S 可并行，B-5.3 是视觉优先级最高的未阻塞任务
+- 建议优先 B-5.3，然后 B-6.2S-1
+
+### 改动文件
+- `docs/phase_b6_2s_structure_mask_supplement_plan.md`（新建，未 commit）
+- 未修改：d6、pwa、previews、masks
+
+### 遗留问题
+- B-6.2S 规划文档未 commit（等待授权）
+- B-5.3 代码实施等待授权（最高价值未阻塞任务）
+- d6_noon_air_earth_generator.py（B-5.1+B-5.2）仍 unstaged
