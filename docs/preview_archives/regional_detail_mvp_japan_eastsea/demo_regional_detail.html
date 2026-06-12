@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RodiO Regional Detail Layer MVP — Japan/East Sea</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #ddd; font-family: monospace; overflow: hidden; }
+canvas { display: block; }
+
+#ui {
+  position: fixed; top: 12px; left: 12px;
+  background: rgba(0,0,0,0.75); border: 1px solid #333;
+  padding: 12px 14px; border-radius: 6px; font-size: 12px;
+  user-select: none; min-width: 260px;
+  backdrop-filter: blur(4px);
+}
+#ui h3 { font-size: 11px; color: #aaa; margin-bottom: 8px; letter-spacing: 0.05em; }
+.row { display: flex; gap: 6px; margin-bottom: 7px; align-items: center; }
+.label { color: #777; width: 80px; flex-shrink: 0; }
+.btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+button {
+  background: #1a1a1a; border: 1px solid #444; color: #ccc;
+  padding: 3px 9px; border-radius: 3px; cursor: pointer; font-size: 11px;
+  font-family: monospace;
+}
+button:hover { border-color: #888; color: #fff; }
+button.active { background: #2a4a2a; border-color: #4a8a4a; color: #8ef08e; }
+input[type=range] { width: 120px; accent-color: #4a8a4a; }
+.val { color: #8ef08e; min-width: 30px; }
+.stat { color: #aaa; }
+.stat span { color: #fff; }
+#info {
+  position: fixed; bottom: 12px; left: 12px;
+  background: rgba(0,0,0,0.65); padding: 8px 12px; border-radius: 4px;
+  font-size: 11px; color: #777; line-height: 1.6;
+  border: 1px solid #222;
+}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h3>▸ RodiO Regional Detail Layer MVP</h3>
+
+  <div class="row">
+    <span class="label">Tile size</span>
+    <div class="btn-group">
+      <button id="btn-1024" onclick="setTile('1024')">1024×820</button>
+      <button id="btn-2048" class="active" onclick="setTile('2048')">2048×1638</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Detail</span>
+    <div class="btn-group">
+      <button id="btn-detail-on" class="active" onclick="setDetail(true)">ON</button>
+      <button id="btn-detail-off" onclick="setDetail(false)">OFF</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Blend</span>
+    <div class="btn-group">
+      <button id="bl-035" onclick="setBlend(0.35)">0.35</button>
+      <button id="bl-050" onclick="setBlend(0.50)">0.50</button>
+      <button id="bl-075" class="active" onclick="setBlend(0.75)">0.75</button>
+      <button id="bl-100" onclick="setBlend(1.00)">1.00</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Cam dist</span>
+    <div class="btn-group">
+      <button onclick="setCamDist(1.50)">1.50</button>
+      <button onclick="setCamDist(1.35)">1.35</button>
+      <button onclick="setCamDist(1.25)">1.25</button>
+      <button onclick="setCamDist(3.00)">3.00 ↩</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Near</span>
+    <input id="near-slider" type="range" min="1.0" max="3.5" step="0.05" value="1.8"
+      oninput="setNear(+this.value)">
+    <span class="val" id="near-val">1.80</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Far</span>
+    <input id="far-slider" type="range" min="1.5" max="5.0" step="0.05" value="2.8"
+      oninput="setFar(+this.value)">
+    <span class="val" id="far-val">2.80</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Show tile</span>
+    <div class="btn-group">
+      <button id="btn-outline-on" onclick="setOutline(true)">Outline</button>
+      <button id="btn-outline-off" class="active" onclick="setOutline(false)">Off</button>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid #333; margin: 8px 0;"></div>
+  <div class="stat">Cam dist: <span id="stat-dist">-</span></div>
+  <div class="stat">FPS: <span id="stat-fps">-</span></div>
+  <div class="stat">Detail visible: <span id="stat-blend">-</span></div>
+</div>
+
+<div id="info">
+  Demo: Shader UV Region Blend — Japan/East Sea (lon 118–148°, lat 24–48°)<br>
+  Source: 21.6K earth_day_source (1873×1497 raw crop) → 1024×820 / 2048×1638<br>
+  Sphere radius=1 | minDist 1.50/1.35/1.25 = 1.50×/1.35×/1.25× radius<br>
+  Drag to rotate, scroll to zoom | Shift+click for camera position
+</div>
+
+<script src="three.min.js"></script>
+<script>
+// ─── UV / Geographic constants ──────────────────────────────────────────
+// Three.js r128 SphereGeometry stores UV as (u, 1-v_geo), so vUv.y = 1 - v_sphere
+// where v_sphere = (90-lat)/180. vUv.y increases NORTHWARD.
+// Equirectangular v_sphere: vbMin_sphere=0.2307 (lat=48°N), vbMax_sphere=0.3693 (lat=24°N)
+// In vUv.y coords: vMin = 1 - 0.3693 = 0.6307 (south edge), vMax = 1 - 0.2307 = 0.7693 (north edge)
+const UV = {
+  // Overdraw bounds in vUv.y space (tile coverage)
+  uMin: 0.8261, uMax: 0.9128,
+  vMin: 0.6307, vMax: 0.7693,
+  // Display bounds in vUv.y space (feather reference)
+  duMin: 0.8278, duMax: 0.9111,
+  dvMin: 0.6333, dvMax: 0.7667,
+};
+
+// ─── Three.js scene setup ──────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.05, 100);
+
+// Position camera to view Japan (sphere radius=1, Japan at lon≈135°, lat≈35°)
+// Three.js SphereGeometry: u=0 → phi=0 → (-cos(0)=−1, z=0) = -X direction
+// u=0.25 → phi=π/2 → (0, z=sin(π/2)=1) = +Z (faces camera)
+// So +Z face of sphere = texture u=0.25 = longitude (0.25×360−180) = −90°
+// To see Japan (lon=135°): u_target = (135+180)/360 = 0.875
+// Rotate sphere so u=0.875 faces camera (+Z), currently u=0.25 faces camera
+// Sphere needs Y rotation: delta_u = 0.875−0.25 = 0.625; angle = 0.625×2π rad
+// Positive Y rotation in Three.js shifts visible u upward (eastward)
+// sphere.rotation.y = 0.625 × 2π ≈ 3.927 (empirically confirmed below)
+
+camera.position.set(0, 0.3, 3.0);
+camera.lookAt(0, 0, 0);
+
+// Lighting: sun positioned to illuminate Japan (lon=135°E, lat=35°N → sphere-local (-0.58,0.57,-0.58))
+const ambient = new THREE.AmbientLight(0xffffff, 0.12);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff5e0, 1.25);
+sun.position.set(-3.5, 2.0, -3.0);  // noon over Japan
+scene.add(sun);
+
+// Stars (simple)
+{
+  const N = 3000;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 50 + Math.random() * 30;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    pos[i*3]   = r * Math.sin(ph) * Math.cos(th);
+    pos[i*3+1] = r * Math.cos(ph);
+    pos[i*3+2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.6 })));
+}
+
+// ─── Material & shader uniforms ────────────────────────────────────────
+let storedShader = null;
+let currentTileSize = '2048';
+let detailEnabled = true;
+let currentBlend = 0.75;
+let showOutline = false;
+let detailNear = 1.8;
+let detailFar = 2.8;
+
+const detailUniforms = {
+  uDetailMap:          { value: null },
+  uDetailUVBounds:     { value: new THREE.Vector4(UV.uMin, UV.uMax, UV.vMin, UV.vMax) },
+  uDetailDisplayBounds:{ value: new THREE.Vector4(UV.duMin, UV.duMax, UV.dvMin, UV.dvMax) },
+  uDetailBlend:        { value: currentBlend },
+  uDetailEnabled:      { value: 1.0 },
+  uCameraDistance:     { value: 3.0 },
+  uDetailNear:         { value: detailNear },
+  uDetailFar:          { value: detailFar },
+  uShowOutline:        { value: 0.0 },
+};
+
+function buildEarthMaterial(dayTexture) {
+  const mat = new THREE.MeshPhongMaterial({
+    map: dayTexture,
+    color: 0xffffff,
+    specular: new THREE.Color(0x091018),
+    shininess: 1.12,
+  });
+
+  mat.onBeforeCompile = (shader) => {
+    // Inject uniforms
+    Object.assign(shader.uniforms, detailUniforms);
+
+    // Inject declarations before void main()
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'void main() {',
+      `
+      uniform sampler2D uDetailMap;
+      uniform vec4 uDetailUVBounds;
+      uniform vec4 uDetailDisplayBounds;
+      uniform float uDetailBlend;
+      uniform float uDetailEnabled;
+      uniform float uCameraDistance;
+      uniform float uDetailNear;
+      uniform float uDetailFar;
+      uniform float uShowOutline;
+
+      void main() {`
+    );
+
+    // Replace map_fragment to inject blend after global texture sample
+    // In r128, map_fragment uses vUv (not vMapUv)
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `
+      #ifdef USE_MAP
+        vec4 texelColor = texture2D( map, vUv );
+        texelColor = mapTexelToLinear( texelColor );
+        diffuseColor *= texelColor;
+      #endif
+
+      // ── Regional Detail Blend ──────────────────────────────────────────
+      if (uDetailEnabled > 0.5) {
+        float u = vUv.x;
+        float v = vUv.y;
+
+        float ubMin = uDetailUVBounds.x;
+        float ubMax = uDetailUVBounds.y;
+        float vbMin = uDetailUVBounds.z;
+        float vbMax = uDetailUVBounds.w;
+
+        if (u >= ubMin && u <= ubMax && v >= vbMin && v <= vbMax) {
+          // Map to tile local UV — tile is non-square (1024×820 or 2048×1638)
+          // UV space is already correctly proportional to geographic extent
+          vec2 tileUV = vec2(
+            (u - ubMin) / (ubMax - ubMin),
+            (v - vbMin) / (vbMax - vbMin)
+          );
+
+          // Feather using display bounds as reference
+          float duMin = uDetailDisplayBounds.x;
+          float duMax = uDetailDisplayBounds.y;
+          float dvMin = uDetailDisplayBounds.z;
+          float dvMax = uDetailDisplayBounds.w;
+
+          // Feather width: ~3.5% of tile UV range
+          float fwU = (ubMax - ubMin) * 0.035;
+          float fwV = (vbMax - vbMin) * 0.035;
+
+          float feL = smoothstep(duMin - fwU, duMin + fwU, u);
+          float feR = smoothstep(duMax + fwU, duMax - fwU, u);
+          float feT = smoothstep(dvMin - fwV, dvMin + fwV, v);
+          float feB = smoothstep(dvMax + fwV, dvMax - fwV, v);
+          float feather = feL * feR * feT * feB;
+
+          // Distance-based blend: smoothstep(far → near)
+          float distFactor = smoothstep(uDetailFar, uDetailNear, uCameraDistance);
+
+          // Sample detail tile
+          vec4 detailSample = texture2D(uDetailMap, tileUV);
+          detailSample = mapTexelToLinear(detailSample);
+
+          float totalBlend = uDetailBlend * feather * distFactor;
+          diffuseColor.rgb = mix(diffuseColor.rgb, detailSample.rgb, totalBlend);
+
+          // Optional outline for debugging
+          if (uShowOutline > 0.5) {
+            float border = 0.008;
+            bool onBorder = (
+              tileUV.x < border || tileUV.x > 1.0 - border ||
+              tileUV.y < border || tileUV.y > 1.0 - border
+            );
+            if (onBorder) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.3, 0.3), 0.8);
+          }
+        }
+      }
+      // ── End Regional Detail Blend ──────────────────────────────────────
+      `
+    );
+
+    storedShader = shader;
+  };
+
+  mat.customProgramCacheKey = () => 'rdl_v1';
+  return mat;
+}
+
+// ─── Globe setup ───────────────────────────────────────────────────────
+const geometry = new THREE.SphereGeometry(1, 64, 64);
+let earthMaterial = null;
+let earthMesh = null;
+
+// No sphere Y-rotation. Instead, camera is positioned to directly face Japan.
+// Japan's local position on Three.js SphereGeometry (r=1):
+//   u = (135+180)/360 = 0.875, v = (90-35)/180 = 0.306
+//   x = -cos(u*2π)*sin(v*π) = 0.580, y = cos(v*π) = 0.574, z = sin(u*2π)*sin(v*π) = -0.580
+// Camera placed at camDist * normalize(0.580, 0.574, -0.580), looking at origin.
+// → sphericalTheta = 3π/4 ≈ 2.356, sphericalPhi = arccos(0.574) ≈ 0.960
+const JAPAN_ORIENT_Y = 0;  // sphere not rotated; camera orbit handles orientation
+
+// ─── Texture loading ───────────────────────────────────────────────────
+const loader = new THREE.TextureLoader();
+
+function configTex(tex) {
+  tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  return tex;
+}
+
+const textures = {};
+
+function loadTexture(url, key, cb) {
+  loader.load(url, (tex) => {
+    configTex(tex);
+    textures[key] = tex;
+    if (cb) cb(tex);
+  }, undefined, (err) => {
+    console.error('Texture load error:', url, err);
+  });
+}
+
+// Load global day texture (relative to demo file location)
+loadTexture(
+  '../../pwa/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg',
+  'global',
+  (dayTex) => {
+    earthMaterial = buildEarthMaterial(dayTex);
+    earthMesh = new THREE.Mesh(geometry, earthMaterial);
+    earthMesh.rotation.y = JAPAN_ORIENT_Y;
+    scene.add(earthMesh);
+    console.log('[RDL] Global texture loaded, earth mesh added');
+    loadDetailTile('2048');
+  }
+);
+
+function loadDetailTile(size) {
+  const key = 'detail_' + size;
+  if (textures[key]) {
+    detailUniforms.uDetailMap.value = textures[key];
+    console.log('[RDL] Switched to tile:', size);
+    return;
+  }
+  const url = `detail_japan_eastsea_${size}.png`;
+  loadTexture(url, key, (tex) => {
+    tex.generateMipmaps = true;
+    detailUniforms.uDetailMap.value = tex;
+    console.log('[RDL] Detail tile loaded:', size, tex.image.width, '×', tex.image.height);
+  });
+}
+
+// ─── Controls: simple orbit ────────────────────────────────────────────
+let isDragging = false;
+let lastX = 0, lastY = 0;
+// Init orbit angles so camera looks at Japan (lon=135°E, lat=35°N)
+// Camera orbit vis_lon formula: vis_lon = -90 + θ×180/π (opposite sign from sphere rotation)
+// For lon=135°: θ = (135+90)×π/180 = 225π/180 = 5π/4 ≈ 3.927 rad
+// φ = arccos(sin(lat)) = arccos(sin(35°)) = arccos(0.574) ≈ 0.960 rad
+let sphericalTheta = 5 * Math.PI / 4;  // ≈ 3.927 rad → vis_lon = 135°E
+let sphericalPhi   = Math.acos(Math.sin(35 * Math.PI / 180));  // ≈ 0.960 rad → lat=35°N
+let camDist = 3.0;
+
+const MIN_DIST = 1.1;
+const MAX_DIST = 6.0;
+
+function updateCamera() {
+  const x = camDist * Math.sin(sphericalPhi) * Math.sin(sphericalTheta);
+  const y = camDist * Math.cos(sphericalPhi);
+  const z = camDist * Math.sin(sphericalPhi) * Math.cos(sphericalTheta);
+  camera.position.set(x, y, z);
+  camera.lookAt(0, 0, 0);
+}
+
+renderer.domElement.addEventListener('mousedown', (e) => {
+  if (e.button === 0) { isDragging = true; lastX = e.clientX; lastY = e.clientY; }
+});
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = (e.clientX - lastX) * 0.005;
+  const dy = (e.clientY - lastY) * 0.005;
+  sphericalTheta -= dx;
+  sphericalPhi   = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalPhi + dy));
+  lastX = e.clientX; lastY = e.clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('mouseup', () => { isDragging = false; });
+renderer.domElement.addEventListener('mouseleave', () => { isDragging = false; });
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  camDist = Math.max(MIN_DIST, Math.min(MAX_DIST, camDist + e.deltaY * 0.003));
+  updateCamera();
+}, { passive: false });
+
+// Touch support
+renderer.domElement.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) { isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+});
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!isDragging || e.touches.length !== 1) return;
+  const dx = (e.touches[0].clientX - lastX) * 0.005;
+  const dy = (e.touches[0].clientY - lastY) * 0.005;
+  sphericalTheta -= dx;
+  sphericalPhi   = Math.max(0.1, Math.min(Math.PI - 0.1, sphericalPhi + dy));
+  lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+  updateCamera();
+});
+renderer.domElement.addEventListener('touchend', () => { isDragging = false; });
+
+updateCamera();
+
+// ─── UI callbacks ──────────────────────────────────────────────────────
+function setTile(size) {
+  currentTileSize = size;
+  loadDetailTile(size);
+  document.querySelectorAll('#btn-1024,#btn-2048').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + size).classList.add('active');
+}
+
+function setDetail(on) {
+  detailEnabled = on;
+  detailUniforms.uDetailEnabled.value = on ? 1.0 : 0.0;
+  document.getElementById('btn-detail-on').classList.toggle('active', on);
+  document.getElementById('btn-detail-off').classList.toggle('active', !on);
+}
+
+function setBlend(v) {
+  currentBlend = v;
+  detailUniforms.uDetailBlend.value = v;
+  document.querySelectorAll('[id^=bl-]').forEach(b => b.classList.remove('active'));
+  const key = 'bl-' + String(Math.round(v * 100)).padStart(3, '0');
+  const el = document.getElementById(key);
+  if (el) el.classList.add('active');
+}
+
+function setCamDist(d) {
+  camDist = d;
+  updateCamera();
+}
+
+function setNear(v) {
+  detailNear = v;
+  detailUniforms.uDetailNear.value = v;
+  document.getElementById('near-val').textContent = v.toFixed(2);
+}
+
+function setFar(v) {
+  detailFar = v;
+  detailUniforms.uDetailFar.value = v;
+  document.getElementById('far-val').textContent = v.toFixed(2);
+}
+
+function setOutline(on) {
+  showOutline = on;
+  detailUniforms.uShowOutline.value = on ? 1.0 : 0.0;
+  document.getElementById('btn-outline-on').classList.toggle('active', on);
+  document.getElementById('btn-outline-off').classList.toggle('active', !on);
+}
+
+// ─── Render loop ───────────────────────────────────────────────────────
+let frameCount = 0;
+let lastFPSTime = performance.now();
+let fps = 0;
+
+function render() {
+  requestAnimationFrame(render);
+
+  const dist = camera.position.length();
+  detailUniforms.uCameraDistance.value = dist;
+
+  // FPS counter
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFPSTime > 1000) {
+    fps = Math.round(frameCount * 1000 / (now - lastFPSTime));
+    frameCount = 0;
+    lastFPSTime = now;
+  }
+
+  // Update stats
+  const distFactor = Math.max(0, Math.min(1,
+    (detailFar - dist) / (detailFar - detailNear)
+  ));
+  const visibleBlend = (detailEnabled && detailUniforms.uDetailMap.value)
+    ? (currentBlend * distFactor).toFixed(2)
+    : '0.00';
+
+  document.getElementById('stat-dist').textContent = dist.toFixed(3);
+  document.getElementById('stat-fps').textContent  = fps + ' fps';
+  document.getElementById('stat-blend').textContent = visibleBlend +
+    (detailUniforms.uDetailMap.value ? '' : ' (no tile)');
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+render();
+</script>
+</body>
+</html>
