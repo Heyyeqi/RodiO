@@ -1087,3 +1087,56 @@ B-6.2G-3C validation 发现 WDBII h/L01 baseline（55 shapes）中 Nile / Missis
 - B-6.2G-3C-R：L01+L02 variant validation audit 文档（Nile/Mississippi/Danube 覆盖确认，density 详细分析）
 - B-6.2G-2C：terrain validation audit 建议 rerun（domain clip 策略 B-6.2G-2B-P 已改）
 - scripts/generate_b6_structure_masks.py commit 仍待显式授权
+
+---
+
+## 2026-06-13 HZ迁移后代码与文件审察
+
+### 做了什么
+- 读取 `AGENTS.md`，核对迁移后的目录、Git 状态、忽略文件、核心静态资源和用户数据文件。
+- 运行 `npm test`、`node --check server.js`、关键模块语法检查；单元测试 8 项通过。
+- 实际运行 `npm start`，确认启动失败原因是 `better-sqlite3` native binary 从 x86_64 机器迁移而来，当前 arm64 Node 无法加载。
+- 核对 PWA/Three.js 地球硬编码资源路径，当前引用的运行时贴图、云层、海洋 mask、manifest、sw 均存在。
+- 核对 SQLite 库、`.env` 键名和本地源素材目录；确认 `db/state.db` 存在，但 prefs 中没有 `spotify_user_token_v1`。
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 需要在当前机器重建或重装 Node 依赖，重点是 `better-sqlite3` 的 arm64 native binary。
+- `.env` 当前缺少 Spotify/Railway 相关配置；如果线上环境变量没有同步到本地，需要重新配置或重新走 Spotify OAuth。
+- 工作区仍有未提交/未跟踪内容：`d5b_processor_v3/d6_noon_air_earth_generator.py` 大幅修改，`AGENTS.md` 与多组 `previews/` 目录未跟踪。
+
+---
+
+## 2026-06-13 HZ修复本机 native 依赖
+
+### 做了什么
+- 运行 `npm rebuild better-sqlite3`，将从旧机器迁移来的 x86_64 native binary 重建为当前 macOS arm64 可用版本。
+- 验证 `node_modules/better-sqlite3/build/Release/better_sqlite3.node` 已变为 `Mach-O 64-bit bundle arm64`。
+- 验证 `better-sqlite3` 可正常打开 `db/state.db`。
+- 运行 `npm test`，8 项测试通过。
+- 非沙箱启动 `npm start`，服务成功启动到 `http://localhost:8080`；验证 `/`、`/manifest.json`、`/api/queue`、`/api/spotify/status` 可响应。
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 启动预热调用 DashScope 返回 `400 Access denied`，需要检查 DashScope 账号状态、额度或 API key 权限。
+- `/api/spotify/status` 返回 `connected:false`；本地 `.env` 仍缺 Spotify/Railway 配置，可能需要重新授权 Spotify 或同步环境变量。
+
+---
+
+## 2026-06-13 HZ本机启动测试
+
+### 做了什么
+- 按用户要求启动 `npm start`，服务成功运行在 `http://localhost:8080`。
+- 验证首页返回 `200 OK`，`/api/queue` 返回 `{"queue":[]}`。
+- 用户确认本机打开测试没问题后，停止本地服务。
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 启动预热仍返回 DashScope `400 Access denied`，导致 readyPool 为空。
+- 停止前日志显示 `sharp` 模块缺少 darwin-arm64 runtime，后续如果需要 `/api/globe-image` 夜景裁切，应重装或重建 `sharp`。
