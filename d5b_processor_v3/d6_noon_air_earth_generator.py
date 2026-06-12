@@ -79,24 +79,28 @@ ATMOSPHERE = {
 #              feather_px_8k, ocean_only, deep_only, priority, cross_antimeridian)
 NOON_AIR_OCEAN_REGIONS = [
     # priority 0 — global deep ocean base
+    # P0 fix: lit_delta 0.0 (was -0.02) — raw BMNG deep ocean already darker than d5z_b;
+    # additional darkening caused cascading black-ocean; hue/sat adjustments preserved.
     dict(name="global_deep_base",      lon_w=-180, lon_e=180,  lat_s=-90,  lat_n=90,
-         hue_shift=+2,  sat_delta=-0.04, lit_delta=-0.02,
+         hue_shift=+2,  sat_delta=-0.04, lit_delta=0.0,
          feather_px_8k=0,  ocean_only=True,  deep_only=True,  priority=0, cross_am=False),
     # priority 1 — ocean basins
+    # P0 fix: all deep-basin lit_delta → 0.0 (was -0.01 to -0.02)
     dict(name="pacific_deep_north",    lon_w=130,  lon_e=240,  lat_s=0,    lat_n=60,
-         hue_shift=+3,  sat_delta=-0.05, lit_delta=-0.02,
+         hue_shift=+3,  sat_delta=-0.05, lit_delta=0.0,
          feather_px_8k=60, ocean_only=True, deep_only=True, priority=1, cross_am=True),
     dict(name="pacific_deep_south",    lon_w=140,  lon_e=280,  lat_s=-60,  lat_n=0,
-         hue_shift=+3,  sat_delta=-0.05, lit_delta=-0.02,
+         hue_shift=+3,  sat_delta=-0.05, lit_delta=0.0,
          feather_px_8k=60, ocean_only=True, deep_only=True, priority=1, cross_am=True),
     dict(name="atlantic_deep",         lon_w=-80,  lon_e=20,   lat_s=-50,  lat_n=65,
-         hue_shift=+2,  sat_delta=-0.03, lit_delta=-0.01,
+         hue_shift=+2,  sat_delta=-0.03, lit_delta=0.0,
          feather_px_8k=50, ocean_only=True, deep_only=True, priority=1, cross_am=False),
     dict(name="indian_ocean_deep",     lon_w=40,   lon_e=120,  lat_s=-50,  lat_n=25,
-         hue_shift=+2,  sat_delta=-0.06, lit_delta=-0.02,
+         hue_shift=+2,  sat_delta=-0.06, lit_delta=0.0,
          feather_px_8k=50, ocean_only=True, deep_only=True, priority=1, cross_am=False),
+    # P0 fix: southern_ocean lit_delta → 0.0 (was -0.01)
     dict(name="southern_ocean",        lon_w=-180, lon_e=180,  lat_s=-70,  lat_n=-50,
-         hue_shift=+4,  sat_delta=-0.04, lit_delta=-0.01,
+         hue_shift=+4,  sat_delta=-0.04, lit_delta=0.0,
          feather_px_8k=40, ocean_only=True, deep_only=False, priority=1, cross_am=False),
     dict(name="arctic_ocean",          lon_w=-180, lon_e=180,  lat_s=70,   lat_n=90,
          hue_shift=+5,  sat_delta=-0.03, lit_delta=+0.01,
@@ -108,8 +112,9 @@ NOON_AIR_OCEAN_REGIONS = [
     dict(name="east_china_sea",        lon_w=118,  lon_e=132,  lat_s=24,   lat_n=34,
          hue_shift=+3,  sat_delta=+0.01, lit_delta=+0.05,
          feather_px_8k=20, ocean_only=True, deep_only=False, priority=2, cross_am=False),
+    # P0 fix: sea_of_japan lit_delta → 0.0 (was -0.03); Yellow/East China Sea already dark
     dict(name="sea_of_japan",          lon_w=128,  lon_e=142,  lat_s=34,   lat_n=52,
-         hue_shift=+2,  sat_delta=-0.04, lit_delta=-0.03,
+         hue_shift=+2,  sat_delta=-0.04, lit_delta=0.0,
          feather_px_8k=20, ocean_only=True, deep_only=False, priority=2, cross_am=False),
     dict(name="south_china_sea_north", lon_w=105,  lon_e=125,  lat_s=15,   lat_n=25,
          hue_shift=+3,  sat_delta=+0.02, lit_delta=+0.04,
@@ -569,6 +574,11 @@ def apply_ocean_system(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
     W = f32.shape[1]
     log.append("[MODULE 2] ocean_system...")
 
+    # P0 fix: pre-compute deep_mask once from original input.
+    # Previously computed deep_ocean_px(out) inside the loop, causing cascading
+    # darkening: priority-0 darkened pixels were re-classified as deep in priority-1.
+    deep_mask_fixed = deep_ocean_px(f32)
+
     regions_sorted = sorted(NOON_AIR_OCEAN_REGIONS, key=lambda r: r["priority"])
     for r in regions_sorted:
         fpx = scale_feather(r["feather_px_8k"], W)
@@ -578,7 +588,7 @@ def apply_ocean_system(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
                                  feather_px=fpx,
                                  cross_antimeridian=r.get("cross_am", False))
         if r.get("deep_only"):
-            pixel_gate = deep_ocean_px(out)
+            pixel_gate = deep_mask_fixed   # fixed mask — not recalculated from mutated out
         elif r.get("ocean_only"):
             pixel_gate = ocean_px(out)
         else:
@@ -595,6 +605,76 @@ def apply_ocean_system(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
                               lit_delta=r["lit_delta"] * i)
 
     log.append(f"[MODULE 2] ocean_system — {len(NOON_AIR_OCEAN_REGIONS)} regions processed")
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Module: apply_ocean_luminance_floor (P0 safety fix — B-5)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Minimum luminance floors for ocean zones (in [0,1] space).
+# B-5.2: global lowered 0.10→0.07 (rescue only near-black pixels);
+#         shallow lowered 0.13→0.10 (pixel-level proxy, no bbox, no hard edge).
+#         Tropical bbox tier removed — island halos (Module 4) handle reef brightening.
+OCEAN_FLOOR_GLOBAL  = 0.07   # rescue near-black deep ocean only
+OCEAN_FLOOR_SHALLOW = 0.10   # shallow proxy tier; no geographic bbox
+
+
+def _lift_floor(out: np.ndarray, zone_mask: np.ndarray, floor: float,
+                softness: float = 0.55) -> np.ndarray:
+    """
+    Soft luminance lift: raise pixels below floor proportionally.
+    Scales all RGB channels by the same factor to preserve hue and saturation.
+    Does NOT hard-clamp — softness < 1.0 means floor is approached, not enforced.
+    """
+    lum_abs = luminance(out)
+    floor_abs = floor * 255.0
+    deficit = np.clip(floor_abs - lum_abs, 0.0, floor_abs) * zone_mask
+    has_deficit = deficit > 0
+
+    scale_factor = np.where(
+        has_deficit & (lum_abs > 0.5),
+        (lum_abs + deficit * softness) / lum_abs,
+        1.0,
+    )
+    return np.clip(out * scale_factor[:, :, np.newaxis], 0, 255)
+
+
+def apply_ocean_luminance_floor(f32: np.ndarray, LAT: np.ndarray, LON: np.ndarray,
+                                 log: list) -> np.ndarray:
+    """
+    B-5.2: Two-pass soft luminance floor for ocean pixels only.
+    Pass 1 (global=0.07): rescue near-black deep-ocean pixels only.
+    Pass 2 (shallow=0.10): pixel-level shallow proxy lift, no geographic bbox.
+    No tropical bbox zones — island halos (Module 4) handle reef brightening.
+    No hard edges, no rectangles.
+    """
+    out = f32.copy()
+    log.append("[MODULE 2b] ocean_luminance_floor...")
+
+    ocean = ocean_px(out)
+    ocean_bool = ocean > 0.5
+
+    # Pass 1: near-black global rescue
+    lum_before_g = luminance(out) / 255.0
+    g_candidates = int(((lum_before_g < OCEAN_FLOOR_GLOBAL) & ocean_bool).sum())
+    out = _lift_floor(out, ocean, OCEAN_FLOOR_GLOBAL)
+    lum_after_g = luminance(out) / 255.0
+    g_lifted = int(((lum_after_g > lum_before_g + 1e-4) & ocean_bool).sum())
+
+    # Pass 2: shallow proxy lift (brightness-weighted, no bbox)
+    shallow_proxy = ocean * np.clip((lum_after_g - 0.06) / 0.20, 0.0, 1.0)
+    lum_before_sh = lum_after_g
+    sh_candidates = int(((lum_before_sh < OCEAN_FLOOR_SHALLOW) & ocean_bool).sum())
+    out = _lift_floor(out, shallow_proxy, OCEAN_FLOOR_SHALLOW)
+    lum_after_sh = luminance(out) / 255.0
+    sh_lifted = int(((lum_after_sh > lum_before_sh + 1e-4) & ocean_bool).sum())
+
+    log.append(
+        f"[MODULE 2b] ocean_luminance_floor — "
+        f"global_floor_candidate={g_candidates}px lifted={g_lifted}px | "
+        f"shallow_floor_candidate={sh_candidates}px lifted={sh_lifted}px"
+    )
     return out
 
 
@@ -892,50 +972,138 @@ def _sea_lat_n(name: str) -> float:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Module: apply_final_harmony_guard (spec §5.14)
+# Module: Protected-region diagnostics — Phase B-5 rewrite
+# Replaces image-mutating apply_final_harmony_guard with three diagnostic-only
+# functions. No pixels are modified by any of these functions.
+# See: docs/phase_b4_noon_air_calibration_failure_root_cause_audit.md §3.2
 # ══════════════════════════════════════════════════════════════════════════════
+
+def compute_protected_region_diagnostics(f32: np.ndarray, baseline_f32: np.ndarray,
+                                          LAT: np.ndarray, LON: np.ndarray,
+                                          log: list) -> dict:
+    """
+    Compute per-region delta metrics vs d5z_b baseline.
+    DIAGNOSTIC ONLY — does not modify any pixels.
+    Uses feathered mask (scale_feather(40, W)) for all regions.
+    """
+    W = f32.shape[1]
+    log.append("[MODULE 10] compute_protected_region_diagnostics (diagnostic-only)...")
+    results = {}
+
+    for name, bounds in PROTECTED_REGIONS.items():
+        fpx = scale_feather(40, W)
+        rm = region_mask_rect(LAT, LON,
+                              lat_min=bounds["lat_min"], lat_max=bounds["lat_max"],
+                              lon_min=bounds["lon_min"], lon_max=bounds["lon_max"],
+                              feather_px=fpx)
+        npx = float(rm.sum())
+        if npx < 100:
+            results[name] = {"error": "insufficient pixels", "pixel_count": int(npx)}
+            log.append(f"[MODULE 10]   {name}: insufficient pixels ({int(npx)})")
+            continue
+
+        rgb_delta = float((np.abs(f32 - baseline_f32).mean(axis=2) * rm).sum() / npx)
+        lum_delta = float((np.abs(luminance(f32) - luminance(baseline_f32)) * rm).sum() / npx) / 255.0
+        mean_lum  = float((luminance(f32) * rm).sum() / npx) / 255.0
+
+        guard_fail = (rgb_delta > GUARD_THRESHOLDS["mean_rgb_delta"] or
+                      lum_delta > GUARD_THRESHOLDS["luminance_delta"])
+
+        results[name] = {
+            "pixel_count": int(npx),
+            "rgb_delta":   round(rgb_delta, 3),
+            "lum_delta":   round(lum_delta, 4),
+            "mean_lum":    round(mean_lum, 4),
+            "guard_fail":  guard_fail,
+            "feather_px":  fpx,
+        }
+
+        status = "FAIL" if guard_fail else "OK"
+        log.append(f"[MODULE 10]   {name}: rgb_delta={rgb_delta:.2f} "
+                   f"lum_delta={lum_delta:.4f} mean_lum={mean_lum:.4f} — {status}")
+
+    fail_count = sum(1 for v in results.values() if v.get("guard_fail"))
+    log.append(f"[MODULE 10] diagnostics complete — "
+               f"{fail_count}/{len(PROTECTED_REGIONS)} regions exceeded threshold")
+    log.append("[MODULE 10] DIAGNOSTIC ONLY — no pixels modified — no blend_back executed")
+    return results
+
+
+def evaluate_calibration_safety(diagnostics: dict, log: list) -> dict:
+    """
+    Evaluate whether calibration output is safe for 2K human review.
+    DOES NOT modify any pixels. NEVER allows 8K or production.
+    """
+    warnings = []
+    critical = []
+
+    for name, data in diagnostics.items():
+        if data.get("error"):
+            warnings.append(f"{name}: {data['error']}")
+            continue
+        mean_lum = data.get("mean_lum", 1.0)
+        if mean_lum < 0.05:
+            critical.append(
+                f"{name}: CRITICAL mean_lum={mean_lum:.4f} (< 0.05 — near black)")
+        elif data.get("guard_fail"):
+            warnings.append(
+                f"{name}: rgb_delta={data['rgb_delta']:.2f} "
+                f"lum_delta={data['lum_delta']:.4f} — exceeds guard threshold")
+
+    result = {
+        "calibration_safe":    len(critical) == 0,
+        "warnings":            warnings,
+        "critical":            critical,
+        "8k_eligible":         False,
+        "production_eligible": False,
+        "note": (
+            "CALIBRATION ONLY — NOT 8K ELIGIBLE — NOT PRODUCTION ELIGIBLE. "
+            "Guard is diagnostic-only. No pixels were modified."
+        ),
+    }
+
+    for line in critical:
+        log.append(f"[CALIB-SAFETY] CRITICAL: {line}")
+    for line in warnings:
+        log.append(f"[CALIB-SAFETY] WARN: {line}")
+    safe_str = "YES" if result["calibration_safe"] else "NO (critical issues present)"
+    log.append(f"[CALIB-SAFETY] calibration_safe={safe_str} | "
+               f"8k_eligible=False | production_eligible=False")
+    return result
+
+
+def write_calibration_warning_metadata(diagnostics: dict, calib_safety: dict,
+                                        output_path: Path) -> None:
+    """
+    Write calibration diagnostic metadata JSON to disk.
+    Does NOT modify any pixels or images.
+    """
+    payload = {
+        "timestamp":                    datetime.now(timezone.utc).isoformat(),
+        "guard_semantics":              "diagnostic-only — no pixels modified — no blend_back",
+        "calibration_safety":           calib_safety,
+        "protected_region_diagnostics": diagnostics,
+        "eligibility": {
+            "8k":                False,
+            "production":        False,
+            "calibration_review": calib_safety.get("calibration_safe", False),
+        },
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, indent=2))
+
 
 def apply_final_harmony_guard(f32: np.ndarray, baseline_f32: np.ndarray,
                                LAT: np.ndarray, LON: np.ndarray,
                                log: list) -> np.ndarray:
     """
-    Blend back toward baseline in protected regions where drift exceeds threshold.
-    Threshold: mean_rgb_delta > 8 or luminance_delta > 0.04 * 255.
+    Phase B-5: Diagnostic-only wrapper. No pixels are modified. No blend_back.
+    Image-mutating logic removed — see B-4 audit (§3.2) for root-cause analysis.
+    Delegates to compute_protected_region_diagnostics for all metric calculations.
+    Not called from main() in B-5; retained for backward compatibility.
     """
-    out = f32.copy()
-    log.append("[MODULE 10] final_harmony_guard...")
-    activated_any = False
-
-    for name, bounds in PROTECTED_REGIONS.items():
-        rm = region_mask_rect(LAT, LON,
-                              lat_min=bounds["lat_min"], lat_max=bounds["lat_max"],
-                              lon_min=bounds["lon_min"], lon_max=bounds["lon_max"],
-                              feather_px=0)
-        npx = int(rm.sum())
-        if npx < 100:
-            continue
-
-        rgb_delta = float((np.abs(out - baseline_f32).mean(axis=2) * rm).sum() / npx)
-        lum_delta = float((np.abs(luminance(out) - luminance(baseline_f32)) * rm).sum() / npx) / 255.0
-
-        if rgb_delta > GUARD_THRESHOLDS["mean_rgb_delta"] or \
-           lum_delta > GUARD_THRESHOLDS["luminance_delta"]:
-            excess = max(rgb_delta / GUARD_THRESHOLDS["mean_rgb_delta"],
-                         lum_delta / GUARD_THRESHOLDS["luminance_delta"])
-            blend_back = min((excess - 1.0) * 0.4, 0.7)
-            rm3 = rm[:, :, np.newaxis]
-            blended = out * (1.0 - blend_back) + baseline_f32 * blend_back
-            out = out * (1.0 - rm3) + blended * rm3
-            log.append(f"[GUARD] {name}: rgb_delta={rgb_delta:.2f} lum_delta={lum_delta:.4f} "
-                       f"— blend_back={blend_back:.2f} ACTIVATED")
-            activated_any = True
-        else:
-            log.append(f"[GUARD] {name}: rgb_delta={rgb_delta:.2f} lum_delta={lum_delta:.4f} — OK")
-
-    if not activated_any:
-        log.append("[MODULE 10] final_harmony_guard — no regions triggered")
-
-    return np.clip(out, 0, 255)
+    compute_protected_region_diagnostics(f32, baseline_f32, LAT, LON, log)
+    return f32.copy()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1079,7 +1247,9 @@ def write_summary_report(noon_f32: np.ndarray, baseline_f32: np.ndarray,
                           guard_result: dict, res_tag: str,
                           out_dir: Path, log: list,
                           file_prefix: str = "noon_air_v1",
-                          calibration: bool = False):
+                          calibration: bool = False,
+                          harm_diagnostics: dict = None,
+                          calib_safety: dict = None):
     log.append("[OUTPUT] Computing metrics...")
 
     noon_lum  = float(luminance(noon_f32).mean())
@@ -1120,12 +1290,13 @@ def write_summary_report(noon_f32: np.ndarray, baseline_f32: np.ndarray,
             "pass":     guard_result["pass"],
             "warnings": guard_result["warnings"],
         },
+        "harm_guard_diagnostics": harm_diagnostics or {},
+        "calibration_safety":     calib_safety or {},
         "calibration_status": (
-            "CALIBRATION ONLY — BASELINE FLOOR GUARD FAILED. "
-            "NOT ELIGIBLE FOR 8K. NOT ELIGIBLE FOR FRONTEND REGISTRATION. "
-            "NOT ELIGIBLE FOR PRODUCTION."
-            if calibration and not guard_result["pass"]
-            else ("CALIBRATION (guard passed)" if calibration else "STANDARD")
+            "CALIBRATION ONLY — NOT 8K ELIGIBLE — NOT PRODUCTION ELIGIBLE — "
+            + ("BASELINE FLOOR GUARD FAILED" if not guard_result["pass"] else "baseline floor OK")
+            if calibration
+            else "STANDARD"
         ),
         "noon_air_intensity": NOON_AIR_INTENSITY,
     }
@@ -1262,10 +1433,12 @@ def main():
         # Build grids
         LAT, LON = build_grids(h, w)
         f32 = source_arr.astype(np.float32)
+        base_f32 = baseline_arr.astype(np.float32)
 
         # Processing pipeline
         f32 = apply_global_base_adjustment(f32, log)
         f32 = apply_ocean_system(f32, LAT, LON, log)
+        f32 = apply_ocean_luminance_floor(f32, LAT, LON, log)     # P0: luminance floor
         f32 = apply_shallow_water_shelf(f32, LAT, LON, log)
         f32 = apply_island_halos(f32, LAT, LON, log)
         f32 = apply_polar_correction(f32, LAT, log)
@@ -1273,12 +1446,12 @@ def main():
         f32 = apply_land_vegetation(f32, LAT, LON, log)
         f32 = apply_mountains_plateaus(f32, LAT, LON, log)
         f32 = apply_special_seas(f32, LAT, LON, log)
-        f32 = apply_final_harmony_guard(f32, baseline_arr.astype(np.float32),
-                                        LAT, LON, log)
+        # P0: harmony guard replaced by diagnostic-only functions — no blend_back, no pixel mutation
+        harm_diagnostics = compute_protected_region_diagnostics(f32, base_f32, LAT, LON, log)
+        calib_safety     = evaluate_calibration_safety(harm_diagnostics, log)
         f32 = apply_atmosphere_overlay(f32, log)
 
         noon_arr = np.clip(f32, 0, 255).astype(np.uint8)
-        base_f32 = baseline_arr.astype(np.float32)
 
         # Baseline floor guard — always runs; abort behavior differs by mode
         guard_result = run_baseline_floor_guard(f32, base_f32, LAT, LON, log)
@@ -1307,7 +1480,14 @@ def main():
         write_summary_report(f32, base_f32, LAT, LON, guard_result,
                              res_tag, out_dir, log,
                              file_prefix=file_prefix,
-                             calibration=args.calibration)
+                             calibration=args.calibration,
+                             harm_diagnostics=harm_diagnostics,
+                             calib_safety=calib_safety)
+
+        if args.calibration:
+            warn_meta_path = out_dir / f"{file_prefix}_{res_tag}_calibration_safety.json"
+            write_calibration_warning_metadata(harm_diagnostics, calib_safety, warn_meta_path)
+            log.append(f"[OUTPUT] Calibration safety metadata: {warn_meta_path.name}")
 
         # Save candidate JPG
         if not args.preview_only:
