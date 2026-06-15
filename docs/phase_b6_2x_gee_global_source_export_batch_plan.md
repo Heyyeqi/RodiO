@@ -594,3 +594,55 @@ Do not enter B-6.4 API freeze, d6 refactor, visual rebuild, B-5.3 patching, or p
 - JRC Global Surface Water v1.4 GEE Data Catalog: https://developers.google.com/earth-engine/datasets/catalog/JRC_GSW1_4_GlobalSurfaceWater
 - GLIMS Current GEE Data Catalog: https://developers.google.com/earth-engine/datasets/catalog/GLIMS_current
 
+---
+
+## 11. B-6.2X-D2 Completion Notes (2026-06-15)
+
+D2 has been executed. The following files were created in the repo:
+
+```
+scripts/gee_export/export_phase1_8k.js      Phase 1 8K export script draft (10 tasks)
+scripts/gee_export/export_phase1_21600.js   Phase 1 21.6K export script draft (5 tasks, reference)
+scripts/gee_export/README.md                Manual execution instructions
+scripts/gee_export/manifest.example.json   Example manifest (not a real instance)
+docs/phase_b6_2x_source_cache_layout_and_manifest_spec.md   Full spec
+```
+
+### D2 Boundary Confirmed
+
+D2 produced script drafts only. The following did not occur:
+
+- No GEE exports were submitted or started.
+- No `.tif` or raster files were downloaded.
+- No NPZ or mask files were generated.
+- No real manifest instances were created in `source_cache/gee_global/manifests/`.
+- No changes to `d5b_output`, `production/`, `candidates/`, or `pwa/`.
+
+### Source Cache Layout
+
+Canonical layout (all gitignored):
+
+```
+d5b_processor_v3/source_cache/gee_global/
+  exported_8k/        Phase 1 8K .tif files (10 files when populated)
+  exported_21600/     Phase 1 21.6K .tif files (5 files when populated)
+  manifests/          Per-file manifest JSON (filled at D3, not D2)
+  diagnostics/        Import validation outputs (written at D3)
+```
+
+Full naming convention and manifest schema:
+see `docs/phase_b6_2x_source_cache_layout_and_manifest_spec.md`
+
+### License / commercial_clearance Policy
+
+All manifest `commercial_clearance` fields are `pending_review` until RW
+formally verifies each source. The values `approved`, `cleared`, and
+`commercial_ok` are reserved for post-RW-review use only.
+
+### Next Step: B-6.2X-D3 — 8K Import Test
+
+Entry criteria:
+- At least one Phase 1 8K file manually exported from GEE and downloaded.
+- File placed in `exported_8k/` and manifest template filled.
+- D3 import validation scripts run to verify shape, dtype, values, nodata.
+
