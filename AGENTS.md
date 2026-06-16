@@ -129,3 +129,41 @@ exec_plan 必须包含：
 - 验证方式
 - 回滚方案
 - 是否需要 RW 确认
+
+---
+
+## Mandatory Startup Routine（每次规划前必须执行）
+
+每次新对话开始时，Codex 必须在生成任何 exec_plan 或回复之前完成以下步骤。
+
+### Step 1 — 读取 Obsidian 事实源（7 个文件，顺序读取）
+
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/00_MASTER.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/01_ROADMAP.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/02_CURRENT_TASK.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/05_STAGE_GATE.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/06_REPO_STATUS.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/07_EXEC_PLAN/INDEX.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/03_task_log/INDEX.md
+```
+
+### Step 2 — 输出 Session Baseline（首轮回复开头）
+
+```
+【Codex Session Start】
+当前阶段：[来自 02_CURRENT_TASK.md]
+当前分支：[来自 06_REPO_STATUS.md]
+最新 commit：[来自 06_REPO_STATUS.md]
+上次停在：[来自 02_CURRENT_TASK.md]
+下次从哪里开始：[来自 02_CURRENT_TASK.md]
+禁止事项：push main / merge main / 触发 Railway / 推进 Stage Gate / 修改 production
+```
+
+### Step 3 — 再开始规划
+
+以事实基线为依据生成 exec_plan 或回答 RW 问题。不得以记忆或上次对话残余为依据。
+
+### 豁免
+
+RW 明确说"跳过 startup"时可省略 Step 2 输出，但 Step 1 读取不得跳过。

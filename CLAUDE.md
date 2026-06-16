@@ -168,3 +168,46 @@ task_log 必须包含：
 ### 遗留问题
 - ...
 ```
+
+---
+
+## Mandatory Startup Routine（每次对话开始时必须执行）
+
+每次新对话开始时，Claude Code 必须在执行任何任务之前完成以下步骤。
+
+### Step 1 — 读取 Obsidian 状态文件
+
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/02_CURRENT_TASK.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/06_REPO_STATUS.md
+```
+
+### Step 2 — 运行 git 状态检查
+
+```bash
+git status --short
+git log --oneline -3
+git branch --show-current
+```
+
+### Step 3 — 输出 Session Baseline（首轮回复开头）
+
+```
+【Session Start】
+当前阶段：[来自 02_CURRENT_TASK.md]
+当前分支：[git branch --show-current]
+最新 commit：[git log --oneline -1]
+工作区状态：[git status --short]
+上次停在：[来自 02_CURRENT_TASK.md]
+下次从哪里开始：[来自 02_CURRENT_TASK.md]
+禁止事项：push main / merge main / 触发 Railway / 修改 production / 修改 DAY_TEXTURE_VARIANT
+```
+
+### 适用场景
+
+- 对话开始时 RW 说"继续" / "接着做" / "开始" / 直接下达任务 — 均须先输出 Session Baseline
+- 对话中途（非首轮）不重复输出
+
+### 豁免
+
+RW 明确说"跳过 startup"时可省略 Step 3 输出，但 Step 1 和 Step 2 不得跳过。
