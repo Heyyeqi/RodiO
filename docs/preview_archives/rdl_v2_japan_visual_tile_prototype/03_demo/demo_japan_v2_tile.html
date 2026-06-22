@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RDL v2 Japan Visual Tile — Isolated Prototype Demo</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0a; color:#ccc; font-family:monospace; overflow:hidden; }
+#canvas { display:block; }
+#hud {
+  position:fixed; top:12px; left:12px;
+  background:rgba(0,0,0,0.7); padding:10px 14px; border-radius:6px;
+  font-size:12px; line-height:1.8; pointer-events:none;
+}
+#controls {
+  position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.75); padding:10px 16px; border-radius:8px;
+  display:flex; gap:12px; align-items:center; font-size:12px; flex-wrap:wrap;
+}
+.group { display:flex; gap:6px; align-items:center; }
+.group label { color:#999; margin-right:4px; }
+button {
+  background:#222; color:#bbb; border:1px solid #444;
+  padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px;
+}
+button.active { background:#2a4a6a; color:#7af; border-color:#4a8aaa; }
+input[type=range] { width:120px; }
+#notice {
+  position:fixed; top:12px; right:12px; max-width:320px;
+  background:rgba(180,80,0,0.85); color:#fff; padding:10px 14px;
+  border-radius:6px; font-size:11px; line-height:1.6;
+}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="hud">
+  <div id="fps">FPS: --</div>
+  <div id="info-tile">Tile: --</div>
+  <div id="info-blend">Blend: --</div>
+  <div id="info-dist">Camera dist: --</div>
+  <div id="info-uv" style="color:#666;font-size:10px">
+    UV [0.827778, 0.916667] × [0.622222, 0.777778]
+  </div>
+</div>
+<div id="notice">
+  ⚠ ISOLATED PROTOTYPE DEMO<br>
+  For visual validation only. Not earth3d.js integration.<br>
+  Not final Japan high-quality texture. Not RodiO production.<br>
+  4096 new detail = GEBCO bathy + GSHHG coast only.<br>
+  Land terrain = d5b 8K upsampled (~5.6×), no DEM.
+</div>
+<div id="controls">
+  <div class="group">
+    <label>Tile:</label>
+    <button id="btn-baseline" onclick="setTile('baseline')">baseline</button>
+    <button id="btn-etopo" onclick="setTile('etopo_reference')">etopo_ref</button>
+    <button id="btn-v2_2048" onclick="setTile('v2_2048')">v2 2048</button>
+    <button id="btn-v2_4096" class="active" onclick="setTile('v2_4096')">v2 4096</button>
+  </div>
+  <div class="group">
+    <label>Blend:</label>
+    <input type="range" id="blend-slider" min="0" max="1" step="0.05" value="1"
+           oninput="setBlend(this.value)">
+    <span id="blend-val">1.00</span>
+  </div>
+  <div class="group">
+    <label>Dist:</label>
+    <button onclick="setDist(1.50)">1.50</button>
+    <button onclick="setDist(1.35)">1.35</button>
+    <button onclick="setDist(1.25)">1.25</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script>
+const UV_REGION = { x: 0.827778, y: 0.916667, z: 0.622222, w: 0.777778 };
+const TILES = {
+  baseline:       '../02_tiles/baseline_d5b_crop_2048.png',
+  etopo_reference:'../02_tiles/etopo_reference_2048.png',
+  v2_2048:        '../02_tiles/v2_gebco_gshhg_tile_2048.png',
+  v2_4096:        '../02_tiles/v2_gebco_gshhg_tile_4096.png',
+};
+const BASE_TEX_PATH = '../../../pwa/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg';
+
+const VS = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+}`;
+
+const FS = `
+uniform sampler2D uBase;
+uniform sampler2D uTile;
+uniform float uBlend;
+uniform vec4 uRegion;
+varying vec2 vUv;
+void main() {
+  vec4 base = texture2D(uBase, vUv);
+  float u = vUv.x;
+  float v = vUv.y;
+  float fw = 0.003;
+  float mu = smoothstep(uRegion.x, uRegion.x+fw, u)
+           * smoothstep(uRegion.y, uRegion.y-fw, u);
+  float mv = smoothstep(uRegion.z, uRegion.z+fw, v)
+           * smoothstep(uRegion.w, uRegion.w-fw, v);
+  float mask = mu * mv;
+  float tu = (u - uRegion.x) / (uRegion.y - uRegion.x);
+  float tv = (v - uRegion.z) / (uRegion.w - uRegion.z);
+  vec4 tile = texture2D(uTile, vec2(clamp(tu,0.,1.), clamp(tv,0.,1.)));
+  gl_FragColor = mix(base, tile, mask * uBlend);
+}`;
+
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.01, 100);
+camera.position.z = 1.50;
+
+const loader = new THREE.TextureLoader();
+loader.crossOrigin = 'anonymous';
+
+const uniforms = {
+  uBase:   { value: null },
+  uTile:   { value: null },
+  uBlend:  { value: 1.0 },
+  uRegion: { value: new THREE.Vector4(UV_REGION.x, UV_REGION.y, UV_REGION.z, UV_REGION.w) },
+};
+
+const geo = new THREE.SphereGeometry(1, 64, 48);
+const mat = new THREE.ShaderMaterial({ vertexShader:VS, fragmentShader:FS, uniforms });
+const globe = new THREE.Mesh(geo, mat);
+scene.add(globe);
+
+let tileTexCache = {};
+let currentTile = 'v2_4096';
+let frameCount=0, lastFpsTime=performance.now(), fps=0;
+
+function loadTex(path, cb) {
+  if (tileTexCache[path]) { cb(tileTexCache[path]); return; }
+  loader.load(path, t => { tileTexCache[path]=t; cb(t); });
+}
+
+loadTex(BASE_TEX_PATH, t => { uniforms.uBase.value = t; });
+function setTile(name) {
+  currentTile = name;
+  document.querySelectorAll('button[id^=btn-]').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('btn-'+name.replace('_','_'));
+  // map button IDs
+  const btnMap={'baseline':'btn-baseline','etopo_reference':'btn-etopo','v2_2048':'btn-v2_2048','v2_4096':'btn-v2_4096'};
+  document.getElementById(btnMap[name])?.classList.add('active');
+  loadTex(TILES[name], t => { uniforms.uTile.value = t; });
+  document.getElementById('info-tile').textContent = 'Tile: '+name;
+}
+function setBlend(v) {
+  uniforms.uBlend.value = parseFloat(v);
+  document.getElementById('blend-val').textContent = parseFloat(v).toFixed(2);
+  document.getElementById('info-blend').textContent = 'Blend: '+parseFloat(v).toFixed(2);
+}
+function setDist(d) {
+  camera.position.z = d;
+  document.getElementById('info-dist').textContent = 'Camera dist: '+d;
+}
+
+setTile('v2_4096');
+setDist(1.50);
+
+let isDragging=false, prevMouse={x:0,y:0};
+renderer.domElement.addEventListener('mousedown', e=>{ isDragging=true; prevMouse={x:e.clientX,y:e.clientY}; });
+window.addEventListener('mouseup', ()=>isDragging=false);
+window.addEventListener('mousemove', e=>{
+  if(!isDragging) return;
+  globe.rotation.y += (e.clientX-prevMouse.x)*0.005;
+  globe.rotation.x += (e.clientY-prevMouse.y)*0.005;
+  prevMouse={x:e.clientX,y:e.clientY};
+});
+renderer.domElement.addEventListener('wheel', e=>{
+  camera.position.z = Math.max(1.15, Math.min(3.0, camera.position.z+e.deltaY*0.001));
+  document.getElementById('info-dist').textContent='Camera dist: '+camera.position.z.toFixed(2);
+  e.preventDefault();
+}, {passive:false});
+window.addEventListener('resize', ()=>{
+  renderer.setSize(innerWidth,innerHeight);
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+});
+
+(function animate() {
+  requestAnimationFrame(animate);
+  globe.rotation.y += 0.0008;
+  renderer.render(scene, camera);
+  frameCount++;
+  const now=performance.now();
+  if(now-lastFpsTime>=500) {
+    fps=Math.round(frameCount*1000/(now-lastFpsTime));
+    document.getElementById('fps').textContent='FPS: '+fps;
+    frameCount=0; lastFpsTime=now;
+  }
+})();
+</script>
+</body>
+</html>

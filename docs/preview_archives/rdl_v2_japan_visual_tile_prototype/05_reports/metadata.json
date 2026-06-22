@@ -1,0 +1,54 @@
+{
+  "region_key": "118_150_22_50",
+  "bounds": {
+    "lon_w": 118.0,
+    "lon_e": 150.0,
+    "lat_s": 22.0,
+    "lat_n": 50.0
+  },
+  "uv_bounds": {
+    "uMin": 0.827778,
+    "uMax": 0.916667,
+    "vMin": 0.622222,
+    "vMax": 0.777778
+  },
+  "output_sizes": [
+    "4096x3584",
+    "2048x1792"
+  ],
+  "tier": "A",
+  "data_sources": {
+    "base_texture": "../../pwa/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg",
+    "visual_source_21k": "../../pwa/assets/source/earth_day_source_21600x10800.jpg",
+    "gebco_2026_tint_png": "../rdl_v2_p0_gebco_gshhg_japan_benchmark/gebco_bathymetry_tint.png",
+    "etopo1_reference_png": "../rdl_v2_p0_gebco_gshhg_japan_benchmark/etopo1_bathymetry_tint.png",
+    "gshhg_mask_png": "../rdl_v2_p0_gebco_gshhg_japan_benchmark/gshhg_coastline_mask.png",
+    "gshhg_source": "GSHHG 2.3.7 full resolution (GSHHS_f_L1.shp, ~25m accuracy). L1 = Level 1 land boundary polygons (not low-resolution; 'f' prefix = full resolution). 7820 polygons in Japan region."
+  },
+  "blends": {
+    "visual_texture_blend": 0.3,
+    "gebco_blend": 0.35,
+    "gshhg_zone_km": 10.0,
+    "gshhg_strength": 0.15
+  },
+  "layer1_upsampling_note": "21.6K source effective crop ~1920×1680 px, upsampled 2.1× to 4096×3584. Not true 4096-grade land texture. Land mountain precision pending DEM Phase.",
+  "baseline_upsampling_note": "Layer 0 baseline cropped from d5b 8K (~727×637 px for this region), upsampled ~5.6× to 4096×3584. Used as comparison baseline only. 4096 new detail comes from GEBCO + GSHHG.",
+  "demo_boundary_note": "demo_japan_v2_tile.html is an isolated prototype demo for visual validation only. It does not represent formal earth3d.js integration, RodiO production deployment, or final Japan high-quality texture.",
+  "generation_commands": [
+    "python3 scripts/geo/rdl_tile_compositor.py --bounds 118.0 150.0 22.0 50.0 --tier A --gebco-blend 0.35 --gshhg-zone-km 10.0 --gshhg-strength 0.15 --visual-blend 0.3"
+  ],
+  "generated_at": "2026-06-08T14:54:57.254164+00:00",
+  "elapsed_seconds": 200.4,
+  "scripts_used": [
+    "scripts/geo/rdl_tile_compositor.py v1.0.0"
+  ],
+  "notes": [
+    "Prototype only: validates GEBCO 2026 + GSHHG natural geography layer.",
+    "4096 new detail = GEBCO 15 arc-sec bathymetry + GSHHG full-res coastline.",
+    "Land area: d5b 8K upsampled ~5.6×. Land mountain precision NOT addressed.",
+    "Copernicus DEM / ALOS DEM: out of scope, pending DEM Phase.",
+    "OSM, city lights, VIIRS Night Lights: Layer 6 scope, not done here.",
+    "Do not describe this output as final Japan high-quality texture.",
+    "Do not describe this output as global texture upgrade."
+  ]
+}

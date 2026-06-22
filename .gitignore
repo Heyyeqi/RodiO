@@ -13,6 +13,7 @@ d5b_processor_v3/d5b_output/
 
 .venv/
 
+previews/
 previews/**/*.png
 previews/**/*.jpg
 previews/**/*.jpeg
