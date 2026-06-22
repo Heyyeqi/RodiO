@@ -1,7 +1,7 @@
-# RodiO — 项目上下文文件
+# RodiO — Claude Code 执行代理规则文件
 
-> 每次对话开始前必须读取本文件。
-> 每次任务完成后必须在 `devlog.md` 末尾追加一条记录（格式见文末）。
+> 本文件供 Claude Code 在每次对话开始前读取。
+> 每次任务完成后必须在 `devlog.md` 末尾追加一条记录，并写入 Obsidian task_log（格式见文末）。
 
 ---
 
@@ -96,14 +96,90 @@ Spotify 搜索失败时降级到 NCM；Phase 1 补货失败时降级到 Qwen。
 
 ## 开发规范
 
-- 每次任务完成后，在 `devlog.md` 末尾追加记录
+- 每次任务完成后，在 `devlog.md` 末尾追加记录（历史日志存档用）
+- 每次任务完成后，同时写入 Obsidian task_log（当前开发管理体系的正式归档入口）
 - 不引入新的全局状态管理库，状态统一走 `core/state.js`（SQLite）
 - TTS 请求必须走 `core/tts.js` 的串行队列，不得绕过
 - Spotify token 变更必须同步持久化到 Railway 环境变量
 
 ---
 
+## Claude Code 执行边界
+
+Claude Code 的职责：
+- 代码修改
+- 命令运行
+- 本地检查
+- 写入 Obsidian inbox 的 task_log
+- 更新 02_CURRENT_TASK.md
+- 更新 06_REPO_STATUS.md
+
+Claude Code 不得执行：
+- `git push origin main`
+- `git merge main`
+- 任何触发 Railway 部署的操作
+- 推进 Stage Gate
+- 修改 Obsidian 只读治理文件
+- 修改 `pwa/assets/earth/production/`
+- 修改 `pwa/assets/earth/candidates/`
+- 修改 `DAY_TEXTURE_VARIANT`
+- 未经 RW 确认进入 Global Color Grading 实施
+- 未经 RW 确认启用 Folder Action 或 DeepSeek 自动归档
+
+---
+
+## 事实源路径（本地 / 远程）
+
+### Claude Code 本地执行时优先读取（本地 Obsidian）
+
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/
+```
+
+### Evan web / Codex 远程读取时使用（RodiO-Control）
+
+```
+https://github.com/Heyyeqi/RodiO-Control
+```
+
+### 读取说明
+
+- 每次新任务开始前仍需输出 Session Start（见 Mandatory Startup Routine）。
+- 如果 RW 提到"Evan 网页端读取状态"或"远程事实源"，应理解为读取 RodiO-Control。
+- 如果本地 Obsidian 与远程 RodiO-Control 内容冲突，必须暂停并报告 RW，不得自行选择。
+- 不得自动 push RodiO-Control，除非 RW 明确授权。
+- 不得混淆 RodiO 代码仓库（Heyyeqi/RodiO）与 RodiO-Control 控制仓库（Heyyeqi/RodiO-Control）。
+- 详见：`docs/project_control_bridge.md`
+
+---
+
+## Obsidian task_log 写入规则
+
+事实源路径：
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/
+```
+
+开发结束时，task_log 写入：
+```
+01_RodiO/inbox/
+```
+
+task_log 必须包含：
+- frontmatter：`date` / `time` / `branch` / `level` / `type` / `exec_plan_ref`
+- 任务
+- 执行内容
+- 结果
+- 遗留问题
+- 下次从哪里开始
+- 风险项
+
+---
+
 ## devlog 追加格式
+
+> `devlog.md` 是 repo 内历史开发日志，继续维护用于存档。
+> Obsidian task_log 是当前开发管理体系的正式归档入口，两者均须写入。
 
 ```
 ## YYYY-MM-DD HZ任务简述
@@ -117,3 +193,46 @@ Spotify 搜索失败时降级到 NCM；Phase 1 补货失败时降级到 Qwen。
 ### 遗留问题
 - ...
 ```
+
+---
+
+## Mandatory Startup Routine（每次对话开始时必须执行）
+
+每次新对话开始时，Claude Code 必须在执行任何任务之前完成以下步骤。
+
+### Step 1 — 读取 Obsidian 状态文件
+
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/02_CURRENT_TASK.md
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/06_REPO_STATUS.md
+```
+
+### Step 2 — 运行 git 状态检查
+
+```bash
+git status --short
+git log --oneline -3
+git branch --show-current
+```
+
+### Step 3 — 输出 Session Baseline（首轮回复开头）
+
+```
+【Session Start】
+当前阶段：[来自 02_CURRENT_TASK.md]
+当前分支：[git branch --show-current]
+最新 commit：[git log --oneline -1]
+工作区状态：[git status --short]
+上次停在：[来自 02_CURRENT_TASK.md]
+下次从哪里开始：[来自 02_CURRENT_TASK.md]
+禁止事项：push main / merge main / 触发 Railway / 修改 production / 修改 DAY_TEXTURE_VARIANT
+```
+
+### 适用场景
+
+- 对话开始时 RW 说"继续" / "接着做" / "开始" / 直接下达任务 — 均须先输出 Session Baseline
+- 对话中途（非首轮）不重复输出
+
+### 豁免
+
+RW 明确说"跳过 startup"时可省略 Step 3 输出，但 Step 1 和 Step 2 不得跳过。

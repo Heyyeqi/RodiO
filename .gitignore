@@ -22,3 +22,8 @@ previews/**/*.jpg
 previews/**/*.jpeg
 previews/**/*.webp
 pwa/assets/earth/candidates/
+
+# GEE exported rasters and generated mask data (belt-and-suspenders beyond source_cache/ and d5b_output/)
+*.tif
+*.geotiff
+*.npz
