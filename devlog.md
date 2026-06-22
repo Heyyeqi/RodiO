@@ -1140,3 +1140,25 @@ B-6.2G-3C validation 发现 WDBII h/L01 baseline（55 shapes）中 Nile / Missis
 ### 遗留问题
 - 启动预热仍返回 DashScope `400 Access denied`，导致 readyPool 为空。
 - 停止前日志显示 `sharp` 模块缺少 darwin-arm64 runtime，后续如果需要 `/api/globe-image` 夜景裁切，应重装或重建 `sharp`。
+
+## 2026-06-22 EP-PostPhase1-B0 D1：增强 bootstrap session baseline
+
+### 做了什么
+- 重写 `scripts/bootstrap_dev_session.sh`，新增四个输出块：
+  - Code repo（path / branch / latest commit / working tree / push status）
+  - Control source（local path / remote URL / latest known control commit，带 fallback）
+  - Current state（从 02_CURRENT_TASK.md 动态读取 phase / current task / next step）
+  - Hard boundaries（列出 D1 禁止事项）
+- 修复路径空格处理（`${HOME}/...` 替代裸波浪号拼接）
+- 升级 `set -e` → `set -euo pipefail`
+
+### 改动文件
+- `scripts/bootstrap_dev_session.sh`（唯一修改文件）
+
+### Commit
+- `4eb113f feat: enhance RodiO bootstrap session baseline`
+- 未 push，未触发 Railway
+
+### 遗留问题
+- push status 在无 upstream 时显示 `(no upstream tracked)`，属预期行为（当前分支尚未 push）
+- D2（AGENTS.md / CLAUDE.md 同步）和 D3（hook dry-run）均待 RW 另行确认后推进
