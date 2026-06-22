@@ -32,7 +32,7 @@ grep -A2 "^## 上次停在" "$OBSIDIAN_ROOT/02_CURRENT_TASK.md" | tail -2
 echo ""
 
 echo "[下次从哪里开始]"
-grep -A5 "^## 下次从哪里开始" "$OBSIDIAN_ROOT/02_CURRENT_TASK.md" | tail -5
+grep -A3 "^## 下次从哪里开始" "$OBSIDIAN_ROOT/02_CURRENT_TASK.md" | grep -v "^##" | grep -v "^$"
 echo ""
 
 echo "[禁止事项]"
