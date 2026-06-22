@@ -128,6 +128,31 @@ Claude Code 不得执行：
 
 ---
 
+## 事实源路径（本地 / 远程）
+
+### Claude Code 本地执行时优先读取（本地 Obsidian）
+
+```
+~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/
+```
+
+### Evan web / Codex 远程读取时使用（RodiO-Control）
+
+```
+https://github.com/Heyyeqi/RodiO-Control
+```
+
+### 读取说明
+
+- 每次新任务开始前仍需输出 Session Start（见 Mandatory Startup Routine）。
+- 如果 RW 提到"Evan 网页端读取状态"或"远程事实源"，应理解为读取 RodiO-Control。
+- 如果本地 Obsidian 与远程 RodiO-Control 内容冲突，必须暂停并报告 RW，不得自行选择。
+- 不得自动 push RodiO-Control，除非 RW 明确授权。
+- 不得混淆 RodiO 代码仓库（Heyyeqi/RodiO）与 RodiO-Control 控制仓库（Heyyeqi/RodiO-Control）。
+- 详见：`docs/project_control_bridge.md`
+
+---
+
 ## Obsidian task_log 写入规则
 
 事实源路径：

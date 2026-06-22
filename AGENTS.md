@@ -25,13 +25,21 @@ Codex 是规划者和审计者，不是执行代理。
 
 ---
 
-## Obsidian 事实源路径
+## 事实源路径（本地 / 远程）
+
+### 本地事实源（Claude Code 本地执行时使用）
 
 ```
 ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/RW Vault/01_RodiO/
 ```
 
-每次规划前优先读取：
+### 远程事实源（Evan web / Codex / GitHub-based review 使用）
+
+```
+https://github.com/Heyyeqi/RodiO-Control
+```
+
+每次规划前优先读取（本地或远程均适用）：
 - `00_MASTER.md`
 - `01_ROADMAP.md`
 - `02_CURRENT_TASK.md`
@@ -39,6 +47,18 @@ Codex 是规划者和审计者，不是执行代理。
 - `06_REPO_STATUS.md`
 - `07_EXEC_PLAN/INDEX.md`
 - `03_task_log/INDEX.md`
+
+### 事实源冲突处理规则
+
+如果本地 Obsidian 与远程 RodiO-Control 内容冲突，必须暂停并要求 RW 确认，不得自行选择。
+
+### RodiO-Control 使用边界
+
+- RodiO-Control 是事实源仓库，不是代码仓库。
+- 不得将代码、生成资产、production 纹理、NPZ、密钥放入 RodiO-Control。
+- 不得在 RodiO 代码仓库内初始化 RodiO-Control。
+- 不得在未经 RW 授权的情况下 push RodiO-Control。
+- 详见：`docs/project_control_bridge.md`
 
 ---
 
