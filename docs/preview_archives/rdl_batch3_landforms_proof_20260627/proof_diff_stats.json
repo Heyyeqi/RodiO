@@ -1,0 +1,44 @@
+[
+  {
+    "region": "hawaii",
+    "mean_abs_diff_rgb": 0.1726,
+    "mean_abs_diff_luma": 0.1676,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 29.0
+  },
+  {
+    "region": "philippines_central",
+    "mean_abs_diff_rgb": 1.1233,
+    "mean_abs_diff_luma": 1.092,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "japan",
+    "mean_abs_diff_rgb": 1.0546,
+    "mean_abs_diff_luma": 1.0296,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "norway_fjords",
+    "mean_abs_diff_rgb": 2.0526,
+    "mean_abs_diff_luma": 1.9917,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "red_sea",
+    "mean_abs_diff_rgb": 4.2226,
+    "mean_abs_diff_luma": 4.2308,
+    "p95_abs_diff_rgb": 12.0,
+    "max_abs_diff_rgb": 40.0
+  },
+  {
+    "region": "taiwan",
+    "mean_abs_diff_rgb": 0.7984,
+    "mean_abs_diff_luma": 0.7876,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 36.0
+  }
+]

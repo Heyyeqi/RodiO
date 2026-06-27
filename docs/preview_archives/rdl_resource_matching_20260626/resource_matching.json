@@ -1,0 +1,2117 @@
+{
+  "generated_at": "2026-06-26",
+  "notes": [
+    "This is a planning/resource matching artifact only.",
+    "No Coral Atlas ZIP was extracted and no rasterization/generator/deployment was run.",
+    "Coral Atlas matches are curated candidates and must be validated with real vector bounds/classes during M2."
+  ],
+  "layers": {
+    "M0_mapbox": {
+      "status": "available_local_complete",
+      "format": "JPG regional outputs plus Mapbox tile cache",
+      "ready_now": true,
+      "files": {
+        "region_dirs": 84,
+        "tile_mapbox_jpg": 84
+      },
+      "blockers": [
+        "Deployment packaging unresolved because source_cache is excluded locally."
+      ]
+    },
+    "M1_gebco": {
+      "status": "available_and_integrated_in_rdl_mapbox_poc",
+      "format": "8 GEBCO 2026 quadrant GeoTIFFs",
+      "ready_now": true,
+      "files": {
+        "quadrant_tifs": 8
+      },
+      "blockers": [
+        "Same deployment packaging issue for generated RDL outputs."
+      ]
+    },
+    "M2_coral_atlas": {
+      "status": "raw_vector_available_dependency_blocked",
+      "format": "ZIP packages containing GeoPackage vector layers",
+      "ready_now": false,
+      "files": {
+        "unique_zip_packages": 29,
+        "zip_files": 30,
+        "extracted_packages": 1
+      },
+      "blockers": [
+        "Missing rasterio/fiona/geopandas/shapely/pyproj or GDAL command-line tools.",
+        "Need gpkg to regional raster-mask pipeline before compositing."
+      ]
+    },
+    "M3_worldcover": {
+      "status": "available_global_8k_tif",
+      "format": "8192x4096 global TIFF class raster",
+      "ready_now": true,
+      "files": [
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/esa_worldcover_2021_v200_map_8192x4096.tif"
+      ],
+      "blockers": [
+        "Need region crop/sampling adapter and visual mapping table."
+      ]
+    },
+    "M4_koppen": {
+      "status": "processed_global_8k_tif_available_raw_zip_available",
+      "format": "8192x4096 global TIFF class raster plus source ZIPs",
+      "ready_now": true,
+      "files": [
+        "d5b_processor_v3/source_cache/gee_global/external_processed_8k/koppen_geiger_1991_2020_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/external_raw/koppen_geiger/koppen_geiger_tif.zip",
+        "d5b_processor_v3/source_cache/gee_global/external_raw/koppen_geiger/koppen_geiger_nc.zip"
+      ],
+      "blockers": [
+        "Need climate-class to Noon Air baseline mapping and region summary sampler."
+      ]
+    },
+    "supplemental_modis_jrc": {
+      "status": "available_global_8k_low_priority",
+      "format": "8192x4096 global TIFF rasters",
+      "ready_now": true,
+      "files": [
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/jrc_gsw_max_extent_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/jrc_gsw_occurrence_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/jrc_gsw_recurrence_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/jrc_gsw_seasonality_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/exported_8k/jrc_gsw_transition_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/supplemental_8k/modis_mcd12q1_2021_lc_prop1_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/supplemental_8k/modis_mcd12q1_2021_lc_type1_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/supplemental_8k/modis_mcd12q1_2021_lc_type5_8192x4096.tif",
+        "d5b_processor_v3/source_cache/gee_global/supplemental_8k/modis_mcd12q1_2021_qc_8192x4096.tif"
+      ],
+      "blockers": [
+        "Use only after M3/M4 unless a water/landcover conflict appears."
+      ]
+    }
+  },
+  "coral_packages": [
+    {
+      "package": "Andaman-Sea",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Andaman-Sea-20230309235804.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Bermuda",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Bermuda-20230328225056.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Brazil",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Brazil-20230310004005.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Central-Indian-Ocean",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Central-Indian-Ocean-20230310001123.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Central-South-Pacific",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Central-South-Pacific-20230310003051 (1).zip",
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Central-South-Pacific-20230310003051.zip"
+      ],
+      "duplicate_zip_count": 2,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Coral-Sea",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Coral-Sea-20230310000950.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Eastern-Africa---Madagascar",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Eastern-Africa---Madagascar-20230309235254.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Eastern-Micronesia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Eastern-Micronesia-20230310003732.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Eastern-Papua-New-Guinea---Solomon-Islands",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Eastern-Papua-New-Guinea---Solomon-Islands-20230310000210.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Eastern-Tropical-Pacific",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Eastern-Tropical-Pacific-20230310004005.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Great-Barrier-Reef-and-Torres-Strait",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Great-Barrier-Reef-and-Torres-Strait-20230310013521.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Hawaiian-Islands",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Hawaiian-Islands-20230309235255.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Mesoamerica",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Mesoamerica-20230310002848.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Northeastern-Asia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Northeastern-Asia-20230310004410.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Northern-Caribbean--Florida---Bahamas",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Northern-Caribbean--Florida---Bahamas-20230310014129.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Northwestern-Arabian-Sea",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Northwestern-Arabian-Sea-20230310014334.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Philippines",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Philippines-20230310023925.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Red-Sea---Gulf-of-Aden",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Red-Sea---Gulf-of-Aden-20230310014131.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "South-China-Sea",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/South-China-Sea-20230310001832.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Southeast-Asian-Archipelago",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Southeast-Asian-Archipelago-20230310000615.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Southeast-Asian-Archipelago-20230310000615"
+      ],
+      "is_extracted": true,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Southeastern-Caribbean",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Southeastern-Caribbean-20230310014130.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Southern-Asia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Southern-Asia-20230310000614.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Southwestern-Pacific",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Southwestern-Pacific-20230309235258.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Subtropical-Eastern-Australia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Subtropical-Eastern-Australia-20230310004411.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Timor---Arafura-Seas",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Timor---Arafura-Seas-20230310000037.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Western-Africa",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Western-Africa-20230310004410.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Western-Australia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Western-Australia-20230310001457.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Western-Indian-Ocean",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Western-Indian-Ocean-20230309235254.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    },
+    {
+      "package": "Western-Micronesia",
+      "zip_files": [
+        "d5b_processor_v3/source_cache/gee_global/external_raw/allen_coral_atlas/Western-Micronesia-20230310012947.zip"
+      ],
+      "duplicate_zip_count": 1,
+      "extracted_dirs": [],
+      "is_extracted": false,
+      "has_boundary_geojson": true,
+      "gpkg_members": [
+        "Benthic-Map/benthic.gpkg",
+        "Geomorphic-Map/geomorphic.gpkg",
+        "Reef-Extent/reefextent.gpkg"
+      ]
+    }
+  ],
+  "rdl_region_matrix": [
+    {
+      "region": "abc_venezuela",
+      "label": "ABC群岛 / 委内瑞拉加勒比",
+      "bounds": [
+        -73.0,
+        -59.5,
+        10.0,
+        14.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southeastern-Caribbean"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "adriatic_sea",
+      "label": "亚得里亚海",
+      "bounds": [
+        12.0,
+        20.5,
+        38.0,
+        46.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "alaska",
+      "label": "阿拉斯加",
+      "bounds": [
+        -168.0,
+        -141.0,
+        54.0,
+        62.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "andaman_sea",
+      "label": "安达曼海",
+      "bounds": [
+        91.5,
+        100.5,
+        5.0,
+        14.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Andaman-Sea"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "arabian_sea",
+      "label": "阿拉伯海 / 印度西岸",
+      "bounds": [
+        60.0,
+        78.0,
+        8.0,
+        25.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Northwestern-Arabian-Sea"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "azores",
+      "label": "亚速尔群岛",
+      "bounds": [
+        -31.5,
+        -24.5,
+        36.5,
+        40.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "baltic_sea",
+      "label": "波罗的海",
+      "bounds": [
+        9.0,
+        30.0,
+        54.0,
+        66.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "bashi_channel",
+      "label": "巴士海峡",
+      "bounds": [
+        118.0,
+        123.0,
+        18.0,
+        22.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "bay_of_bengal",
+      "label": "孟加拉湾",
+      "bounds": [
+        80.0,
+        100.0,
+        5.0,
+        23.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "bay_of_biscay",
+      "label": "比斯开湾 / 伊比利亚",
+      "bounds": [
+        -10.0,
+        2.0,
+        42.0,
+        48.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "bermuda",
+      "label": "百慕大",
+      "bounds": [
+        -65.5,
+        -64.5,
+        32.0,
+        33.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Bermuda"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "black_sea",
+      "label": "黑海",
+      "bounds": [
+        27.5,
+        42.0,
+        40.5,
+        47.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "bohai_sea",
+      "label": "渤海",
+      "bounds": [
+        117.0,
+        122.5,
+        37.0,
+        41.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "borneo",
+      "label": "婆罗洲 / 马来西亚",
+      "bounds": [
+        108.0,
+        119.5,
+        -2.0,
+        8.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "brazil_coast",
+      "label": "巴西 / 亚马孙河口",
+      "bounds": [
+        -50.0,
+        -34.0,
+        -5.0,
+        6.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Brazil"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "british_isles",
+      "label": "不列颠群岛",
+      "bounds": [
+        -11.0,
+        3.0,
+        49.5,
+        61.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "california_coast",
+      "label": "加州海岸 / 下加利福尼亚",
+      "bounds": [
+        -121.0,
+        -109.0,
+        22.0,
+        38.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "canary_madeira",
+      "label": "加那利 / 马德拉",
+      "bounds": [
+        -18.5,
+        -13.0,
+        27.0,
+        33.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "cape_verde",
+      "label": "佛得角",
+      "bounds": [
+        -26.0,
+        -21.5,
+        14.5,
+        17.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "caribbean_bahamas",
+      "label": "加勒比 / 巴哈马",
+      "bounds": [
+        -85.0,
+        -70.0,
+        17.0,
+        27.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Northern-Caribbean--Florida---Bahamas"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "caspian_sea",
+      "label": "里海",
+      "bounds": [
+        49.0,
+        55.0,
+        36.5,
+        47.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "central_america_pacific",
+      "label": "中美洲太平洋海岸",
+      "bounds": [
+        -92.0,
+        -77.0,
+        7.0,
+        18.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Mesoamerica",
+        "Eastern-Tropical-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "christmas_island",
+      "label": "圣诞节岛",
+      "bounds": [
+        105.0,
+        106.5,
+        -11.0,
+        -9.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "dongsha_pratas",
+      "label": "东沙群岛 / 普拉塔斯岛",
+      "bounds": [
+        115.5,
+        117.5,
+        19.5,
+        21.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "east_africa_coast",
+      "label": "东非海岸 / 桑给巴尔",
+      "bounds": [
+        38.0,
+        46.0,
+        -12.0,
+        4.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Africa---Madagascar"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "east_china_sea",
+      "label": "东海",
+      "bounds": [
+        119.0,
+        131.0,
+        23.0,
+        34.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "easter_island",
+      "label": "复活节岛 / 拉帕努伊",
+      "bounds": [
+        -110.5,
+        -108.5,
+        -28.0,
+        -26.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Tropical-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "eastern_caribbean",
+      "label": "东加勒比 / 小安的列斯",
+      "bounds": [
+        -63.0,
+        -59.0,
+        11.0,
+        19.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southeastern-Caribbean"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "falkland_islands",
+      "label": "福克兰群岛 / 马尔维纳斯",
+      "bounds": [
+        -62.0,
+        -57.0,
+        -53.0,
+        -50.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "faroe_islands",
+      "label": "法罗群岛",
+      "bounds": [
+        -8.0,
+        -5.5,
+        61.5,
+        62.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "fiji_vanuatu",
+      "label": "斐济 / 瓦努阿图",
+      "bounds": [
+        165.0,
+        180.0,
+        -22.0,
+        -12.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southwestern-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "french_guiana",
+      "label": "法属圭亚那",
+      "bounds": [
+        -54.0,
+        -50.0,
+        2.0,
+        6.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "french_polynesia",
+      "label": "法属波利尼西亚 / 大溪地",
+      "bounds": [
+        -151.0,
+        -148.0,
+        -18.5,
+        -15.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Central-South-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "galapagos",
+      "label": "加拉帕戈斯",
+      "bounds": [
+        -92.5,
+        -88.5,
+        -2.5,
+        2.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "great_barrier_reef",
+      "label": "大堡礁",
+      "bounds": [
+        142.5,
+        153.5,
+        -25.0,
+        -10.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Great-Barrier-Reef-and-Torres-Strait",
+        "Coral-Sea"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "guam_marianas",
+      "label": "关岛 / 马里亚纳群岛",
+      "bounds": [
+        143.5,
+        146.5,
+        12.0,
+        16.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "gulf_mexico_yucatan",
+      "label": "墨西哥湾 / 尤卡坦",
+      "bounds": [
+        -98.0,
+        -83.0,
+        17.0,
+        31.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "gulf_of_thailand",
+      "label": "泰国湾 / 越南南海岸",
+      "bounds": [
+        99.0,
+        108.0,
+        5.0,
+        17.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "hainan_island",
+      "label": "海南岛",
+      "bounds": [
+        108.0,
+        111.5,
+        18.0,
+        20.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "hawaii",
+      "label": "夏威夷",
+      "bounds": [
+        -161.5,
+        -154.0,
+        18.0,
+        23.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Hawaiian-Islands"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "iceland",
+      "label": "冰岛",
+      "bounds": [
+        -27.0,
+        -10.0,
+        62.5,
+        67.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "indonesia_east",
+      "label": "印度尼西亚东部",
+      "bounds": [
+        120.0,
+        135.0,
+        -10.0,
+        1.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southeast-Asian-Archipelago",
+        "Timor---Arafura-Seas"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "indonesia_west",
+      "label": "印尼西部 / 爪哇 / 苏门答腊",
+      "bounds": [
+        99.0,
+        118.0,
+        -9.0,
+        6.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southeast-Asian-Archipelago"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "japan",
+      "label": "日本列岛",
+      "bounds": [
+        129.5,
+        145.5,
+        30.5,
+        45.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "kiribati_gilbert",
+      "label": "基里巴斯 / 吉尔伯特群岛",
+      "bounds": [
+        171.0,
+        177.5,
+        -3.5,
+        4.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "korea_yellow_sea",
+      "label": "朝鲜半岛 / 黄海",
+      "bounds": [
+        122.0,
+        132.0,
+        31.0,
+        38.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "kuril_southern",
+      "label": "北方四岛 / 库页岛南端",
+      "bounds": [
+        141.5,
+        150.5,
+        43.0,
+        48.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "madagascar",
+      "label": "马达加斯加",
+      "bounds": [
+        43.0,
+        51.0,
+        -27.0,
+        -11.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Africa---Madagascar"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "maldives",
+      "label": "马尔代夫",
+      "bounds": [
+        71.5,
+        74.5,
+        -1.5,
+        8.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Central-Indian-Ocean"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "marshall_islands",
+      "label": "马绍尔群岛",
+      "bounds": [
+        160.0,
+        172.0,
+        4.0,
+        12.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Micronesia"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "mediterranean_east",
+      "label": "东地中海",
+      "bounds": [
+        22.0,
+        37.0,
+        34.0,
+        41.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "mediterranean_west",
+      "label": "西地中海",
+      "bounds": [
+        7.0,
+        22.0,
+        35.5,
+        47.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "micronesia",
+      "label": "密克罗尼西亚联邦",
+      "bounds": [
+        138.0,
+        165.0,
+        3.5,
+        10.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Western-Micronesia",
+        "Eastern-Micronesia"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "mozambique_channel",
+      "label": "莫桑比克海峡",
+      "bounds": [
+        33.0,
+        42.0,
+        -25.0,
+        -10.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Africa---Madagascar"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "nansha_spratly",
+      "label": "南沙群岛 / 斯普拉特利群岛",
+      "bounds": [
+        108.0,
+        118.0,
+        3.5,
+        12.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "new_caledonia",
+      "label": "新喀里多尼亚",
+      "bounds": [
+        162.5,
+        168.5,
+        -23.0,
+        -18.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southwestern-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "new_zealand",
+      "label": "新西兰",
+      "bounds": [
+        165.5,
+        178.5,
+        -48.0,
+        -33.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "norway_fjords",
+      "label": "挪威峡湾",
+      "bounds": [
+        4.0,
+        18.0,
+        57.5,
+        71.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "ogasawara",
+      "label": "小笠原群岛",
+      "bounds": [
+        140.5,
+        143.5,
+        23.5,
+        28.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "palau",
+      "label": "帕劳",
+      "bounds": [
+        132.5,
+        135.5,
+        5.0,
+        9.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Western-Micronesia"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "papua_new_guinea",
+      "label": "巴布亚新几内亚",
+      "bounds": [
+        140.0,
+        152.0,
+        -8.0,
+        0.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Papua-New-Guinea---Solomon-Islands"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "patagonia",
+      "label": "巴塔哥尼亚 / 麦哲伦",
+      "bounds": [
+        -76.0,
+        -64.0,
+        -56.0,
+        -40.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "persian_gulf",
+      "label": "波斯湾",
+      "bounds": [
+        50.0,
+        60.0,
+        22.0,
+        27.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "peru_chile_coast",
+      "label": "秘鲁 / 厄瓜多尔太平洋海岸",
+      "bounds": [
+        -82.0,
+        -70.0,
+        -18.0,
+        -4.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "philippines_central",
+      "label": "菲律宾中部",
+      "bounds": [
+        117.0,
+        127.0,
+        6.0,
+        18.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Philippines"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "puerto_rico_vi",
+      "label": "波多黎各 / 美属维京群岛",
+      "bounds": [
+        -68.5,
+        -64.0,
+        17.0,
+        19.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southeastern-Caribbean",
+        "Northern-Caribbean--Florida---Bahamas"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "red_sea",
+      "label": "红海",
+      "bounds": [
+        32.0,
+        44.0,
+        12.0,
+        30.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Red-Sea---Gulf-of-Aden"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "rio_de_la_plata",
+      "label": "拉普拉塔河 / 布宜诺斯艾利斯",
+      "bounds": [
+        -60.0,
+        -52.0,
+        -37.0,
+        -30.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "rio_southeast_brazil",
+      "label": "里约 / 东南巴西",
+      "bounds": [
+        -46.0,
+        -34.0,
+        -25.0,
+        -14.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "ryukyu",
+      "label": "琉球 / 冲绳",
+      "bounds": [
+        122.5,
+        132.5,
+        23.5,
+        30.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Northeastern-Asia"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "samoa",
+      "label": "萨摩亚",
+      "bounds": [
+        -174.0,
+        -168.0,
+        -15.0,
+        -11.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Central-South-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "sea_of_japan",
+      "label": "日本海",
+      "bounds": [
+        128.0,
+        142.0,
+        33.0,
+        52.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "seychelles",
+      "label": "塞舌尔",
+      "bounds": [
+        54.5,
+        57.5,
+        -7.5,
+        -3.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Western-Indian-Ocean"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "singapore_malacca",
+      "label": "新加坡 / 马六甲",
+      "bounds": [
+        98.0,
+        106.0,
+        0.5,
+        7.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "solomon_islands",
+      "label": "所罗门群岛",
+      "bounds": [
+        155.0,
+        163.0,
+        -12.0,
+        -4.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Eastern-Papua-New-Guinea---Solomon-Islands"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "south_africa",
+      "label": "南非开普",
+      "bounds": [
+        16.0,
+        33.0,
+        -35.0,
+        -21.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "south_china_sea",
+      "label": "南海",
+      "bounds": [
+        108.0,
+        120.0,
+        8.0,
+        22.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "South-China-Sea"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "south_georgia",
+      "label": "南乔治亚岛",
+      "bounds": [
+        -40.0,
+        -34.0,
+        -56.0,
+        -52.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "sri_lanka",
+      "label": "斯里兰卡",
+      "bounds": [
+        78.5,
+        82.5,
+        5.5,
+        11.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Southern-Asia"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "svalbard",
+      "label": "斯瓦尔巴群岛",
+      "bounds": [
+        10.0,
+        30.0,
+        76.0,
+        82.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "taiwan",
+      "label": "台湾 / 东海",
+      "bounds": [
+        118.5,
+        124.0,
+        21.5,
+        26.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "taiwan_strait",
+      "label": "台湾海峡",
+      "bounds": [
+        117.0,
+        121.5,
+        22.5,
+        26.5
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "tonga",
+      "label": "汤加群岛",
+      "bounds": [
+        -177.0,
+        -173.0,
+        -24.0,
+        -15.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [
+        "Central-South-Pacific"
+      ],
+      "M2_coral_match_status": "candidate_package_present",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    },
+    {
+      "region": "xisha_paracel",
+      "label": "西沙群岛 / 帕拉塞尔群岛",
+      "bounds": [
+        109.5,
+        114.5,
+        14.5,
+        18.0
+      ],
+      "M0_tile_mapbox": true,
+      "M1_tile_noon_air_mapbox": true,
+      "meta": true,
+      "M2_coral_atlas_candidate_packages": [],
+      "M2_coral_match_status": "no_direct_match_or_not_needed",
+      "M3_worldcover_global_available": true,
+      "M4_koppen_global_available": true,
+      "supplemental_modis_jrc_global_available": true
+    }
+  ]
+}

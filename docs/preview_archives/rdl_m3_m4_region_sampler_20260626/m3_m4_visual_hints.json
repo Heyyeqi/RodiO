@@ -1,0 +1,1939 @@
+{
+  "generated_at": "2026-06-26",
+  "scope": "Review-only M3/M4 visual hints derived from categorical histograms",
+  "applied_to_compositor": false,
+  "regions": [
+    {
+      "region": "abc_venezuela",
+      "label": "ABC群岛 / 委内瑞拉加勒比",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 19.72,
+        "worldcover_water_pct": 28.0639,
+        "worldcover_vegetated_pct": 18.1512
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "adriatic_sea",
+      "label": "亚得里亚海",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 50.6112,
+        "worldcover_water_pct": 25.8267,
+        "worldcover_vegetated_pct": 49.3634
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "alaska",
+      "label": "阿拉斯加",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 31.2542,
+        "worldcover_water_pct": 16.7409,
+        "worldcover_vegetated_pct": 24.9678
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "andaman_sea",
+      "label": "安达曼海",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 14.7128,
+        "worldcover_water_pct": 24.9208,
+        "worldcover_vegetated_pct": 13.8968
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "arabian_sea",
+      "label": "阿拉伯海 / 印度西岸",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 27.123,
+        "worldcover_water_pct": 4.6461,
+        "worldcover_vegetated_pct": 25.6753
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "azores",
+      "label": "亚速尔群岛",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.9491,
+        "worldcover_water_pct": 16.6435,
+        "worldcover_vegetated_pct": 0.7716
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "baltic_sea",
+      "label": "波罗的海",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 70.7983,
+        "worldcover_water_pct": 21.9207,
+        "worldcover_vegetated_pct": 66.5728
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "bashi_channel",
+      "label": "巴士海峡",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 4.8288,
+        "worldcover_water_pct": 21.3252,
+        "worldcover_vegetated_pct": 4.4541
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "bay_of_bengal",
+      "label": "孟加拉湾",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 29.6479,
+        "worldcover_water_pct": 10.0947,
+        "worldcover_vegetated_pct": 28.9975
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "bay_of_biscay",
+      "label": "比斯开湾 / 伊比利亚",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 46.8402,
+        "worldcover_water_pct": 8.7812,
+        "worldcover_vegetated_pct": 45.9462
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "bermuda",
+      "label": "百慕大",
+      "climate_family": "temperate",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.7246,
+        "worldcover_water_pct": 41.6667,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "black_sea",
+      "label": "黑海",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 45.5524,
+        "worldcover_water_pct": 18.7595,
+        "worldcover_vegetated_pct": 43.7215
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "bohai_sea",
+      "label": "渤海",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 53.5973,
+        "worldcover_water_pct": 30.9265,
+        "worldcover_vegetated_pct": 46.5753
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "borneo",
+      "label": "婆罗洲 / 马来西亚",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 44.6062,
+        "worldcover_water_pct": 17.3444,
+        "worldcover_vegetated_pct": 44.1562
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "brazil_coast",
+      "label": "巴西 / 亚马孙河口",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 21.3589,
+        "worldcover_water_pct": 4.4327,
+        "worldcover_vegetated_pct": 20.5065
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "british_isles",
+      "label": "不列颠群岛",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 27.4167,
+        "worldcover_water_pct": 20.4722,
+        "worldcover_vegetated_pct": 26.0276
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "california_coast",
+      "label": "加州海岸 / 下加利福尼亚",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 48.4632,
+        "worldcover_water_pct": 10.375,
+        "worldcover_vegetated_pct": 33.1118
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "canary_madeira",
+      "label": "加那利 / 马德拉",
+      "climate_family": "arid",
+      "land_family": "bare",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "sand_rock_warmth",
+        "land_strength": 0.1,
+        "land_note": "warm bare land softly; cap highlights"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 2.8337,
+        "worldcover_water_pct": 19.6335,
+        "worldcover_vegetated_pct": 1.2784
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "cape_verde",
+      "label": "佛得角",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 2.4827,
+        "worldcover_water_pct": 29.9168,
+        "worldcover_vegetated_pct": 1.2899
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "caribbean_bahamas",
+      "label": "加勒比 / 巴哈马",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 13.3564,
+        "worldcover_water_pct": 29.1922,
+        "worldcover_vegetated_pct": 12.2096
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "caspian_sea",
+      "label": "里海",
+      "climate_family": "arid",
+      "land_family": "bare",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "sand_rock_warmth",
+        "land_strength": 0.1,
+        "land_note": "warm bare land softly; cap highlights"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 100.0,
+        "worldcover_water_pct": 54.823,
+        "worldcover_vegetated_pct": 24.4745
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "central_america_pacific",
+      "label": "中美洲太平洋海岸",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 28.0853,
+        "worldcover_water_pct": 15.5017,
+        "worldcover_vegetated_pct": 27.1616
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "christmas_island",
+      "label": "圣诞节岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.4082,
+        "worldcover_water_pct": 21.1429,
+        "worldcover_vegetated_pct": 0.5714
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "dongsha_pratas",
+      "label": "东沙群岛 / 普拉塔斯岛",
+      "climate_family": "none",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "ocean_default",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "mostly ocean bbox; use M0/M1 water behavior first"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0,
+        "worldcover_water_pct": 9.2507,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "east_africa_coast",
+      "label": "东非海岸 / 桑给巴尔",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 42.0929,
+        "worldcover_water_pct": 6.9067,
+        "worldcover_vegetated_pct": 41.96
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "east_china_sea",
+      "label": "东海",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 17.4455,
+        "worldcover_water_pct": 21.5038,
+        "worldcover_vegetated_pct": 14.9388
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "easter_island",
+      "label": "复活节岛 / 拉帕努伊",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.3622,
+        "worldcover_water_pct": 9.3255,
+        "worldcover_vegetated_pct": 0.3622
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "eastern_caribbean",
+      "label": "东加勒比 / 小安的列斯",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 1.6809,
+        "worldcover_water_pct": 24.0081,
+        "worldcover_vegetated_pct": 1.5087
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "falkland_islands",
+      "label": "福克兰群岛 / 马尔维纳斯",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 10.5013,
+        "worldcover_water_pct": 32.4436,
+        "worldcover_vegetated_pct": 10.1754
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "faroe_islands",
+      "label": "法罗群岛",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 8.908,
+        "worldcover_water_pct": 52.3707,
+        "worldcover_vegetated_pct": 8.1178
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "fiji_vanuatu",
+      "label": "斐济 / 瓦努阿图",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 2.3661,
+        "worldcover_water_pct": 13.2772,
+        "worldcover_vegetated_pct": 2.2842
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "french_guiana",
+      "label": "法属圭亚那",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 56.6163,
+        "worldcover_water_pct": 13.8941,
+        "worldcover_vegetated_pct": 56.1673
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "french_polynesia",
+      "label": "法属波利尼西亚 / 大溪地",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 1.2008,
+        "worldcover_water_pct": 25.1967,
+        "worldcover_vegetated_pct": 1.1594
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "galapagos",
+      "label": "加拉帕戈斯",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 3.6408,
+        "worldcover_water_pct": 27.5855,
+        "worldcover_vegetated_pct": 2.0789
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "great_barrier_reef",
+      "label": "大堡礁",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 37.8847,
+        "worldcover_water_pct": 15.2536,
+        "worldcover_vegetated_pct": 37.5737
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "guam_marianas",
+      "label": "关岛 / 马里亚纳群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.5829,
+        "worldcover_water_pct": 15.753,
+        "worldcover_vegetated_pct": 0.5199
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "gulf_mexico_yucatan",
+      "label": "墨西哥湾 / 尤卡坦",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 25.8856,
+        "worldcover_water_pct": 11.5233,
+        "worldcover_vegetated_pct": 24.9563
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "gulf_of_thailand",
+      "label": "泰国湾 / 越南南海岸",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 55.7951,
+        "worldcover_water_pct": 15.6102,
+        "worldcover_vegetated_pct": 53.7985
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "hainan_island",
+      "label": "海南岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 33.9719,
+        "worldcover_water_pct": 34.2486,
+        "worldcover_vegetated_pct": 32.8864
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "hawaii",
+      "label": "夏威夷",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 3.7765,
+        "worldcover_water_pct": 14.3023,
+        "worldcover_vegetated_pct": 2.8918
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "iceland",
+      "label": "冰岛",
+      "climate_family": "polar",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cold_ice",
+        "saturation_bias": 0.92,
+        "contrast_bias": 1.01,
+        "noon_air_note": "ice highlight protection, avoid blue-black ocean overreach"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 25.1476,
+        "worldcover_water_pct": 17.2856,
+        "worldcover_vegetated_pct": 15.7467
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "indonesia_east",
+      "label": "印度尼西亚东部",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 17.2689,
+        "worldcover_water_pct": 38.572,
+        "worldcover_vegetated_pct": 16.7586
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "indonesia_west",
+      "label": "印尼西部 / 爪哇 / 苏门答腊",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 38.992,
+        "worldcover_water_pct": 22.9667,
+        "worldcover_vegetated_pct": 38.1573
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "japan",
+      "label": "日本列岛",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 22.9953,
+        "worldcover_water_pct": 16.1179,
+        "worldcover_vegetated_pct": 21.5076
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "kiribati_gilbert",
+      "label": "基里巴斯 / 吉尔伯特群岛",
+      "climate_family": "tropical",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0468,
+        "worldcover_water_pct": 11.7528,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "korea_yellow_sea",
+      "label": "朝鲜半岛 / 黄海",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 21.7207,
+        "worldcover_water_pct": 25.8236,
+        "worldcover_vegetated_pct": 20.3489
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "kuril_southern",
+      "label": "北方四岛 / 库页岛南端",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 17.214,
+        "worldcover_water_pct": 21.9206,
+        "worldcover_vegetated_pct": 16.8764
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "madagascar",
+      "label": "马达加斯加",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 39.6377,
+        "worldcover_water_pct": 12.8947,
+        "worldcover_vegetated_pct": 39.3084
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "maldives",
+      "label": "马尔代夫",
+      "climate_family": "tropical",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0759,
+        "worldcover_water_pct": 30.7449,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "marshall_islands",
+      "label": "马绍尔群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0439,
+        "worldcover_water_pct": 16.7046,
+        "worldcover_vegetated_pct": 0.01
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "mediterranean_east",
+      "label": "东地中海",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 55.3618,
+        "worldcover_water_pct": 27.4208,
+        "worldcover_vegetated_pct": 53.1127
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "mediterranean_west",
+      "label": "西地中海",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 49.4586,
+        "worldcover_water_pct": 19.7941,
+        "worldcover_vegetated_pct": 47.6608
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "micronesia",
+      "label": "密克罗尼西亚联邦",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0315,
+        "worldcover_water_pct": 2.0081,
+        "worldcover_vegetated_pct": 0.0213
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "mozambique_channel",
+      "label": "莫桑比克海峡",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 54.5733,
+        "worldcover_water_pct": 7.4434,
+        "worldcover_vegetated_pct": 52.6345
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "nansha_spratly",
+      "label": "南沙群岛 / 斯普拉特利群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 12.5204,
+        "worldcover_water_pct": 16.4215,
+        "worldcover_vegetated_pct": 12.3614
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "new_caledonia",
+      "label": "新喀里多尼亚",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 5.9295,
+        "worldcover_water_pct": 26.2472,
+        "worldcover_vegetated_pct": 5.6578
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "new_zealand",
+      "label": "新西兰",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 15.3895,
+        "worldcover_water_pct": 10.8955,
+        "worldcover_vegetated_pct": 14.6393
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "norway_fjords",
+      "label": "挪威峡湾",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 48.4886,
+        "worldcover_water_pct": 15.5407,
+        "worldcover_vegetated_pct": 44.1803
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "ogasawara",
+      "label": "小笠原群岛",
+      "climate_family": "tropical",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0279,
+        "worldcover_water_pct": 0,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "palau",
+      "label": "帕劳",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.3308,
+        "worldcover_water_pct": 10.9011,
+        "worldcover_vegetated_pct": 0.1576
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "papua_new_guinea",
+      "label": "巴布亚新几内亚",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 32.9103,
+        "worldcover_water_pct": 20.5896,
+        "worldcover_vegetated_pct": 32.6633
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "patagonia",
+      "label": "巴塔哥尼亚 / 麦哲伦",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 56.2804,
+        "worldcover_water_pct": 18.3772,
+        "worldcover_vegetated_pct": 43.8676
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "persian_gulf",
+      "label": "波斯湾",
+      "climate_family": "arid",
+      "land_family": "bare",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "sand_rock_warmth",
+        "land_strength": 0.1,
+        "land_note": "warm bare land softly; cap highlights"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 59.1876,
+        "worldcover_water_pct": 23.4006,
+        "worldcover_vegetated_pct": 0.3535
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "peru_chile_coast",
+      "label": "秘鲁 / 厄瓜多尔太平洋海岸",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 61.4145,
+        "worldcover_water_pct": 4.5672,
+        "worldcover_vegetated_pct": 54.2102
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "philippines_central",
+      "label": "菲律宾中部",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 19.8681,
+        "worldcover_water_pct": 31.8367,
+        "worldcover_vegetated_pct": 19.0533
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "puerto_rico_vi",
+      "label": "波多黎各 / 美属维京群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 9.1923,
+        "worldcover_water_pct": 45.1766,
+        "worldcover_vegetated_pct": 7.9323
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "red_sea",
+      "label": "红海",
+      "climate_family": "arid",
+      "land_family": "bare",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "sand_rock_warmth",
+        "land_strength": 0.1,
+        "land_note": "warm bare land softly; cap highlights"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 81.4038,
+        "worldcover_water_pct": 11.3744,
+        "worldcover_vegetated_pct": 15.5973
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "rio_de_la_plata",
+      "label": "拉普拉塔河 / 布宜诺斯艾利斯",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 73.3504,
+        "worldcover_water_pct": 8.5553,
+        "worldcover_vegetated_pct": 71.2705
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "rio_southeast_brazil",
+      "label": "里约 / 东南巴西",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 42.2936,
+        "worldcover_water_pct": 4.5759,
+        "worldcover_vegetated_pct": 41.8631
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "ryukyu",
+      "label": "琉球 / 冲绳",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.5275,
+        "worldcover_water_pct": 14.7973,
+        "worldcover_vegetated_pct": 0.3576
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "samoa",
+      "label": "萨摩亚",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 1.1027,
+        "worldcover_water_pct": 10.9798,
+        "worldcover_vegetated_pct": 1.0003
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "sea_of_japan",
+      "label": "日本海",
+      "climate_family": "cold",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "cool",
+        "saturation_bias": 0.96,
+        "contrast_bias": 1.03,
+        "noon_air_note": "cool atmosphere, preserve snow/forest separation"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 50.8309,
+        "worldcover_water_pct": 14.951,
+        "worldcover_vegetated_pct": 49.0619
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "seychelles",
+      "label": "塞舌尔",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.189,
+        "worldcover_water_pct": 16.005,
+        "worldcover_vegetated_pct": 0.1418
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "singapore_malacca",
+      "label": "新加坡 / 马六甲",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 41.4164,
+        "worldcover_water_pct": 26.9263,
+        "worldcover_vegetated_pct": 40.0043
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "solomon_islands",
+      "label": "所罗门群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 4.3626,
+        "worldcover_water_pct": 25.3934,
+        "worldcover_vegetated_pct": 4.1954
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "south_africa",
+      "label": "南非开普",
+      "climate_family": "arid",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "warm_dry",
+        "saturation_bias": 0.98,
+        "contrast_bias": 1.04,
+        "noon_air_note": "control desert glare, keep water depth separation cool"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 81.6319,
+        "worldcover_water_pct": 3.9034,
+        "worldcover_vegetated_pct": 73.1984
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "south_china_sea",
+      "label": "南海",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 7.5063,
+        "worldcover_water_pct": 13.9624,
+        "worldcover_vegetated_pct": 7.2146
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "south_georgia",
+      "label": "南乔治亚岛",
+      "climate_family": "polar",
+      "land_family": "ice",
+      "m4_climate_baseline": {
+        "temperature_bias": "cold_ice",
+        "saturation_bias": 0.92,
+        "contrast_bias": 1.01,
+        "noon_air_note": "ice highlight protection, avoid blue-black ocean overreach"
+      },
+      "m3_land_bias": {
+        "land_tint": "ice_cool_white",
+        "land_strength": 0.08,
+        "land_note": "protect ice texture and avoid flat white"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 2.1424,
+        "worldcover_water_pct": 11.3973,
+        "worldcover_vegetated_pct": 0.0236
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "sri_lanka",
+      "label": "斯里兰卡",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 31.4614,
+        "worldcover_water_pct": 23.43,
+        "worldcover_vegetated_pct": 30.3571
+      },
+      "priority_note": "high_value_visual_baseline_candidate"
+    },
+    {
+      "region": "svalbard",
+      "label": "斯瓦尔巴群岛",
+      "climate_family": "polar",
+      "land_family": "ice",
+      "m4_climate_baseline": {
+        "temperature_bias": "cold_ice",
+        "saturation_bias": 0.92,
+        "contrast_bias": 1.01,
+        "noon_air_note": "ice highlight protection, avoid blue-black ocean overreach"
+      },
+      "m3_land_bias": {
+        "land_tint": "ice_cool_white",
+        "land_strength": 0.08,
+        "land_note": "protect ice texture and avoid flat white"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 20.3995,
+        "worldcover_water_pct": 25.3474,
+        "worldcover_vegetated_pct": 1.6695
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "taiwan",
+      "label": "台湾 / 东海",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 17.3447,
+        "worldcover_water_pct": 30.0431,
+        "worldcover_vegetated_pct": 15.2257
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "taiwan_strait",
+      "label": "台湾海峡",
+      "climate_family": "temperate",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "neutral",
+        "saturation_bias": 1.0,
+        "contrast_bias": 1.0,
+        "noon_air_note": "neutral baseline, small local land-cover bias only"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 44.5019,
+        "worldcover_water_pct": 28.5247,
+        "worldcover_vegetated_pct": 40.6817
+      },
+      "priority_note": "standard_review_candidate"
+    },
+    {
+      "region": "tonga",
+      "label": "汤加群岛",
+      "climate_family": "tropical",
+      "land_family": "vegetated",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "green_ecology_detail",
+        "land_strength": 0.12,
+        "land_note": "bias land pixels only; keep satellite texture dominant"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.1688,
+        "worldcover_water_pct": 14.4312,
+        "worldcover_vegetated_pct": 0.1161
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    },
+    {
+      "region": "xisha_paracel",
+      "label": "西沙群岛 / 帕拉塞尔群岛",
+      "climate_family": "tropical",
+      "land_family": "none",
+      "m4_climate_baseline": {
+        "temperature_bias": "slightly_warm",
+        "saturation_bias": 1.05,
+        "contrast_bias": 1.02,
+        "noon_air_note": "humid clear-air color, protect cyan shallow water"
+      },
+      "m3_land_bias": {
+        "land_tint": "none",
+        "land_strength": 0.0,
+        "land_note": "no meaningful land-cover signal in bbox"
+      },
+      "confidence": {
+        "koppen_land_climate_pct": 0.0107,
+        "worldcover_water_pct": 9.4579,
+        "worldcover_vegetated_pct": 0
+      },
+      "priority_note": "water_or_ocean_dominant_region; apply land/climate hints conservatively"
+    }
+  ]
+}

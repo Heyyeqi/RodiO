@@ -1,0 +1,326 @@
+[
+  {
+    "region": "south_africa",
+    "mean_abs_diff_rgb": 4.4089
+  },
+  {
+    "region": "caspian_sea",
+    "mean_abs_diff_rgb": 4.3913
+  },
+  {
+    "region": "red_sea",
+    "mean_abs_diff_rgb": 4.2226
+  },
+  {
+    "region": "rio_de_la_plata",
+    "mean_abs_diff_rgb": 3.7321
+  },
+  {
+    "region": "black_sea",
+    "mean_abs_diff_rgb": 3.5703
+  },
+  {
+    "region": "baltic_sea",
+    "mean_abs_diff_rgb": 3.0877
+  },
+  {
+    "region": "gulf_of_thailand",
+    "mean_abs_diff_rgb": 3.0792
+  },
+  {
+    "region": "bohai_sea",
+    "mean_abs_diff_rgb": 2.8153
+  },
+  {
+    "region": "mozambique_channel",
+    "mean_abs_diff_rgb": 2.7532
+  },
+  {
+    "region": "east_africa_coast",
+    "mean_abs_diff_rgb": 2.6542
+  },
+  {
+    "region": "persian_gulf",
+    "mean_abs_diff_rgb": 2.6406
+  },
+  {
+    "region": "patagonia",
+    "mean_abs_diff_rgb": 2.6396
+  },
+  {
+    "region": "mediterranean_east",
+    "mean_abs_diff_rgb": 2.5237
+  },
+  {
+    "region": "peru_chile_coast",
+    "mean_abs_diff_rgb": 2.4857
+  },
+  {
+    "region": "california_coast",
+    "mean_abs_diff_rgb": 2.4594
+  },
+  {
+    "region": "sea_of_japan",
+    "mean_abs_diff_rgb": 2.3557
+  },
+  {
+    "region": "great_barrier_reef",
+    "mean_abs_diff_rgb": 2.3221
+  },
+  {
+    "region": "mediterranean_west",
+    "mean_abs_diff_rgb": 2.2482
+  },
+  {
+    "region": "adriatic_sea",
+    "mean_abs_diff_rgb": 2.2374
+  },
+  {
+    "region": "french_guiana",
+    "mean_abs_diff_rgb": 2.1214
+  },
+  {
+    "region": "norway_fjords",
+    "mean_abs_diff_rgb": 2.0526
+  },
+  {
+    "region": "bay_of_biscay",
+    "mean_abs_diff_rgb": 2.0145
+  },
+  {
+    "region": "indonesia_west",
+    "mean_abs_diff_rgb": 1.9855
+  },
+  {
+    "region": "hainan_island",
+    "mean_abs_diff_rgb": 1.8393
+  },
+  {
+    "region": "sri_lanka",
+    "mean_abs_diff_rgb": 1.8279
+  },
+  {
+    "region": "taiwan_strait",
+    "mean_abs_diff_rgb": 1.8126
+  },
+  {
+    "region": "singapore_malacca",
+    "mean_abs_diff_rgb": 1.8092
+  },
+  {
+    "region": "madagascar",
+    "mean_abs_diff_rgb": 1.7747
+  },
+  {
+    "region": "borneo",
+    "mean_abs_diff_rgb": 1.7727
+  },
+  {
+    "region": "rio_southeast_brazil",
+    "mean_abs_diff_rgb": 1.6746
+  },
+  {
+    "region": "arabian_sea",
+    "mean_abs_diff_rgb": 1.6161
+  },
+  {
+    "region": "papua_new_guinea",
+    "mean_abs_diff_rgb": 1.5833
+  },
+  {
+    "region": "bay_of_bengal",
+    "mean_abs_diff_rgb": 1.5726
+  },
+  {
+    "region": "british_isles",
+    "mean_abs_diff_rgb": 1.3848
+  },
+  {
+    "region": "gulf_mexico_yucatan",
+    "mean_abs_diff_rgb": 1.3725
+  },
+  {
+    "region": "abc_venezuela",
+    "mean_abs_diff_rgb": 1.2976
+  },
+  {
+    "region": "alaska",
+    "mean_abs_diff_rgb": 1.2555
+  },
+  {
+    "region": "central_america_pacific",
+    "mean_abs_diff_rgb": 1.2257
+  },
+  {
+    "region": "indonesia_east",
+    "mean_abs_diff_rgb": 1.1745
+  },
+  {
+    "region": "philippines_central",
+    "mean_abs_diff_rgb": 1.1233
+  },
+  {
+    "region": "korea_yellow_sea",
+    "mean_abs_diff_rgb": 1.0735
+  },
+  {
+    "region": "japan",
+    "mean_abs_diff_rgb": 1.0546
+  },
+  {
+    "region": "brazil_coast",
+    "mean_abs_diff_rgb": 1.0207
+  },
+  {
+    "region": "east_china_sea",
+    "mean_abs_diff_rgb": 0.9335
+  },
+  {
+    "region": "caribbean_bahamas",
+    "mean_abs_diff_rgb": 0.8351
+  },
+  {
+    "region": "iceland",
+    "mean_abs_diff_rgb": 0.8218
+  },
+  {
+    "region": "taiwan",
+    "mean_abs_diff_rgb": 0.7984
+  },
+  {
+    "region": "andaman_sea",
+    "mean_abs_diff_rgb": 0.7808
+  },
+  {
+    "region": "kuril_southern",
+    "mean_abs_diff_rgb": 0.7385
+  },
+  {
+    "region": "new_zealand",
+    "mean_abs_diff_rgb": 0.6315
+  },
+  {
+    "region": "puerto_rico_vi",
+    "mean_abs_diff_rgb": 0.6189
+  },
+  {
+    "region": "falkland_islands",
+    "mean_abs_diff_rgb": 0.6094
+  },
+  {
+    "region": "nansha_spratly",
+    "mean_abs_diff_rgb": 0.5274
+  },
+  {
+    "region": "faroe_islands",
+    "mean_abs_diff_rgb": 0.4703
+  },
+  {
+    "region": "bashi_channel",
+    "mean_abs_diff_rgb": 0.4617
+  },
+  {
+    "region": "south_china_sea",
+    "mean_abs_diff_rgb": 0.3707
+  },
+  {
+    "region": "new_caledonia",
+    "mean_abs_diff_rgb": 0.3178
+  },
+  {
+    "region": "solomon_islands",
+    "mean_abs_diff_rgb": 0.2493
+  },
+  {
+    "region": "galapagos",
+    "mean_abs_diff_rgb": 0.2274
+  },
+  {
+    "region": "canary_madeira",
+    "mean_abs_diff_rgb": 0.1945
+  },
+  {
+    "region": "hawaii",
+    "mean_abs_diff_rgb": 0.1726
+  },
+  {
+    "region": "fiji_vanuatu",
+    "mean_abs_diff_rgb": 0.1386
+  },
+  {
+    "region": "eastern_caribbean",
+    "mean_abs_diff_rgb": 0.1222
+  },
+  {
+    "region": "cape_verde",
+    "mean_abs_diff_rgb": 0.1071
+  },
+  {
+    "region": "south_georgia",
+    "mean_abs_diff_rgb": 0.0722
+  },
+  {
+    "region": "french_polynesia",
+    "mean_abs_diff_rgb": 0.0685
+  },
+  {
+    "region": "samoa",
+    "mean_abs_diff_rgb": 0.0593
+  },
+  {
+    "region": "azores",
+    "mean_abs_diff_rgb": 0.054
+  },
+  {
+    "region": "ryukyu",
+    "mean_abs_diff_rgb": 0.0516
+  },
+  {
+    "region": "guam_marianas",
+    "mean_abs_diff_rgb": 0.049
+  },
+  {
+    "region": "christmas_island",
+    "mean_abs_diff_rgb": 0.0465
+  },
+  {
+    "region": "palau",
+    "mean_abs_diff_rgb": 0.0359
+  },
+  {
+    "region": "marshall_islands",
+    "mean_abs_diff_rgb": 0.0331
+  },
+  {
+    "region": "tonga",
+    "mean_abs_diff_rgb": 0.0322
+  },
+  {
+    "region": "maldives",
+    "mean_abs_diff_rgb": 0.0313
+  },
+  {
+    "region": "easter_island",
+    "mean_abs_diff_rgb": 0.0254
+  },
+  {
+    "region": "seychelles",
+    "mean_abs_diff_rgb": 0.0247
+  },
+  {
+    "region": "kiribati_gilbert",
+    "mean_abs_diff_rgb": 0.0234
+  },
+  {
+    "region": "ogasawara",
+    "mean_abs_diff_rgb": 0.0162
+  },
+  {
+    "region": "micronesia",
+    "mean_abs_diff_rgb": 0.0144
+  },
+  {
+    "region": "xisha_paracel",
+    "mean_abs_diff_rgb": 0.0087
+  }
+]

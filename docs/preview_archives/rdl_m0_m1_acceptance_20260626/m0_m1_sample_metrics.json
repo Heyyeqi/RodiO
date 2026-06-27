@@ -1,0 +1,122 @@
+[
+  {
+    "region": "hawaii",
+    "size": [
+      4096,
+      2731
+    ],
+    "raw_bytes": 396391,
+    "enhanced_bytes": 456012,
+    "rmse_rgb": 4.819,
+    "mean_abs_rgb_delta": 2.327,
+    "raw_luma_mean": 7.956,
+    "enhanced_luma_mean": 8.403,
+    "raw_luma_std": 14.805,
+    "enhanced_luma_std": 19.011,
+    "raw_rgb_spread_mean": 10.0,
+    "enhanced_rgb_spread_mean": 12.451,
+    "meta_zoom": 10,
+    "meta_bounds": {
+      "lon_w": -161.5,
+      "lon_e": -154.0,
+      "lat_s": 18.0,
+      "lat_n": 23.0
+    }
+  },
+  {
+    "region": "maldives",
+    "size": [
+      1229,
+      4096
+    ],
+    "raw_bytes": 163152,
+    "enhanced_bytes": 193243,
+    "rmse_rgb": 7.199,
+    "mean_abs_rgb_delta": 4.949,
+    "raw_luma_mean": 16.27,
+    "enhanced_luma_mean": 18.794,
+    "raw_luma_std": 8.398,
+    "enhanced_luma_std": 10.788,
+    "raw_rgb_spread_mean": 31.916,
+    "enhanced_rgb_spread_mean": 42.606,
+    "meta_zoom": 10,
+    "meta_bounds": {
+      "lon_w": 71.5,
+      "lon_e": 74.5,
+      "lat_s": -1.5,
+      "lat_n": 8.5
+    }
+  },
+  {
+    "region": "great_barrier_reef",
+    "size": [
+      3004,
+      4096
+    ],
+    "raw_bytes": 1944596,
+    "enhanced_bytes": 2288473,
+    "rmse_rgb": 16.006,
+    "mean_abs_rgb_delta": 11.489,
+    "raw_luma_mean": 49.863,
+    "enhanced_luma_mean": 59.403,
+    "raw_luma_std": 45.095,
+    "enhanced_luma_std": 57.661,
+    "raw_rgb_spread_mean": 32.31,
+    "enhanced_rgb_spread_mean": 42.877,
+    "meta_zoom": 10,
+    "meta_bounds": {
+      "lon_w": 142.5,
+      "lon_e": 153.5,
+      "lat_s": -25.0,
+      "lat_n": -10.0
+    }
+  },
+  {
+    "region": "philippines_central",
+    "size": [
+      3413,
+      4096
+    ],
+    "raw_bytes": 1686785,
+    "enhanced_bytes": 1977537,
+    "rmse_rgb": 9.552,
+    "mean_abs_rgb_delta": 6.276,
+    "raw_luma_mean": 26.241,
+    "enhanced_luma_mean": 30.635,
+    "raw_luma_std": 29.583,
+    "enhanced_luma_std": 37.872,
+    "raw_rgb_spread_mean": 24.447,
+    "enhanced_rgb_spread_mean": 32.076,
+    "meta_zoom": 10,
+    "meta_bounds": {
+      "lon_w": 117.0,
+      "lon_e": 127.0,
+      "lat_s": 6.0,
+      "lat_n": 18.0
+    }
+  },
+  {
+    "region": "caribbean_bahamas",
+    "size": [
+      4096,
+      2867
+    ],
+    "raw_bytes": 1211735,
+    "enhanced_bytes": 1436095,
+    "rmse_rgb": 9.893,
+    "mean_abs_rgb_delta": 6.214,
+    "raw_luma_mean": 24.348,
+    "enhanced_luma_mean": 28.381,
+    "raw_luma_std": 30.922,
+    "enhanced_luma_std": 39.671,
+    "raw_rgb_spread_mean": 25.595,
+    "enhanced_rgb_spread_mean": 33.602,
+    "meta_zoom": 10,
+    "meta_bounds": {
+      "lon_w": -85.0,
+      "lon_e": -70.0,
+      "lat_s": 17.0,
+      "lat_n": 27.5
+    }
+  }
+]

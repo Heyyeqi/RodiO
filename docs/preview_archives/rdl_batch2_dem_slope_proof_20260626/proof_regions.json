@@ -1,0 +1,32 @@
+[
+  {
+    "region": "japan",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/japan/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/japan/tile_noon_air_mapbox_m3m4_dem.jpg"
+  },
+  {
+    "region": "taiwan",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/taiwan/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/taiwan/tile_noon_air_mapbox_m3m4_dem.jpg"
+  },
+  {
+    "region": "norway_fjords",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/norway_fjords/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/norway_fjords/tile_noon_air_mapbox_m3m4_dem.jpg"
+  },
+  {
+    "region": "iceland",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/iceland/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/iceland/tile_noon_air_mapbox_m3m4_dem.jpg"
+  },
+  {
+    "region": "red_sea",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/red_sea/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/red_sea/tile_noon_air_mapbox_m3m4_dem.jpg"
+  },
+  {
+    "region": "hawaii",
+    "before": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/hawaii/tile_noon_air_mapbox_m3m4.jpg",
+    "after": "/Users/rw-mac/Projects/RodiO/d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/hawaii/tile_noon_air_mapbox_m3m4_dem.jpg"
+  }
+]
