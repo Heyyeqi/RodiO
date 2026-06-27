@@ -1,9 +1,20 @@
 (function () {
   const TEXTURE_LON_OFFSET = 90
-  // A/B 测试开关：切换候选 dayTexture。修改此值后刷新浏览器即生效。
-  // 'current' | 'bmng_b' | 'bmng_c' | 'bmng_d2' | 'd5a_bathy' | 'd5b_bathy' | 'd5c_palette_v6_1_bathy' | 'd6_topo_blend' | 'd5b_design_v3_1' | 'd5b_design_v3_2_1'
-  // localhost 测试：?dayTexture=d5b_bathy 可覆盖，不影响生产环境。
-  const DAY_TEXTURE_VARIANT = 'd5z_b'
+  // Production day texture source: BMNG tile stream only.
+  const DAY_TEXTURE_VARIANT = 'bmng21k_stream'
+  // [archived] RAW: { tileSource: '/assets/earth/bmng21k/topo_bathy/tiles/', pipeline: 'raw', allowFallback: false, cachePrefix: 'raw' }
+  // [archived] NOON_AIR: { tileSource: '/assets/earth/bmng21k/topo_bathy/tiles_noon_air/', pipeline: 'noon_air_full', allowFallback: false, cachePrefix: 'noon_air' }
+  // [archived] V2_ENHANCED: { tileSource: '/assets/earth/bmng21k/topo_bathy/tiles_v2_enhanced/', pipeline: 'v2_global_baseline', allowFallback: false, cachePrefix: 'v2' }
+  // [archived] NOON_AIR_V2: { tileSource: '/assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2/', pipeline: 'noon_air_v2_final', allowFallback: false, cachePrefix: 'nav2' }
+  const EARTH_MODES = window.EARTH_MODES || {
+    NOON_AIR_V2_ISLANDS: {
+      tileSource: '/assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/',
+      pipeline: 'noon_air_v2_island_pass',
+      allowFallback: false,
+      cachePrefix: 'nav2i',
+    },
+  }
+  let EARTH_MODE = 'NOON_AIR_V2_ISLANDS'
   const DEBUG_MARKERS_ENABLED = false
   const DEBUG_CITIES = [
     { name: 'Shanghai', lon: 121.4737, lat: 31.2304, color: 0xff3300 },
@@ -119,26 +130,19 @@
     let earthGeometry = null
     let atmosphere = null
     let stars = null
-    let cloudGeometry = null
-    let cloudMaterial = null
-    let cloudMesh = null
-    let cloudTexture = null
-    let cloudTextureLoadState = 'idle'
-    let cloudTextureWarned = false
-    let cloudTexturePath = null
-    let cloudTextureError = null
-    let cloudVisibleRequested = true
     let isDestroyed = false
-    const cloudRadius = 2.04
-    let cloudDriftLastTick = 0
     let visibilityChangeHandler = null
+    let _sunUpdateInterval = null
     let earthMaterial = null
     let atmosphereMaterial = null
+    let tileManager = null
     let dayTexture = null
     let nightTexture = null
     let oceanSpecularTexture = null
     let oceanSpecularTextureLoadState = 'idle'
     let oceanSpecularTextureWarned = false
+    let normalMapTexture = null
+    let normalMapTextureLoadState = 'idle'
     let oceanSpecularTexturePath = null
     let oceanMaskTexture = null
     let oceanMaskTextureLoadState = 'idle'
@@ -289,223 +293,8 @@
         night:      { color: 0x061624, strength: 0.09 },
       }
 
-      const CLOUD_OPACITY_BY_THEME = {
-        dawn: 0.08,
-        sunrise: 0.09,
-        earlyMorning: 0.095,
-        morning: 0.1,
-        noon: 0.15,
-        afternoon: 0.13,
-        goldenApproach: 0.1,
-        sunset: 0.08,
-        evening: 0.04,
-        lateEvening: 0.025,
-        deepNight: 0.018,
-        night: 0.025,
-      }
-
-      function normalizeCloudThemeKey(themeKey) {
-        return themeKey === 'night' ? 'deepNight' : themeKey
-      }
-
-      function getCloudOpacity(themeKey) {
-        const resolvedTheme = normalizeCloudThemeKey(
-          themeKey || currentTheme || pendingTheme || 'deepNight'
-        )
-        const baseOpacity = CLOUD_OPACITY_BY_THEME[resolvedTheme] ?? CLOUD_OPACITY_BY_THEME.deepNight
-        const deviceScale = isLowCloudDevice() ? 0.95 : 1
-        return clamp(baseOpacity * deviceScale, 0, 1)
-      }
-
-      const CLOUD_DRIFT_BY_THEME = {
-        dawn: 0.000012,
-        sunrise: 0.000013,
-        earlyMorning: 0.000016,
-        morning: 0.00002,
-        noon: 0.000024,
-        afternoon: 0.000021,
-        goldenApproach: 0.000014,
-        sunset: 0.000008,
-        evening: 0.000003,
-        lateEvening: 0.0000015,
-        deepNight: 0.0000005,
-        night: 0.000001,
-      }
-      const CLOUD_DRIFT_LOW_DEVICE_SCALE = 0.5
-
-      function isLowCloudDevice() {
-        const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 820
-        const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
-        const lowDpr = (window.devicePixelRatio || 1) <= 1.25
-        return smallViewport || coarsePointer || lowDpr
-      }
-
-      function getCloudDriftLowDeviceScale() {
-        return isLowCloudDevice() ? CLOUD_DRIFT_LOW_DEVICE_SCALE : 1
-      }
-
-      function getCloudDriftSpeed(themeKey) {
-        const resolvedTheme = normalizeCloudThemeKey(
-          themeKey || currentTheme || pendingTheme || 'deepNight'
-        )
-        const baseSpeed = CLOUD_DRIFT_BY_THEME[resolvedTheme] ?? CLOUD_DRIFT_BY_THEME.deepNight
-        return baseSpeed * getCloudDriftLowDeviceScale()
-      }
-
-      function updateCloudDrift(now = performance.now()) {
-        if (!cloudMesh || cloudTextureLoadState !== 'ready') {
-          cloudDriftLastTick = now
-          return
-        }
-
-        const speed = getCloudDriftSpeed(currentTheme || pendingTheme || 'deepNight')
-        if (!Number.isFinite(speed) || speed <= 0) {
-          cloudDriftLastTick = now
-          return
-        }
-
-        if (!cloudDriftLastTick) {
-          cloudDriftLastTick = now
-          return
-        }
-
-        const deltaSeconds = Math.min((now - cloudDriftLastTick) / 1000, 0.1)
-        cloudDriftLastTick = now
-        if (deltaSeconds <= 0) return
-
-        cloudMesh.rotation.y += speed * deltaSeconds * 60
-      }
-
-      function resetCloudDriftLastTick() {
-        cloudDriftLastTick = 0
-      }
-
-      function alignCloudDriftLastTick(now = performance.now()) {
-        cloudDriftLastTick = now
-      }
-
-      function getCloudAlphaTexturePaths() {
-        const highResPath = '/assets/earth/clouds/cloud_alpha_4096x2048_refined.png'
-        const lowResPath = '/assets/earth/clouds/cloud_alpha_2048x1024_refined.png'
-        return isLowCloudDevice()
-          ? [lowResPath, highResPath]
-          : [highResPath, lowResPath]
-      }
-
-      function configureCloudTexture(texture) {
-        if ('encoding' in texture && typeof THREE.LinearEncoding !== 'undefined') {
-          texture.encoding = THREE.LinearEncoding
-        }
-        texture.wrapS = THREE.ClampToEdgeWrapping
-        texture.wrapT = THREE.ClampToEdgeWrapping
-        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
-        texture.minFilter = THREE.LinearMipmapLinearFilter
-        texture.magFilter = THREE.LinearFilter
-        texture.generateMipmaps = true
-        texture.needsUpdate = true
-        return texture
-      }
-
-      function refreshCloudAppearance(themeKey = currentTheme || pendingTheme || 'deepNight') {
-        if (!cloudMaterial || !cloudMesh) return false
-        cloudMaterial.opacity = getCloudOpacity(themeKey)
-        cloudMesh.visible = cloudVisibleRequested && cloudTextureLoadState === 'ready'
-        return cloudMesh.visible
-      }
-
-      function loadCloudAlphaTextureIfExists(path) {
-        return fetch(path, { method: 'HEAD' })
-          .then((response) => {
-            if (!response.ok) return null
-            return new Promise((resolve) => {
-              loader.load(
-                path,
-                (texture) => {
-                  if (isDestroyed) {
-                    texture.dispose()
-                    resolve(null)
-                    return
-                  }
-                  resolve(configureCloudTexture(texture))
-                },
-                undefined,
-                () => resolve(null)
-              )
-            })
-          })
-          .catch(() => null)
-      }
-
-      async function loadCloudAlphaTexture() {
-        if (cloudTextureLoadState !== 'idle' || isDestroyed) return cloudTexture
-        cloudTextureLoadState = 'loading'
-        cloudTextureError = null
-
-        const [preferredPath, fallbackPath] = getCloudAlphaTexturePaths()
-        let texture = await loadCloudAlphaTextureIfExists(preferredPath)
-        let usedPath = preferredPath
-        if (!texture) {
-          texture = await loadCloudAlphaTextureIfExists(fallbackPath)
-          usedPath = fallbackPath
-        }
-
-        if (isDestroyed) {
-          if (texture) texture.dispose()
-          return null
-        }
-
-        if (texture) {
-          cloudTexture = texture
-          cloudTextureLoadState = 'ready'
-          cloudTexturePath = texture.image?.src || usedPath
-
-          if (!cloudGeometry) {
-            cloudGeometry = new THREE.SphereGeometry(cloudRadius, 64, 64)
-          }
-
-          if (!cloudMaterial) {
-            cloudMaterial = new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              side: THREE.FrontSide,
-              transparent: true,
-              opacity: getCloudOpacity(),
-              alphaMap: cloudTexture,
-              depthWrite: false,
-              depthTest: true,
-            })
-          } else {
-            cloudMaterial.alphaMap = cloudTexture
-            cloudMaterial.transparent = true
-            cloudMaterial.depthWrite = false
-            cloudMaterial.depthTest = true
-            cloudMaterial.needsUpdate = true
-          }
-
-          if (!cloudMesh) {
-            cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial)
-            cloudMesh.renderOrder = 2
-            cloudMesh.frustumCulled = false
-            cloudMesh.visible = false
-            earthGroup.add(cloudMesh)
-          }
-
-          refreshCloudAppearance()
-          if (!permanentlyUnavailable && isReady) {
-            renderer.render(scene, camera)
-          }
-          return cloudTexture
-        }
-
-        cloudTextureLoadState = 'missing'
-        cloudTextureError = `cloud alpha map unavailable: ${preferredPath}${fallbackPath ? `, ${fallbackPath}` : ''}`
-        if (!cloudTextureWarned) {
-          cloudTextureWarned = true
-          console.warn('[earth3d] cloud alpha map unavailable; skipping')
-        }
-        return null
-      }
-
       const loader = new THREE.TextureLoader()
+      let atlasFilterMode = window.__rodioAtlasFilterMode === 'normal' ? 'normal' : 'sharp'
       function configureEarthTexture(texture) {
         if ('colorSpace' in texture && THREE.SRGBColorSpace) {
           texture.colorSpace = THREE.SRGBColorSpace
@@ -520,7 +309,79 @@
         return texture
       }
 
+      function configureAtlasTexture(texture, lod) {
+        configureEarthTexture(texture)
+        const useSharpAtlas = atlasFilterMode === 'sharp' && lod === '16k'
+        if (useSharpAtlas) {
+          texture.minFilter = THREE.LinearFilter
+          texture.magFilter = THREE.LinearFilter
+          texture.generateMipmaps = false
+        }
+        texture.needsUpdate = true
+        return texture
+      }
+
+      function configureRegionalTexture(texture) {
+        configureEarthTexture(texture)
+        // Regional overlays are frequently inspected at oblique / LOW angles.
+        // Keep mipmaps enabled here so anisotropic filtering has stable inputs
+        // instead of stretching a single full-res level across the horizon.
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        texture.needsUpdate = true
+        return texture
+      }
+
+      function applyRegionalTextureSampling(texture, auditProfile = getAuditViewProfile()) {
+        if (!texture) return texture
+        const inspectSharpenProfile = {
+          top: { sharpen: 0.08, useMipmaps: true },
+          oblique: { sharpen: 0.18, useMipmaps: false },
+          low: { sharpen: 0.28, useMipmaps: false },
+          normal: { sharpen: 0.0, useMipmaps: true },
+        }
+        const profile = inspectSharpenProfile[auditProfile] || inspectSharpenProfile.normal
+        texture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy())
+        texture.magFilter = THREE.LinearFilter
+        texture.minFilter = profile.useMipmaps
+          ? THREE.LinearMipmapLinearFilter
+          : THREE.LinearFilter
+        texture.generateMipmaps = profile.useMipmaps
+        texture.needsUpdate = true
+        return profile
+      }
+
       function loadTextureWithFallback(primaryPath, fallbackPath, onLoad) {
+        const fallbacks = Array.isArray(fallbackPath)
+          ? fallbackPath.filter(Boolean)
+          : [fallbackPath].filter(Boolean)
+        const paths = [primaryPath, ...fallbacks].filter(Boolean)
+        let index = 0
+        const tryLoad = () => {
+          const path = paths[index]
+          loader.load(
+            path,
+            (texture) => {
+              onLoad(configureEarthTexture(texture), path)
+            },
+            undefined,
+            () => {
+              const nextPath = paths[index + 1]
+              if (nextPath) {
+                console.warn('[earth3d] texture fallback:', path, '->', nextPath)
+                index += 1
+                tryLoad()
+              } else {
+                console.error('[earth3d] texture load failed:', paths.join(', '))
+              }
+            }
+          )
+        }
+        tryLoad()
+      }
+
+      function loadTextureWithFallbackLegacy(primaryPath, fallbackPath, onLoad) {
         loader.load(
           primaryPath,
           (texture) => {
@@ -543,43 +404,340 @@
         )
       }
 
+      function getGpuMaxTextureSize() {
+        try {
+          return renderer.capabilities?.maxTextureSize || renderer.getContext()?.getParameter(renderer.getContext().MAX_TEXTURE_SIZE) || 8192
+        } catch (_) {
+          return 8192
+        }
+      }
+
+      let _lastTextureSourceKey = null
+      function resolveEarthTextureLOD(lodManager, deviceCaps, cameraState = {}) {
+        const maxSize = (deviceCaps && deviceCaps.maxTextureSize) || getGpuMaxTextureSize()
+        const distance = Number.isFinite(cameraState.distance) ? cameraState.distance : 4.8
+        let lod
+        if (maxSize >= 16384 && distance <= 5.6) {
+          lod = '16k'
+        } else if (maxSize >= 8192 && distance <= 7.2) {
+          lod = '8k'
+        } else {
+          lod = '4k'
+        }
+        // atlasTileSize drives the canvas draw size per tile (1:1 with source resolution).
+        // 16k: GPU maxSize >= 16384 is already verified above, so 4 cols × 4096 = 16384 wide is safe.
+        // 8k:  2 cols × 4096 = 8192 wide (full source resolution, safe).
+        // 4k:  2 cols × 2048 = 4096 wide (full source resolution, safe).
+        const config = {
+          lod,
+          tileCols: lod === '16k' ? 4 : 2,
+          tileRows: lod === '16k' ? 2 : 1,
+          tileResolution: lod === '16k' ? 4096 : (lod === '8k' ? 4096 : 2048),
+          atlasTileSize: lod === '16k' ? 4096 : (lod === '8k' ? 4096 : 2048),
+          maxCachedTiles: lod === '16k' ? 8 : 4,
+        }
+        const _textureSourceKey = `${EARTH_MODE}:${config.lod}`
+        if (_textureSourceKey !== _lastTextureSourceKey) {
+          _lastTextureSourceKey = _textureSourceKey
+          console.log('[earth] texture source:', `${EARTH_MODE} ${EARTH_MODES[EARTH_MODE].pipeline} tile stream ${config.lod}`)
+        }
+        return config
+      }
+
+      function tileGridForLod(lod) {
+        return {
+          cols: lod === '16k' ? 4 : 2,
+          rows: lod === '16k' ? 2 : 1,
+        }
+      }
+
+      function getEarthModeConfig(mode = EARTH_MODE) {
+        const config = EARTH_MODES[mode]
+        if (!config) throw new Error('Invalid EARTH_MODE')
+        return config
+      }
+
+      function validateTileUrlForMode(url, mode = EARTH_MODE) {
+        if (mode === 'NOON_AIR' && url.includes('bmng21k/topo_bathy/tiles') && !url.includes('tiles_noon_air')) {
+          throw new Error('[FATAL MODE MISMATCH] RAW tile detected in NOON_AIR mode')
+        }
+        if (mode === 'RAW' && url.includes('tiles_noon_air')) {
+          throw new Error('[FATAL MODE MISMATCH] NOON_AIR tile detected in RAW mode')
+        }
+        if (mode === 'RAW' && url.includes('tiles_v2_enhanced')) {
+          throw new Error('[FATAL MODE MISMATCH] V2 tile detected in RAW mode')
+        }
+        if (mode === 'V2_ENHANCED' && !url.includes('tiles_v2_enhanced')) {
+          throw new Error('[FATAL MODE MISMATCH] Non-V2 tile detected in V2_ENHANCED mode')
+        }
+        if (mode === 'NOON_AIR_V2' && !url.includes('tiles_noon_air_v2')) {
+          throw new Error('[FATAL MODE MISMATCH] Non-NOON_AIR_V2 tile detected in NOON_AIR_V2 mode')
+        }
+        if (mode === 'NOON_AIR_V2_ISLANDS' && !url.includes('tiles_noon_air_v2_islands')) {
+          throw new Error('[FATAL MODE MISMATCH] Non-NOON_AIR_V2_ISLANDS tile detected in NOON_AIR_V2_ISLANDS mode')
+        }
+        return url
+      }
+
+      function resolveTileUrl(modeName, lod, x, y) {
+        const mode = getEarthModeConfig(modeName)
+        const url = `${mode.tileSource}${lod}/tile_${x}_${y}.jpg`
+        return validateTileUrlForMode(url, modeName)
+      }
+
+      function getTileUrl(lod, x, y) {
+        return resolveTileUrl(EARTH_MODE, lod, x, y)
+      }
+
+      function requestRenderUpdate() {
+        if (!renderer || !scene || !camera || permanentlyUnavailable) return
+        _animDirty = true
+        if (isReady && tileManager) {
+          tileManager.updateStreaming(getStreamingCameraState(camera))
+          updateRDLOverlays()
+          renderer.render(scene, camera)
+        }
+      }
+
+      function setEarthMode(mode) {
+        if (!EARTH_MODES[mode]) throw new Error('Invalid EARTH_MODE')
+        if (EARTH_MODE === mode) return EARTH_MODE
+        EARTH_MODE = mode
+        window.__rodioEarthMode = mode
+        console.log('[earth] mode switched:', mode)
+        if (tileManager) {
+          tileManager.clearCache()
+          tileManager.resetStreaming()
+        }
+        requestRenderUpdate()
+        return EARTH_MODE
+      }
+
+      function computeVisibleTileSet(cameraState) {
+        const lod = cameraState.lod || '16k'
+        const tileCols = Math.max(1, cameraState.tileCols || 4)
+        const tileRows = Math.max(1, cameraState.tileRows || 2)
+        const lon = normalizeLon(Number.isFinite(cameraState.lon) ? cameraState.lon : 121.4737)
+        const lat = clamp(Number.isFinite(cameraState.lat) ? cameraState.lat : 31.2304, -89.99, 89.99)
+        const fov = Math.max(1, Number.isFinite(cameraState.fovDegrees) ? cameraState.fovDegrees : 52)
+        const centerX = clamp(Math.floor((lon + 180) / 360 * tileCols), 0, tileCols - 1)
+        const centerY = clamp(Math.floor((90 - lat) / 180 * tileRows), 0, tileRows - 1)
+        const radiusX = Math.max(0, Math.ceil(fov / (360 / tileCols) / 2))
+        const radiusY = Math.max(0, Math.ceil(fov / (180 / tileRows) / 2))
+        const keys = new Set()
+        for (let dy = -radiusY; dy <= radiusY; dy += 1) {
+          const y = centerY + dy
+          if (y < 0 || y >= tileRows) continue
+          for (let dx = -radiusX; dx <= radiusX; dx += 1) {
+            const x = (centerX + dx + tileCols) % tileCols
+            keys.add(`${lod}:${x}:${y}`)
+          }
+        }
+        return Array.from(keys).sort().map((key) => {
+          const [_lod, x, y] = key.split(':')
+          return { lod: _lod, x: Number(x), y: Number(y) }
+        })
+      }
+
+      class FrontendTileStreamingManager {
+        constructor(renderer, lodManager) {
+          this.renderer = renderer
+          this.lodManager = lodManager
+          this.activeTiles = new Map()
+          this.tileCache = new Map()
+          this.loadingTiles = new Set()
+          this.cacheOrder = []
+          this.cacheHits = 0
+          this.cacheMisses = 0
+          this.lastVisibleSignature = ''
+          this.lastLod = null
+          this.loadGeneration = 0
+          this.lodConfig = resolveEarthTextureLOD(lodManager, renderer.capabilities)
+          this.atlasCanvas = document.createElement('canvas')
+          this.atlasContext = this.atlasCanvas.getContext('2d', { alpha: false })
+          this.atlasTexture = new THREE.CanvasTexture(this.atlasCanvas)
+          configureAtlasTexture(this.atlasTexture, this.lodConfig.lod)
+          this.resetAtlas(this.lodConfig)
+        }
+
+        requestVisibleTiles(cameraState) {
+          const config = resolveEarthTextureLOD(this.lodManager, this.renderer.capabilities, cameraState)
+          if (this.lastLod !== config.lod) {
+            this.resetAtlas(config)
+          }
+          const visibleTiles = computeVisibleTileSet({
+            ...cameraState,
+            lod: config.lod,
+            tileCols: config.tileCols,
+            tileRows: config.tileRows,
+            fovDegrees: cameraState.fovDegrees,
+          })
+          return visibleTiles
+        }
+
+        updateStreaming(cameraState) {
+          const visibleTiles = this.requestVisibleTiles(cameraState)
+          const signature = visibleTiles.map((tile) => `${tile.lod}:${tile.x}:${tile.y}`).join('|')
+          const tilesChanged = signature !== this.lastVisibleSignature
+          const stats = { hits: 0, misses: 0, pending: 0 }
+          for (const tile of visibleTiles) {
+            const key = this.tileKey(tile)
+            if (this.tileCache.has(key)) {
+              stats.hits += 1
+              this.cacheHits += 1
+              this.touchCacheKey(key)
+              // tile 集合未变时跳过重绘，避免 camera 静止时每帧触发 canvas drawImage 和 GPU 上传
+              if (tilesChanged) this.drawTile(tile, this.tileCache.get(key))
+              this.activeTiles.set(key, tile)
+            } else {
+              stats.misses += 1
+              this.cacheMisses += 1
+              this.loadTileAsync(tile)
+            }
+            if (this.loadingTiles.has(key)) stats.pending += 1
+          }
+          if (tilesChanged) {
+            const currentMode = getEarthModeConfig()
+            console.log('[tile-stream]', {
+              mode: EARTH_MODE,
+              pipeline: currentMode.pipeline,
+              tileSource: currentMode.tileSource,
+              lod: this.lodConfig.lod,
+              visibleTiles: visibleTiles.map((tile) => `${tile.lod}/${tile.x}/${tile.y}`),
+              cacheHits: stats.hits,
+              cacheMisses: stats.misses,
+              pending: stats.pending,
+              cacheSize: this.tileCache.size,
+            })
+            this.lastVisibleSignature = signature
+          }
+          return visibleTiles
+        }
+
+        loadTileAsync(tile) {
+          const key = this.tileKey(tile)
+          if (this.loadingTiles.has(key)) return
+          this.loadingTiles.add(key)
+          const modeAtRequest = EARTH_MODE
+          const generation = this.loadGeneration
+          const url = this.tileUrl(tile)
+          console.log('[tile-request]', modeAtRequest, url)
+          loader.load(
+            url,
+            (texture) => {
+              this.loadingTiles.delete(key)
+              if (generation !== this.loadGeneration || modeAtRequest !== EARTH_MODE || key !== this.tileKey(tile)) {
+                texture.dispose()
+                return
+              }
+              configureEarthTexture(texture)
+              this.addToCache(key, texture)
+              this.drawTile(tile, texture)
+              this.activeTiles.set(key, tile)
+              if (!permanentlyUnavailable && isReady) {
+                renderer.render(scene, camera)
+              }
+            },
+            undefined,
+            () => {
+              this.loadingTiles.delete(key)
+              console.warn('[tile-stream] tile unavailable:', key, url)
+            }
+          )
+        }
+
+        addToCache(key, texture) {
+          if (this.tileCache.has(key)) {
+            const previous = this.tileCache.get(key)?.texture || this.tileCache.get(key)
+            if (previous !== texture) previous.dispose()
+            this.tileCache.delete(key)
+          }
+          this.tileCache.set(key, { texture, mode: EARTH_MODE })
+          this.touchCacheKey(key)
+          while (this.cacheOrder.length > this.lodConfig.maxCachedTiles) {
+            const evictKey = this.cacheOrder.shift()
+            if (!evictKey || !this.tileCache.has(evictKey)) continue
+            const evicted = this.tileCache.get(evictKey)?.texture || this.tileCache.get(evictKey)
+            this.tileCache.delete(evictKey)
+            this.activeTiles.delete(evictKey)
+            if (evicted?.dispose) evicted.dispose()
+          }
+        }
+
+        touchCacheKey(key) {
+          this.cacheOrder = this.cacheOrder.filter((item) => item !== key)
+          this.cacheOrder.push(key)
+        }
+
+        drawTile(tile, textureRecord) {
+          const texture = textureRecord?.texture || textureRecord
+          const image = texture?.image
+          if (!image || !this.atlasContext) return
+          const size = this.lodConfig.atlasTileSize
+          this.atlasContext.imageSmoothingEnabled = false
+          this.atlasContext.drawImage(
+            image,
+            tile.x * size,
+            tile.y * size,
+            size,
+            size
+          )
+          this.atlasTexture.needsUpdate = true
+        }
+
+        resetAtlas(config) {
+          this.lodConfig = config
+          this.lastLod = config.lod
+          const width = config.tileCols * config.atlasTileSize
+          const height = config.tileRows * config.atlasTileSize
+          if (this.atlasCanvas.width !== width) this.atlasCanvas.width = width
+          if (this.atlasCanvas.height !== height) this.atlasCanvas.height = height
+          if (this.atlasContext) {
+            this.atlasContext.fillStyle = '#020514'
+            this.atlasContext.fillRect(0, 0, width, height)
+          }
+          configureAtlasTexture(this.atlasTexture, config.lod)
+          this.activeTiles.clear()
+          this.loadingTiles.clear()
+          this.atlasTexture.needsUpdate = true
+        }
+
+        tileKey(tile) {
+          const mode = getEarthModeConfig()
+          return `${mode.cachePrefix}_${tile.lod}_${tile.x}_${tile.y}`
+        }
+
+        tileUrl(tile) {
+          return getTileUrl(tile.lod, tile.x, tile.y)
+        }
+
+        clearCache() {
+          this.tileCache.forEach((record) => (record?.texture || record)?.dispose?.())
+          this.tileCache.clear()
+          this.activeTiles.clear()
+          this.cacheOrder = []
+          this.cacheHits = 0
+          this.cacheMisses = 0
+        }
+
+        resetStreaming() {
+          this.loadGeneration += 1
+          this.loadingTiles.clear()
+          this.lastVisibleSignature = ''
+          this.resetAtlas(this.lodConfig)
+        }
+
+        dispose() {
+          this.clearCache()
+          this.loadingTiles.clear()
+          if (this.atlasTexture) this.atlasTexture.dispose()
+        }
+      }
+
       function isLowSpecularDevice() {
         const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 820
         const coarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
         return smallViewport || coarsePointer
-      }
-
-      function getDayTexturePaths() {
-        const candidates = {
-          current:   ['/assets/earth_day_8k.jpg',                              '/assets/bluemarble.jpg'],
-          bmng_b:    ['/assets/earth/candidates/bmng_b_8192x4096.jpg',         '/assets/bluemarble.jpg'],
-          bmng_c:    ['/assets/earth/candidates/bmng_c_8192x4096.jpg',         '/assets/bluemarble.jpg'],
-          bmng_d2:   ['/assets/earth/candidates/bmng_d2_8192x4096.jpg',        '/assets/bluemarble.jpg'],
-          d5a_bathy: ['/assets/earth/candidates/d5a_bathy_8192x4096.jpg',      '/assets/bluemarble.jpg'],
-          d5b_bathy:              ['/assets/earth/candidates/d5b_bathy_8192x4096.jpg',              '/assets/bluemarble.jpg'],
-          d5c_palette_v6_1_bathy: ['/assets/earth/candidates/d5c_palette_v6_1_bathy_8192x4096.jpg', '/assets/bluemarble.jpg'],
-          d6_topo_blend:          ['/assets/earth/candidates/d6_topo_blend_8192x4096.jpg',          '/assets/bluemarble.jpg'],
-          d5b_design_v3_1:        ['/assets/earth/candidates/d5b_design_v3_1_8192x4096.jpg',        '/assets/bluemarble.jpg'],
-          d5b_design_v3_2_1:      ['/assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg',      '/assets/bluemarble.jpg'],
-          d5z_a:                  ['/assets/earth/candidates/d5z_a_8192x4096.jpg',                  '/assets/bluemarble.jpg'],
-          d5z_b:                  ['/assets/earth/production/d5z_b_8192x4096.jpg',                   '/assets/bluemarble.jpg'],
-        }
-        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-        const urlParam = isLocalhost
-          ? new URLSearchParams(location.search).get('dayTexture')
-          : null
-        let variant = DAY_TEXTURE_VARIANT
-        if (urlParam) {
-          if (candidates[urlParam]) {
-            variant = urlParam
-          } else {
-            console.warn('[RodiO] unknown dayTexture variant from URL, fallback to ' + DAY_TEXTURE_VARIANT + ':', urlParam)
-          }
-        }
-        const paths = candidates[variant] || candidates.current
-        console.log('[RodiO] dayTexture variant:', variant)
-        console.log('[RodiO] dayTexture path:', paths[0])
-        return paths
       }
 
       function getOceanSpecularTexturePaths() {
@@ -648,6 +806,29 @@
         return null
       }
 
+      async function loadNormalMapTexture() {
+        if (normalMapTextureLoadState !== 'idle') return normalMapTexture
+        normalMapTextureLoadState = 'loading'
+        const path = '/assets/earth_normal_8k.webp'
+        const texture = await loadTextureIfExists(path)
+        if (texture) {
+          texture.colorSpace = THREE.NoColorSpace
+          texture.needsUpdate = true
+          normalMapTexture = texture
+          normalMapTextureLoadState = 'ready'
+          if (earthMaterial) {
+            earthMaterial.normalMap = normalMapTexture
+            earthMaterial.normalScale = new THREE.Vector2(0.15, 0.15)
+            earthMaterial.needsUpdate = true
+            if (!permanentlyUnavailable && isReady) renderer.render(scene, camera)
+          }
+          return normalMapTexture
+        }
+        normalMapTextureLoadState = 'missing'
+        console.warn('[earth3d] normal map unavailable; skipping')
+        return null
+      }
+
       async function loadOceanMaskTexture() {
         if (oceanMaskTextureLoadState !== 'idle') return oceanMaskTexture
         oceanMaskTextureLoadState = 'loading'
@@ -703,7 +884,8 @@
         shininess: 1,
         specular: new THREE.Color(0x05070a),
       })
-      earthGeometry = new THREE.SphereGeometry(2, 64, 64)
+      loadNormalMapTexture()
+      earthGeometry = new THREE.SphereGeometry(2, 128, 128)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
       atmosphereMaterial = new THREE.MeshPhongMaterial({
         color: new THREE.Color('#7ab8e6'),
@@ -713,7 +895,7 @@
         side: THREE.BackSide,
       })
       atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(2.07, 64, 64),
+        new THREE.SphereGeometry(2.07, 128, 128),
         atmosphereMaterial
       )
 
@@ -773,6 +955,8 @@
       const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
       const visualRaycaster = new THREE.Raycaster()
       const visualTargetDir = new THREE.Vector3(0, 0, 1)
+      const auditCenterDir = new THREE.Vector3(0, 0, 1)
+      let useAuditCenterTarget = false
 
       function updateVisualTargetDir() {
         const savedQuaternion = earth.quaternion.clone()
@@ -826,6 +1010,281 @@
 
       earth.rotation.order = 'YXZ'
       atmosphere.rotation.order = 'YXZ'
+
+      // ─── RDL Regional Tile Overlays ────────────────────────────────────────
+      // High-res GEBCO regional tiles (~0.1–0.4 km/px) fade in when camera
+      // zooms close to key island groups. Fragment shader discards pixels
+      // outside each region's sphere-UV window so only the patch shows.
+      //
+      // Sphere UV mapping (accounts for TEXTURE_LON_OFFSET=90):
+      //   u = ((lon + 90 + 720) % 360) / 360
+      //   v = (90 - lat) / 180   (0 = north pole, 1 = south pole)
+      const _RDL_HIRES_VARIANTS = ['16k', '12k', '8k']
+      const _RDL_REGIONS = [
+        // ── Original 8 ───────────────────────────────────────────────────────
+        { id: 'maldives',            centerLon:  73.0, centerLat:   3.5, sphereUV: { uMin: 0.44861, uMax: 0.45694, vMin: 0.45278, vMax: 0.50833 } },
+        { id: 'ryukyu',              centerLon: 127.5, centerLat:  26.8, sphereUV: { uMin: 0.59028, uMax: 0.61806, vMin: 0.33333, vMax: 0.36944 } },
+        { id: 'philippines_central', centerLon: 122.0, centerLat:  12.0, sphereUV: { uMin: 0.57500, uMax: 0.60278, vMin: 0.40000, vMax: 0.46667 } },
+        { id: 'south_china_sea',     centerLon: 114.0, centerLat:  15.0, sphereUV: { uMin: 0.55000, uMax: 0.58333, vMin: 0.37778, vMax: 0.45556 } },
+        { id: 'great_barrier_reef',  centerLon: 148.0, centerLat: -17.5, sphereUV: { uMin: 0.64583, uMax: 0.67639, vMin: 0.55556, vMax: 0.63889 } },
+        { id: 'caribbean_bahamas',   centerLon: -77.5, centerLat:  22.2, sphereUV: { uMin: 0.01389, uMax: 0.05556, vMin: 0.34722, vMax: 0.40556 } },
+        { id: 'hawaii',              centerLon:-157.8, centerLat:  20.5, sphereUV: { uMin: 0.80139, uMax: 0.82222, vMin: 0.37222, vMax: 0.40000 } },
+        { id: 'indonesia_east',      centerLon: 127.5, centerLat:  -4.5, sphereUV: { uMin: 0.58333, uMax: 0.62500, vMin: 0.49444, vMax: 0.55556 } },
+        // ── East Asia ─────────────────────────────────────────────────────────
+        { id: 'japan',               centerLon: 137.5, centerLat:  38.0, sphereUV: { uMin: 0.85972, uMax: 0.90417, vMin: 0.66944, vMax: 0.75278 } },
+        { id: 'korea_yellow_sea',    centerLon: 127.0, centerLat:  34.75, sphereUV: { uMin: 0.83889, uMax: 0.86667, vMin: 0.67222, vMax: 0.71389 } },
+        { id: 'taiwan',              centerLon: 121.25, centerLat: 23.75, sphereUV: { uMin: 0.82917, uMax: 0.84444, vMin: 0.61944, vMax: 0.64444 } },
+        // ── Europe / Atlantic ─────────────────────────────────────────────────
+        { id: 'mediterranean_east',  centerLon:  29.5, centerLat:  37.75, sphereUV: { uMin: 0.56111, uMax: 0.60278, vMin: 0.68889, vMax: 0.73056 } },
+        { id: 'mediterranean_west',  centerLon:  14.5, centerLat:  41.25, sphereUV: { uMin: 0.51944, uMax: 0.56111, vMin: 0.69722, vMax: 0.76111 } },
+        { id: 'british_isles',       centerLon:  -4.0, centerLat:  55.5,  sphereUV: { uMin: 0.46944, uMax: 0.50833, vMin: 0.77500, vMax: 0.84167 } },
+        { id: 'norway_fjords',       centerLon:  11.0, centerLat:  64.25, sphereUV: { uMin: 0.51111, uMax: 0.55000, vMin: 0.81944, vMax: 0.89444 } },
+        { id: 'iceland',             centerLon: -18.5, centerLat:  64.75, sphereUV: { uMin: 0.42500, uMax: 0.47222, vMin: 0.84722, vMax: 0.87222 } },
+        { id: 'azores',              centerLon: -28.0, centerLat:  38.25, sphereUV: { uMin: 0.41250, uMax: 0.43194, vMin: 0.70278, vMax: 0.72222 } },
+        { id: 'canary_madeira',      centerLon: -15.75, centerLat: 30.25, sphereUV: { uMin: 0.44861, uMax: 0.46389, vMin: 0.65000, vMax: 0.68611 } },
+        // ── Middle East / Indian Ocean ────────────────────────────────────────
+        { id: 'black_sea',           centerLon:  34.75, centerLat: 43.75, sphereUV: { uMin: 0.57639, uMax: 0.61667, vMin: 0.72500, vMax: 0.76111 } },
+        { id: 'caspian_sea',         centerLon:  52.0,  centerLat: 42.0,  sphereUV: { uMin: 0.63611, uMax: 0.65278, vMin: 0.70278, vMax: 0.76389 } },
+        { id: 'red_sea',             centerLon:  38.0,  centerLat: 21.0,  sphereUV: { uMin: 0.58889, uMax: 0.62222, vMin: 0.56667, vMax: 0.66667 } },
+        { id: 'persian_gulf',        centerLon:  55.0,  centerLat: 24.75, sphereUV: { uMin: 0.63889, uMax: 0.66667, vMin: 0.62222, vMax: 0.65278 } },
+        { id: 'sri_lanka',           centerLon:  80.5,  centerLat:  8.25, sphereUV: { uMin: 0.71806, uMax: 0.72917, vMin: 0.53056, vMax: 0.56111 } },
+        { id: 'andaman_sea',         centerLon:  96.0,  centerLat:  9.75, sphereUV: { uMin: 0.75417, uMax: 0.77917, vMin: 0.52778, vMax: 0.58056 } },
+        { id: 'seychelles',          centerLon:  56.0,  centerLat: -5.5,  sphereUV: { uMin: 0.65139, uMax: 0.65972, vMin: 0.45833, vMax: 0.48056 } },
+        { id: 'madagascar',          centerLon:  47.0,  centerLat:-19.0,  sphereUV: { uMin: 0.61944, uMax: 0.64167, vMin: 0.35000, vMax: 0.43889 } },
+        // ── Africa / Southern ─────────────────────────────────────────────────
+        { id: 'south_africa',        centerLon:  24.5,  centerLat:-28.0,  sphereUV: { uMin: 0.54444, uMax: 0.59167, vMin: 0.30556, vMax: 0.38333 } },
+        { id: 'cape_verde',          centerLon: -23.75, centerLat: 16.0,  sphereUV: { uMin: 0.42778, uMax: 0.44028, vMin: 0.58056, vMax: 0.59722 } },
+        // ── Pacific / Americas ────────────────────────────────────────────────
+        { id: 'new_zealand',         centerLon: 172.0,  centerLat:-40.75, sphereUV: { uMin: 0.95972, uMax: 0.99583, vMin: 0.23333, vMax: 0.31389 } },
+        { id: 'alaska',              centerLon:-154.5,  centerLat: 58.0,  sphereUV: { uMin: 0.03333, uMax: 0.10833, vMin: 0.80000, vMax: 0.84444 } },
+        { id: 'galapagos',           centerLon: -90.5,  centerLat: -0.25, sphereUV: { uMin: 0.24306, uMax: 0.25417, vMin: 0.48611, vMax: 0.51111 } },
+        { id: 'gulf_mexico_yucatan', centerLon: -90.5,  centerLat: 24.0,  sphereUV: { uMin: 0.22778, uMax: 0.26944, vMin: 0.59444, vMax: 0.67222 } },
+        // ── 东亚补充 ──────────────────────────────────────────────────────────
+        { id: 'bohai_sea',           centerLon: 119.75, centerLat: 39.0,  sphereUV: { uMin: 0.82500, uMax: 0.84028, vMin: 0.70556, vMax: 0.72778 } },
+        { id: 'east_china_sea',      centerLon: 125.0,  centerLat: 28.5,  sphereUV: { uMin: 0.83056, uMax: 0.86389, vMin: 0.62778, vMax: 0.68889 } },
+        { id: 'sea_of_japan',        centerLon: 135.0,  centerLat: 42.5,  sphereUV: { uMin: 0.85556, uMax: 0.89444, vMin: 0.68333, vMax: 0.78889 } },
+        { id: 'taiwan_strait',       centerLon: 119.25, centerLat: 24.5,  sphereUV: { uMin: 0.82500, uMax: 0.83750, vMin: 0.62500, vMax: 0.64722 } },
+        { id: 'bashi_channel',       centerLon: 120.5,  centerLat: 20.25, sphereUV: { uMin: 0.82778, uMax: 0.84167, vMin: 0.60000, vMax: 0.62500 } },
+        // ── 东南亚补充 ────────────────────────────────────────────────────────
+        { id: 'singapore_malacca',   centerLon: 102.0,  centerLat:  3.75, sphereUV: { uMin: 0.77222, uMax: 0.79444, vMin: 0.50278, vMax: 0.53889 } },
+        { id: 'borneo',              centerLon: 113.75, centerLat:  3.0,  sphereUV: { uMin: 0.80000, uMax: 0.83194, vMin: 0.48889, vMax: 0.54444 } },
+        { id: 'indonesia_west',      centerLon: 108.5,  centerLat: -1.5,  sphereUV: { uMin: 0.77500, uMax: 0.82778, vMin: 0.45000, vMax: 0.53333 } },
+        { id: 'gulf_of_thailand',    centerLon: 103.5,  centerLat: 11.0,  sphereUV: { uMin: 0.77500, uMax: 0.80000, vMin: 0.52778, vMax: 0.59444 } },
+        // ── 南亚补充 ──────────────────────────────────────────────────────────
+        { id: 'bay_of_bengal',       centerLon:  90.0,  centerLat: 14.0,  sphereUV: { uMin: 0.72222, uMax: 0.77778, vMin: 0.52778, vMax: 0.62778 } },
+        { id: 'arabian_sea',         centerLon:  69.0,  centerLat: 16.5,  sphereUV: { uMin: 0.66667, uMax: 0.71667, vMin: 0.54444, vMax: 0.63889 } },
+        // ── 欧洲补充 ──────────────────────────────────────────────────────────
+        { id: 'baltic_sea',          centerLon:  19.5,  centerLat: 60.0,  sphereUV: { uMin: 0.52500, uMax: 0.58333, vMin: 0.80000, vMax: 0.86667 } },
+        { id: 'adriatic_sea',        centerLon:  16.25, centerLat: 42.0,  sphereUV: { uMin: 0.53333, uMax: 0.55694, vMin: 0.71111, vMax: 0.75556 } },
+        { id: 'bay_of_biscay',       centerLon:  -4.0,  centerLat: 45.25, sphereUV: { uMin: 0.47222, uMax: 0.50556, vMin: 0.73333, vMax: 0.76944 } },
+        // ── 非洲补充 ──────────────────────────────────────────────────────────
+        { id: 'east_africa_coast',   centerLon:  42.0,  centerLat: -4.0,  sphereUV: { uMin: 0.60556, uMax: 0.62778, vMin: 0.43333, vMax: 0.52222 } },
+        { id: 'mozambique_channel',  centerLon:  37.5,  centerLat:-17.5,  sphereUV: { uMin: 0.59167, uMax: 0.61667, vMin: 0.36111, vMax: 0.44444 } },
+        // ── 太平洋岛屿补充 ────────────────────────────────────────────────────
+        { id: 'guam_marianas',       centerLon: 145.0,  centerLat: 14.0,  sphereUV: { uMin: 0.89861, uMax: 0.90694, vMin: 0.56667, vMax: 0.58889 } },
+        { id: 'palau',               centerLon: 134.0,  centerLat:  7.0,  sphereUV: { uMin: 0.86806, uMax: 0.87639, vMin: 0.52778, vMax: 0.55000 } },
+        { id: 'papua_new_guinea',    centerLon: 146.0,  centerLat: -3.75, sphereUV: { uMin: 0.88889, uMax: 0.92222, vMin: 0.45556, vMax: 0.50278 } },
+        { id: 'fiji_vanuatu',        centerLon: 172.5,  centerLat:-17.0,  sphereUV: { uMin: 0.95833, uMax: 1.00000, vMin: 0.37778, vMax: 0.43333 } },
+        { id: 'samoa',               centerLon:-171.0,  centerLat:-13.0,  sphereUV: { uMin: 0.01667, uMax: 0.03333, vMin: 0.41667, vMax: 0.43889 } },
+        { id: 'french_polynesia',    centerLon:-149.5,  centerLat:-17.0,  sphereUV: { uMin: 0.08056, uMax: 0.08889, vMin: 0.39722, vMax: 0.41389 } },
+        { id: 'christmas_island',    centerLon: 105.75, centerLat:-10.25, sphereUV: { uMin: 0.79167, uMax: 0.79583, vMin: 0.43889, vMax: 0.44722 } },
+        // ── 美洲补充 ──────────────────────────────────────────────────────────
+        { id: 'california_coast',    centerLon:-115.0,  centerLat: 30.0,  sphereUV: { uMin: 0.16389, uMax: 0.19722, vMin: 0.62222, vMax: 0.71111 } },
+        { id: 'eastern_caribbean',   centerLon: -61.0,  centerLat: 15.0,  sphereUV: { uMin: 0.32500, uMax: 0.33611, vMin: 0.56111, vMax: 0.60556 } },
+        { id: 'brazil_coast',        centerLon: -42.0,  centerLat:  0.5,  sphereUV: { uMin: 0.36111, uMax: 0.40556, vMin: 0.47222, vMax: 0.53333 } },
+        { id: 'french_guiana',       centerLon: -52.0,  centerLat:  4.0,  sphereUV: { uMin: 0.35000, uMax: 0.36111, vMin: 0.51111, vMax: 0.53333 } },
+        { id: 'patagonia',           centerLon: -70.0,  centerLat:-48.0,  sphereUV: { uMin: 0.28889, uMax: 0.32222, vMin: 0.18889, vMax: 0.27778 } },
+        { id: 'falkland_islands',    centerLon: -59.5,  centerLat:-51.5,  sphereUV: { uMin: 0.32778, uMax: 0.34167, vMin: 0.20556, vMax: 0.22222 } },
+        // ── 亚太 / 中国近海岛屿（第三批）────────────────────────────────────────
+        { id: 'xisha_paracel',       centerLon: 112.0,  centerLat: 16.25, sphereUV: { uMin: 0.80417, uMax: 0.81806, vMin: 0.58056, vMax: 0.60000 } },
+        { id: 'nansha_spratly',      centerLon: 113.0,  centerLat:  7.75, sphereUV: { uMin: 0.80000, uMax: 0.82778, vMin: 0.51944, vMax: 0.56667 } },
+        { id: 'dongsha_pratas',      centerLon: 116.5,  centerLat: 20.5,  sphereUV: { uMin: 0.82083, uMax: 0.82639, vMin: 0.60833, vMax: 0.61944 } },
+        { id: 'ogasawara',           centerLon: 142.0,  centerLat: 25.75, sphereUV: { uMin: 0.89028, uMax: 0.89861, vMin: 0.63056, vMax: 0.65556 } },
+        { id: 'micronesia',          centerLon: 151.5,  centerLat:  7.0,  sphereUV: { uMin: 0.88333, uMax: 0.95833, vMin: 0.51944, vMax: 0.55833 } },
+        { id: 'marshall_islands',    centerLon: 166.0,  centerLat:  8.0,  sphereUV: { uMin: 0.94444, uMax: 0.97778, vMin: 0.52222, vMax: 0.56667 } },
+        { id: 'solomon_islands',     centerLon: 159.0,  centerLat: -8.0,  sphereUV: { uMin: 0.93056, uMax: 0.95278, vMin: 0.43333, vMax: 0.47778 } },
+        { id: 'new_caledonia',       centerLon: 165.5,  centerLat:-20.75, sphereUV: { uMin: 0.95139, uMax: 0.96806, vMin: 0.37222, vMax: 0.39722 } },
+        { id: 'tonga',               centerLon:-175.0,  centerLat:-19.5,  sphereUV: { uMin: 0.00833, uMax: 0.01944, vMin: 0.36667, vMax: 0.41667 } },
+        { id: 'kiribati_gilbert',    centerLon: 174.25, centerLat:  0.25, sphereUV: { uMin: 0.97500, uMax: 0.99306, vMin: 0.48056, vMax: 0.52222 } },
+        // ── 美洲补充（第三批）────────────────────────────────────────────────────
+        { id: 'puerto_rico_vi',      centerLon: -66.25, centerLat: 18.0,  sphereUV: { uMin: 0.30972, uMax: 0.32222, vMin: 0.59444, vMax: 0.60556 } },
+        { id: 'abc_venezuela',       centerLon: -66.25, centerLat: 12.0,  sphereUV: { uMin: 0.29722, uMax: 0.33472, vMin: 0.55556, vMax: 0.57778 } },
+        { id: 'easter_island',       centerLon:-109.5,  centerLat:-27.0,  sphereUV: { uMin: 0.19306, uMax: 0.19861, vMin: 0.34444, vMax: 0.35556 } },
+        { id: 'rio_southeast_brazil',centerLon: -40.0,  centerLat:-19.5,  sphereUV: { uMin: 0.37222, uMax: 0.40556, vMin: 0.36111, vMax: 0.42222 } },
+        { id: 'peru_chile_coast',    centerLon: -76.0,  centerLat:-11.0,  sphereUV: { uMin: 0.27222, uMax: 0.30556, vMin: 0.40000, vMax: 0.47778 } },
+        { id: 'rio_de_la_plata',     centerLon: -56.0,  centerLat:-33.5,  sphereUV: { uMin: 0.33333, uMax: 0.35556, vMin: 0.29444, vMax: 0.33333 } },
+        { id: 'south_georgia',       centerLon: -37.0,  centerLat:-54.0,  sphereUV: { uMin: 0.38889, uMax: 0.40556, vMin: 0.18889, vMax: 0.21111 } },
+        { id: 'bermuda',             centerLon: -65.0,  centerLat: 32.5,  sphereUV: { uMin: 0.31806, uMax: 0.32083, vMin: 0.67778, vMax: 0.68333 } },
+        { id: 'central_america_pacific', centerLon:-84.5, centerLat:12.5, sphereUV: { uMin: 0.24444, uMax: 0.28611, vMin: 0.53889, vMax: 0.60000 } },
+        // ── 欧洲补充（第三批）────────────────────────────────────────────────────
+        { id: 'faroe_islands',       centerLon:  -6.75, centerLat: 62.0,  sphereUV: { uMin: 0.47778, uMax: 0.48472, vMin: 0.84167, vMax: 0.84722 } },
+        { id: 'svalbard',            centerLon:  20.0,  centerLat: 79.0,  sphereUV: { uMin: 0.52778, uMax: 0.58333, vMin: 0.92222, vMax: 0.95556 } },
+        // ── 补漏（第四批）────────────────────────────────────────────────────────────
+        { id: 'hainan_island',       centerLon: 109.75, centerLat: 19.25, sphereUV: { uMin: 0.80000, uMax: 0.80972, vMin: 0.60000, vMax: 0.61389 } },
+        { id: 'kuril_southern',      centerLon: 146.0,  centerLat: 45.5,  sphereUV: { uMin: 0.89306, uMax: 0.91806, vMin: 0.73889, vMax: 0.76667 } },
+      ].map((r) => ({
+        ...r,
+        tileUrls: _RDL_HIRES_VARIANTS.map(
+          (variant) => `/assets/earth/bmng21k/topo_bathy/tiles_rdl_regions/${r.id}/tile_noon_air_mapbox_${variant}.jpg`
+        ).concat([
+          `/assets/earth/bmng21k/topo_bathy/tiles_rdl_regions/${r.id}/tile_noon_air_mapbox.jpg`,
+        ]),
+        tileFallbackUrls: [
+          `/assets/earth/bmng21k/topo_bathy/tiles_rdl_regions/${r.id}/tile_noon_air.jpg`,
+        ],
+      }))
+
+      // Zoom constants kept for FOV control via scroll wheel and audit labels.
+      // RDL overlay visibility is intentionally opt-in through _rdlInspectRegion;
+      // otherwise regional tiles can appear as hard local-resolution patches while
+      // browsing non-RDL audit locations.
+      const _RDL_ZOOM_START   = 0.28
+      const _RDL_ZOOM_FULL    = 0.60
+      // Facing: overlay fades from 0 at the limb (facing=0) to full at facing >= _RDL_FACE_FULL.
+      // Depth test handles back-face occlusion; the facing fade only softens the limb transition.
+      const _RDL_FACE_THRESH  = -0.1  // start showing just past the back-limb
+      const _RDL_FACE_FULL    =  0.25 // full opacity when region is within ~76° of camera center
+      let   _rdlZoomLevel     = 0    // 0 = normal FOV, 1 = maximum zoom in
+      let   _rdlInspectRegion = null // region id forced visible for audit/inspection mode
+
+      const _rdlSphereGeom = new THREE.SphereGeometry(2.003, 128, 128)
+
+      const _rdlVertShader = `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `
+      const _rdlFragShader = `
+        precision mediump float;
+        uniform sampler2D tRegional;
+        uniform vec4 uBounds;
+        uniform float uOpacity;
+        uniform vec2 uTexel;
+        uniform float uSharpen;
+        varying vec2 vUv;
+        void main() {
+          float u0 = uBounds.x, u1 = uBounds.y, v0 = uBounds.z, v1 = uBounds.w;
+          if (vUv.x < u0 || vUv.x > u1 || vUv.y < v0 || vUv.y > v1) discard;
+          float tu = (vUv.x - u0) / (u1 - u0);
+          float tv = (vUv.y - v0) / (v1 - v0);
+          vec2 uv = vec2(tu, tv);
+          vec4 col = texture2D(tRegional, uv);
+          if (uSharpen > 0.0) {
+            vec3 north = texture2D(tRegional, uv + vec2(0.0, -uTexel.y)).rgb;
+            vec3 south = texture2D(tRegional, uv + vec2(0.0,  uTexel.y)).rgb;
+            vec3 east  = texture2D(tRegional, uv + vec2( uTexel.x, 0.0)).rgb;
+            vec3 west  = texture2D(tRegional, uv + vec2(-uTexel.x, 0.0)).rgb;
+            vec3 sharpened = col.rgb * (1.0 + 4.0 * uSharpen) - (north + south + east + west) * uSharpen;
+            col.rgb = clamp(mix(col.rgb, sharpened, 0.45), 0.0, 1.0);
+          }
+          float ex = clamp(min(tu, 1.0 - tu) * 6.0, 0.0, 1.0);
+          float ey = clamp(min(tv, 1.0 - tv) * 6.0, 0.0, 1.0);
+          gl_FragColor = vec4(col.rgb, uOpacity * min(ex, ey));
+        }
+      `
+
+      const rdlMeshes = _RDL_REGIONS.map((region) => {
+        const mat = new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          uniforms: {
+            tRegional: { value: null },
+            uBounds:   { value: new THREE.Vector4(region.sphereUV.uMin, region.sphereUV.uMax, region.sphereUV.vMin, region.sphereUV.vMax) },
+            uOpacity:  { value: 0.0 },
+            uTexel:    { value: new THREE.Vector2(1 / 4096, 1 / 4096) },
+            uSharpen:  { value: 0.0 },
+          },
+          vertexShader:   _rdlVertShader,
+          fragmentShader: _rdlFragShader,
+        })
+        const mesh = new THREE.Mesh(_rdlSphereGeom, mat)
+        mesh.renderOrder = 5
+        mesh.visible = false
+        earth.add(mesh)
+        const entry = { region, mat, mesh, loaded: false, loading: false, texture: null }
+        // Pre-load all RDL textures immediately so there's no pop-in when rotating to a region.
+        // Prefer 8k regional composites when present, then fall back to default 4k assets.
+        const _applyRDLTex = (tex) => {
+          entry.texture = configureRegionalTexture(tex)
+          mat.uniforms.tRegional.value = entry.texture
+          const texWidth = entry.texture?.image?.width || 4096
+          const texHeight = entry.texture?.image?.height || texWidth
+          mat.uniforms.uTexel.value = new THREE.Vector2(1 / texWidth, 1 / texHeight)
+          entry.loaded = true
+          entry.loading = false
+        }
+        const _tileCandidates = [
+          ...(Array.isArray(region.tileUrls) ? region.tileUrls : []),
+          ...(Array.isArray(region.tileFallbackUrls) ? region.tileFallbackUrls : []),
+        ].filter(Boolean)
+        const _loadRDLTile = (urlIndex = 0) => {
+          const url = _tileCandidates[urlIndex]
+          if (!url) {
+            entry.loading = false
+            console.warn('[earth3d] RDL tile failed:', region.id, '(all candidates exhausted)')
+            return
+          }
+          new THREE.TextureLoader().load(url, (tex) => {
+            _applyRDLTex(tex)
+            const qualityTag = url.includes('_8k.') ? '(8k)' : (url.includes('tile_noon_air.jpg') ? '(fallback)' : '(mapbox)')
+            console.log('[earth3d] RDL tile ready:', region.id, qualityTag)
+          }, undefined, () => {
+            _loadRDLTile(urlIndex + 1)
+          })
+        }
+        entry.loading = true
+        _loadRDLTile(0)
+        return entry
+      })
+
+      const _rdlEarthWorldPos = new THREE.Vector3()
+
+      function refreshRDLTextureSampling() {
+        const auditProfile = getAuditViewProfile()
+        rdlMeshes.forEach((entry) => {
+          const profile = applyRegionalTextureSampling(entry.texture, auditProfile)
+          entry.mat.uniforms.uSharpen.value = _rdlInspectRegion ? profile.sharpen : 0.0
+        })
+      }
+
+      function updateRDLOverlays() {
+        refreshRDLTextureSampling()
+        earth.updateWorldMatrix(true, false)
+        earth.getWorldPosition(_rdlEarthWorldPos)
+        const camDir = camera.position.clone().sub(_rdlEarthWorldPos).normalize()
+
+        // Score all regions by facing angle
+        const scores = rdlMeshes.map((entry) => {
+          const regionLocalDir = lonLatToVector3(entry.region.centerLon, entry.region.centerLat, 1).normalize()
+          const regionWorldDir = regionLocalDir.clone().transformDirection(earth.matrixWorld).normalize()
+          const facing = camDir.dot(regionWorldDir)
+          const ft = Math.max(0, Math.min(1, (facing - _RDL_FACE_THRESH) / (_RDL_FACE_FULL - _RDL_FACE_THRESH)))
+          const facingOpacity = ft * ft * (3 - 2 * ft)
+          return { entry, facingOpacity }
+        })
+
+        if (_rdlInspectRegion) {
+          // Inspect mode: only the target region, effectively fully opaque so
+          // the regional tile is not softened by mixing with the base globe.
+          scores.forEach(({ entry }) => {
+            const isTarget = entry.region.id === _rdlInspectRegion
+            entry.mesh.visible = isTarget
+            if (isTarget) entry.mat.uniforms.uOpacity.value = 0.995
+          })
+        } else {
+          // Normal mode: only the single most-facing region, above threshold
+          const best = scores.reduce((a, b) => a.facingOpacity > b.facingOpacity ? a : b)
+          scores.forEach(({ entry, facingOpacity }) => {
+            const isBest = entry.region.id === best.entry.region.id
+            const opacity = isBest && best.facingOpacity > 0.25 ? best.facingOpacity * 0.70 : 0.0
+            entry.mesh.visible = opacity > 0.005
+            if (opacity > 0.005) entry.mat.uniforms.uOpacity.value = opacity
+          })
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────────
 
       stars = new THREE.Points(
         buildStarField(900, 60),
@@ -889,7 +1348,7 @@
             opacity: 0.078,
           },
           lighting: {
-            ambient: 0.032,
+            ambient: 0.048,
             sun: 0.18,
             stars: 0.42,
             cityLightsOpacity: 0.60,
@@ -914,7 +1373,7 @@
             opacity: 0.106,
           },
           lighting: {
-            ambient: 0.055,
+            ambient: 0.072,
             sun: 0.48,
             stars: 0.2,
             cityLightsOpacity: 0.26,
@@ -938,7 +1397,7 @@
             opacity: 0.11,
           },
           lighting: {
-            ambient: 0.052,
+            ambient: 0.068,
             sun: 0.72,
             stars: 0.08,
             cityLightsOpacity: 0.10,
@@ -954,15 +1413,15 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x06090f,
-            shininess: 1.05,
+            specular: 0x0a1018,
+            shininess: 120,
           },
           atmosphere: {
             color: '#83c3e7',
             opacity: 0.142,
           },
           lighting: {
-            ambient: 0.06,
+            ambient: 0.09,
             sun: 1.05,
             stars: 0.04,
             cityLightsOpacity: 0,
@@ -978,15 +1437,15 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x091018,
-            shininess: 1.12,
+            specular: 0x0c1420,
+            shininess: 150,
           },
           atmosphere: {
             color: '#b0d9ed',
             opacity: 0.14,
           },
           lighting: {
-            ambient: 0.09,
+            ambient: 0.12,
             sun: 1.25,
             stars: 0.01,
             cityLightsOpacity: 0,
@@ -1002,15 +1461,15 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x05080d,
-            shininess: 0.96,
+            specular: 0x0a1018,
+            shininess: 120,
           },
           atmosphere: {
             color: '#7eb6e1',
             opacity: 0.13,
           },
           lighting: {
-            ambient: 0.048,
+            ambient: 0.078,
             sun: 0.96,
             stars: 0.008,
             cityLightsOpacity: 0,
@@ -1026,8 +1485,8 @@
             emissiveIntensity: 0,
           },
           material: {
-            specular: 0x070503,
-            shininess: 0.68,
+            specular: 0x180e04,
+            shininess: 60,
           },
           atmosphere: {
             color: '#b7a169',
@@ -1058,7 +1517,7 @@
             opacity: 0.072,
           },
           lighting: {
-            ambient: 0.046,
+            ambient: 0.058,
             sun: 0.40,
             stars: 0.26,
             cityLightsOpacity: 0.18,
@@ -1163,8 +1622,34 @@
           },
         },
       }
+      const AUDIT_LIGHTING_CONFIG = {
+        themeHour: 13,
+        texture: {
+          map: 'day',
+          emissiveMap: null,
+          mapColor: 0xffffff,
+          emissiveColor: 0x000000,
+          emissiveIntensity: 0,
+        },
+        material: {
+          specular: 0x05080c,
+          shininess: 45,
+        },
+        atmosphere: {
+          color: '#b0d9ed',
+          opacity: 0.045,
+        },
+        lighting: {
+          ambient: 0.68,
+          sun: 0.72,
+          stars: 0,
+          cityLightsOpacity: 0,
+        },
+      }
+      let auditLightingMode = false
 
       function getThemeVisualConfig(themeKey) {
+        if (auditLightingMode) return AUDIT_LIGHTING_CONFIG
         return (
           THEME_VISUAL_CONFIG[themeKey]
           || THEME_VISUAL_CONFIG[currentTheme]
@@ -1173,7 +1658,7 @@
         )
       }
 
-      function getTargetOrientation() {
+      function getTargetOrientation(targetDirOverride = null) {
         const vs = window.__rodioVisualState || {}
         const lon = normalizeLon(
           Number.isFinite(vs.lon) ? vs.lon : 121.4737
@@ -1186,7 +1671,7 @@
         const targetPoint = lonLatToVector3(lon, lat, 1).normalize()
         const sourceNorth = lonLatToNorthTangent(lon, lat)
 
-        const targetNormal = visualTargetDir.clone().normalize()
+        const targetNormal = (targetDirOverride || visualTargetDir).clone().normalize()
 
         const screenUp = new THREE.Vector3(0, 1, 0)
         let targetNorth = screenUp.clone().projectOnPlane(targetNormal)
@@ -1308,7 +1793,40 @@
         return ['morning', 'noon', 'afternoon', 'goldenApproach'].includes(themeKey)
       }
 
+      function getAuditViewProfile() {
+        if (!auditLightingMode || !camera) return 'normal'
+        if (camera.position.y >= 1.8) return 'low'
+        if (camera.position.y >= 0.75) return 'oblique'
+        return 'top'
+      }
+
+      function applySurfaceDetailTuning(resolvedTheme, config) {
+        const auditProfile = getAuditViewProfile()
+        const inAudit = auditProfile !== 'normal'
+        const auditNormalScaleByProfile = {
+          top: 0.0,
+          oblique: 0.012,
+          low: 0.02,
+        }
+
+        earthMaterial.specular.set(inAudit ? 0x000102 : config.material.specular)
+        earthMaterial.shininess = inAudit ? 4 : config.material.shininess
+        earthMaterial.specularMap = (!inAudit && shouldUseOceanSpecularMap(resolvedTheme))
+          ? oceanSpecularTexture
+          : null
+
+        if (normalMapTexture) {
+          const normalScale = inAudit ? auditNormalScaleByProfile[auditProfile] : 0.15
+          earthMaterial.normalMap = normalScale > 0 ? normalMapTexture : null
+          earthMaterial.normalScale = new THREE.Vector2(normalScale, normalScale)
+        } else {
+          earthMaterial.normalMap = null
+        }
+      }
+
       function getSpecularMode(config, themeKey) {
+        const auditProfile = getAuditViewProfile()
+        if (auditProfile !== 'normal') return `suppressed_${auditProfile}_audit`
         if (!shouldUseOceanSpecularMap(themeKey)) return 'null'
         return oceanSpecularTexture ? 'oceanSpecularTexture' : 'loading'
       }
@@ -1374,9 +1892,7 @@
         earthMaterial.emissive.set(useNightEmissive ? config.texture.emissiveColor : 0x000000)
         earthMaterial.emissiveMap = useNightEmissive ? nightTexture : null
         earthMaterial.emissiveIntensity = useNightEmissive ? config.texture.emissiveIntensity : 0
-        earthMaterial.specular.set(config.material.specular)
-        earthMaterial.shininess = config.material.shininess
-        earthMaterial.specularMap = shouldUseOceanSpecularMap(resolvedTheme) ? oceanSpecularTexture : null
+        applySurfaceDetailTuning(resolvedTheme, config)
         atmosphereMaterial.color.set(config.atmosphere.color)
         atmosphereMaterial.opacity = config.atmosphere.opacity
         ambientLight.intensity = config.lighting.ambient
@@ -1386,7 +1902,6 @@
           stars.material.needsUpdate = true
         }
         updateSkyTheme(resolvedTheme)
-        refreshCloudAppearance(resolvedTheme)
         applyOceanTint(resolvedTheme)
 
         currentTheme = resolvedTheme
@@ -1397,31 +1912,22 @@
         return true
       }
 
-      const [_dayPrimary, _dayFallback] = getDayTexturePaths()
-      loadTextureWithFallback(
-        _dayPrimary,
-        _dayFallback,
-        (texture, usedPath) => {
-          dayTexture = texture
-          console.log('[earth3d] day texture loaded:', usedPath)
-
-          if (typeof applyTheme === 'function') {
-            // Use pendingTheme as authoritative source: it was seeded from time-of-day
-            // at startup and updated by setTimeOfDay() when external state changes.
-            // Avoid reading __rodioVisualState.themeKey here — it starts as 'night'.
-            const themeKey = pendingTheme || currentTheme || 'night'
-            const applied = applyTheme(themeKey, { force: true })
-            syncRevealState(themeKey, applied)
-          } else {
-            earthMaterial.map = texture
-            earthMaterial.needsUpdate = true
-          }
-        }
-      )
+      tileManager = new FrontendTileStreamingManager(renderer, null)
+      dayTexture = tileManager.atlasTexture
+      console.log('[RodiO] dayTexture variant:', DAY_TEXTURE_VARIANT)
+      console.log('[RodiO] dayTexture source:', {
+        mode: EARTH_MODE,
+        pipeline: getEarthModeConfig().pipeline,
+        tileSource: getEarthModeConfig().tileSource,
+      })
+      {
+        const themeKey = pendingTheme || currentTheme || 'night'
+        const applied = applyTheme(themeKey, { force: true })
+        syncRevealState(themeKey, applied)
+      }
 
       loadOceanSpecularTexture()
       loadOceanMaskTexture()
-      loadCloudAlphaTexture()
 
       loadTextureWithFallback(
         '/assets/earth_night_8k.jpg',
@@ -1441,32 +1947,67 @@
         }
       )
 
-      function updateSunPosition(hour) {
-        const h = ((hour % 24) + 24) % 24
-        let from
-        let to
-        let t
-        if (h < 6) {
-          from = [-4, -1, 3]
-          to = [-1, 0, 4]
-          t = h / 6
-        } else if (h < 12) {
-          from = [-1, 0, 4]
-          to = [4, 3, 3]
-          t = (h - 6) / 6
-        } else if (h < 18) {
-          from = [4, 3, 3]
-          to = [1, 0, 4]
-          t = (h - 12) / 6
-        } else {
-          from = [1, 0, 4]
-          to = [-4, -1, 3]
-          t = (h - 18) / 6
+      // ── Real solar position ──────────────────────────────────────────────────
+      // Returns the subsolar point (lat/lon in degrees) for the current instant
+      // using the J2000 epoch algorithm (~0.1° accuracy, sufficient for rendering).
+      function _computeSubsolarPoint() {
+        const now = new Date()
+        const JD = now.getTime() / 86400000 + 2440587.5   // Julian date
+        const n  = JD - 2451545.0                          // days since J2000.0
+
+        // Geometric mean longitude & mean anomaly (degrees)
+        const L = (280.46646  + 0.9856474  * n) % 360
+        const M = (((357.52911 + 0.98560028 * n) % 360) + 360) % 360
+        const M_r = M * Math.PI / 180
+
+        // Sun's true longitude
+        const C = 1.914602 * Math.sin(M_r) + 0.019993 * Math.sin(2 * M_r) + 0.000289 * Math.sin(3 * M_r)
+        const sunLon = L + C
+
+        // Apparent longitude (aberration + nutation, simplified)
+        const omega   = 125.04 - 1934.136 * n / 36525
+        const lambda  = sunLon - 0.00569 - 0.00478 * Math.sin(omega * Math.PI / 180)
+        const lam_r   = lambda * Math.PI / 180
+
+        // Obliquity of ecliptic
+        const eps_r = (23.439291 - 0.013004 * n / 36525) * Math.PI / 180
+
+        // Declination & right ascension
+        const decl = Math.asin(Math.sin(eps_r) * Math.sin(lam_r))
+        const ra   = Math.atan2(Math.cos(eps_r) * Math.sin(lam_r), Math.cos(lam_r))
+
+        // Greenwich Apparent Sidereal Time (degrees)
+        const GMST = ((280.46061837 + 360.98564736629 * n) % 360 + 360) % 360
+        const eot  = -0.000319 * Math.sin(omega * Math.PI / 180) - 0.000024 * Math.sin(2 * lam_r)
+        const GAST = GMST + eot * 180 / Math.PI
+
+        // Subsolar longitude: GHA = GAST − RA; subLon = −GHA
+        const GHA    = ((GAST - ra * 180 / Math.PI) % 360 + 360) % 360
+        let   subLon = -GHA
+        if (subLon < -180) subLon += 360
+        else if (subLon > 180) subLon -= 360
+
+        return { lat: decl * 180 / Math.PI, lon: subLon }
+      }
+
+      // Maps subsolar (lat, lon) to a Three.js direction vector.
+      // Coordinate system: y = north pole, equirectangular texture maps
+      // longitude 0° (Prime Meridian) → +x, 90°E → −z, 90°W → +z.
+      function updateSunPosition(_hour) {
+        if (auditLightingMode && camera) {
+          const d = 10
+          const dir = camera.position.clone().normalize()
+          sunLight.position.set(dir.x * d, dir.y * d, dir.z * d)
+          return
         }
+        const { lat, lon } = _computeSubsolarPoint()
+        const phi   = (lon + 180) * Math.PI / 180   // azimuthal (0..2π)
+        const theta = (90  - lat) * Math.PI / 180   // polar from north
+        const d = 10
         sunLight.position.set(
-          lerp(from[0], to[0], t),
-          lerp(from[1], to[1], t),
-          lerp(from[2], to[2], t)
+          -Math.cos(phi) * Math.sin(theta) * d,
+           Math.cos(theta) * d,
+           Math.sin(phi) * Math.sin(theta) * d
         )
       }
 
@@ -1576,22 +2117,21 @@
           ambientLightIntensity: Number.isFinite(ambientLight?.intensity) ? ambientLight.intensity : null,
           sunLightIntensity: Number.isFinite(sunLight?.intensity) ? sunLight.intensity : null,
         }
-        const cloudDriftSpeed = getCloudDriftSpeed(currentTheme || pendingTheme || 'deepNight')
-        const cloudLowDeviceScale = getCloudDriftLowDeviceScale()
-        const cloud = {
-          driftSpeed: cloudDriftSpeed,
-          lowDeviceScale: cloudLowDeviceScale,
-          enabled: Boolean(cloudVisibleRequested),
-          visible: Boolean(cloudMesh?.visible),
-          loaded: cloudTextureLoadState === 'ready',
-          texturePath: cloudTexturePath,
-          opacity: Number.isFinite(cloudMaterial?.opacity) ? cloudMaterial.opacity : null,
-          radius: cloudRadius,
-          renderOrder: Number.isFinite(cloudMesh?.renderOrder) ? cloudMesh.renderOrder : null,
-          materialType: cloudMaterial?.type ?? null,
-          loadError: cloudTextureError,
-          driftEnabled: Boolean(cloudMesh && cloudTextureLoadState === 'ready' && cloudDriftSpeed > 0),
-          rotationY: Number.isFinite(cloudMesh?.rotation?.y) ? cloudMesh.rotation.y : null,
+        const streaming = {
+          enabled: Boolean(tileManager),
+          lod: tileManager?.lodConfig?.lod ?? null,
+          tileCols: tileManager?.lodConfig?.tileCols ?? null,
+          tileRows: tileManager?.lodConfig?.tileRows ?? null,
+          tileResolution: tileManager?.lodConfig?.tileResolution ?? null,
+          atlasTileSize: tileManager?.lodConfig?.atlasTileSize ?? null,
+          atlasFilterMode,
+          maxCachedTiles: tileManager?.lodConfig?.maxCachedTiles ?? null,
+          activeTileCount: tileManager?.activeTiles?.size ?? 0,
+          cacheSize: tileManager?.tileCache?.size ?? 0,
+          cacheHits: tileManager?.cacheHits ?? 0,
+          cacheMisses: tileManager?.cacheMisses ?? 0,
+          pendingTileCount: tileManager?.loadingTiles?.size ?? 0,
+          visibleTiles: tileManager ? Array.from(tileManager.activeTiles.keys()).sort() : [],
         }
         const sky = {
           skyMeshExists: Boolean(skyMesh),
@@ -1670,6 +2210,13 @@
           drawingBufferWidth: rendererState.drawingBufferWidth,
           drawingBufferHeight: rendererState.drawingBufferHeight,
           animationLoopActive: rendererState.animationLoopActive,
+          streamingEnabled: streaming.enabled,
+          streamingLod: streaming.lod,
+          streamingActiveTileCount: streaming.activeTileCount,
+          streamingCacheSize: streaming.cacheSize,
+          streamingCacheHits: streaming.cacheHits,
+          streamingCacheMisses: streaming.cacheMisses,
+          streamingPendingTileCount: streaming.pendingTileCount,
           ambientLightIntensity: lights.ambientLightIntensity,
           sunLightIntensity: lights.sunLightIntensity,
           theme: {
@@ -1695,10 +2242,26 @@
           lights: {
             ...lights,
           },
-          cloud: {
-            ...cloud,
+          streaming: {
+            ...streaming,
           },
         }
+      }
+
+      function getStreamingCameraState(streamCamera = camera) {
+        const visualState = window.__rodioVisualState || {}
+        const cameraDistance = streamCamera?.position?.length ? streamCamera.position.length() : null
+        return {
+          lon: normalizeLon(Number.isFinite(visualState.lon) ? visualState.lon : 121.4737),
+          lat: clamp(Number.isFinite(visualState.lat) ? visualState.lat : 31.2304, -80, 80),
+          distance: Number.isFinite(cameraDistance) ? cameraDistance : 4.8,
+          fovDegrees: Number.isFinite(streamCamera?.fov) ? streamCamera.fov : 28,
+        }
+      }
+
+      function updateStreaming(camera) {
+        if (!tileManager || permanentlyUnavailable) return []
+        return tileManager.updateStreaming(getStreamingCameraState(camera))
       }
 
       function resize() {
@@ -1715,28 +2278,57 @@
       observer.observe(appEl)
       resize()
       updateVisualTargetDir()
+
+      // ─── Scroll-wheel zoom ────────────────────────────────────────────────
+      // Zooms by changing camera FOV (28° = global view, 8° = max zoom-in).
+      // _rdlZoomLevel drives the RDL regional overlay opacity.
+      const _RDL_FOV_NORMAL = 28
+      const _RDL_FOV_MIN    = 8
+      const _AUDIT_VIEW_ANGLES = {
+        top: { y: 0.0, z: 4.8, lookY: -1.4 },
+        oblique: { y: 1.35, z: 5.05, lookY: -1.2 },
+        low: { y: 2.15, z: 5.45, lookY: -0.9 },
+      }
+      renderer.domElement.addEventListener('wheel', (e) => {
+        e.preventDefault()
+        _rdlZoomLevel = Math.max(0, Math.min(1, _rdlZoomLevel - e.deltaY * 0.0008))
+        camera.fov = _RDL_FOV_NORMAL + (_RDL_FOV_MIN - _RDL_FOV_NORMAL) * _rdlZoomLevel
+        camera.updateProjectionMatrix()
+      }, { passive: false })
+      // ──────────────────────────────────────────────────────────────────────
       const initialOrientation = getTargetOrientation()
       earth.quaternion.copy(initialOrientation)
       atmosphere.rotation.set(0, 0, 0)
-      updateSunPosition(new Date().getHours())
+      updateSunPosition()
       applyTheme(pendingTheme)
+
+      let _animDirty = true
+      let _animFrameCount = 0
 
       renderer.setAnimationLoop(() => {
         if (!isReady || permanentlyUnavailable) return
-        const target = getTargetOrientation()
+        _animFrameCount++
+        const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
+        const isAnimating = earth.quaternion.angleTo(target) > 0.0002
         earth.quaternion.slerp(target, 0.02)
         atmosphere.rotation.set(0, 0, 0)
-        updateCloudDrift()
+
+        if (isAnimating || _animDirty) {
+          updateStreaming(camera)
+          updateRDLOverlays()
+          if (!isAnimating) _animDirty = false
+        } else if (_animFrameCount % 10 === 0) {
+          // Maintenance tick: keep RDL opacity in sync without tile work
+          updateRDLOverlays()
+        }
 
         renderer.render(scene, camera)
       })
 
+      _sunUpdateInterval = setInterval(updateSunPosition, 60000)
+
       visibilityChangeHandler = () => {
-        if (document.hidden) {
-          resetCloudDriftLastTick()
-          return
-        }
-        alignCloudDriftLastTick()
+        if (document.hidden) return
       }
       document.addEventListener('visibilitychange', visibilityChangeHandler)
 
@@ -1747,14 +2339,15 @@
         isAvailable() {
           return isReady && !permanentlyUnavailable
         },
-        setDebugLocation(lon, lat) {
+        setDebugLocation(lon, lat, options = {}) {
+          useAuditCenterTarget = Boolean(options.center)
           window.__rodioVisualState = {
             ...(window.__rodioVisualState || {}),
             lon,
             lat
           }
 
-          const target = getTargetOrientation()
+          const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
           earth.quaternion.copy(target)
           atmosphere.rotation.set(0, 0, 0)
 
@@ -1763,6 +2356,8 @@
           earthGroup.updateMatrixWorld(true)
           scene.updateMatrixWorld(true)
           camera.updateMatrixWorld(true)
+          updateStreaming(camera)
+          updateRDLOverlays()
           renderer.render(scene, camera)
 
           if (DEBUG_MARKERS_ENABLED) {
@@ -1786,8 +2381,40 @@
           pendingTheme = themeKey
           const applied = applyTheme(themeKey, { force: true })
           syncRevealState(themeKey, applied)
-          updateSunPosition(getThemeHour(themeKey))
+          updateSunPosition()
           return applied
+        },
+        setAuditLightingMode(enabled) {
+          if (permanentlyUnavailable) return false
+          auditLightingMode = Boolean(enabled)
+          const themeKey = pendingTheme || currentTheme || 'noon'
+          const applied = applyTheme(themeKey, { force: true })
+          refreshRDLTextureSampling()
+          syncRevealState(themeKey, applied)
+          updateSunPosition()
+          requestRenderUpdate()
+          return auditLightingMode
+        },
+        getAuditLightingMode() {
+          return auditLightingMode
+        },
+        setEarthMode(mode) {
+          return setEarthMode(mode)
+        },
+        getEarthMode() {
+          return EARTH_MODE
+        },
+        setAtlasFilterMode(mode) {
+          atlasFilterMode = mode === 'normal' ? 'normal' : 'sharp'
+          window.__rodioAtlasFilterMode = atlasFilterMode
+          if (tileManager?.atlasTexture) {
+            configureAtlasTexture(tileManager.atlasTexture, tileManager.lodConfig?.lod)
+          }
+          requestRenderUpdate()
+          return atlasFilterMode
+        },
+        getAtlasFilterMode() {
+          return atlasFilterMode
         },
         setSkyVisible(visible) {
           if (!skyMesh || !skyMaterial?.uniforms) return false
@@ -1798,18 +2425,55 @@
           }
           return skyMesh.visible
         },
-        setCloudVisible(visible) {
-          cloudVisibleRequested = Boolean(visible)
-          if (cloudMesh) {
-            cloudMesh.visible = cloudVisibleRequested && cloudTextureLoadState === 'ready'
+        getRDLZoomLevel() {
+          return _rdlZoomLevel
+        },
+        getRDLDebugInfo() {
+          earth.updateWorldMatrix(true, false)
+          earth.getWorldPosition(_rdlEarthWorldPos)
+          const camDir = camera.position.clone().sub(_rdlEarthWorldPos).normalize()
+          return rdlMeshes.map(entry => {
+            const localDir = lonLatToVector3(entry.region.centerLon, entry.region.centerLat, 1).normalize()
+            const worldDir = localDir.clone().transformDirection(earth.matrixWorld).normalize()
+            const facing = camDir.dot(worldDir)
+            const ft = Math.max(0, Math.min(1, (facing - _RDL_FACE_THRESH) / (_RDL_FACE_FULL - _RDL_FACE_THRESH)))
+            const opacity = ft * ft * (3 - 2 * ft)
+            return {
+              id: entry.region.id,
+              facing: +facing.toFixed(4),
+              opacity: +opacity.toFixed(4),
+              visible: entry.mesh.visible,
+              loaded: entry.loaded,
+              loading: entry.loading,
+            }
+          })
+        },
+        setRDLZoomLevel(level) {
+          _rdlZoomLevel = Math.max(0, Math.min(1, level))
+          camera.fov = _RDL_FOV_NORMAL + (_RDL_FOV_MIN - _RDL_FOV_NORMAL) * _rdlZoomLevel
+          camera.updateProjectionMatrix()
+          requestRenderUpdate()
+          return _rdlZoomLevel
+        },
+        setRDLInspectRegion(regionId) {
+          _rdlInspectRegion = regionId || null
+          refreshRDLTextureSampling()
+          requestRenderUpdate()
+          return _rdlInspectRegion
+        },
+        setAuditViewAngle(angle) {
+          const preset = _AUDIT_VIEW_ANGLES[angle] || _AUDIT_VIEW_ANGLES.top
+          camera.position.set(0, preset.y, preset.z)
+          camera.lookAt(0, preset.lookY, 0)
+          camera.updateProjectionMatrix()
+          if (auditLightingMode) {
+            const themeKey = pendingTheme || currentTheme || 'noon'
+            applyTheme(themeKey, { force: true })
           }
-          if (cloudMaterial) {
-            cloudMaterial.opacity = getCloudOpacity(currentTheme || pendingTheme || 'deepNight')
-          }
-          if (isReady && !permanentlyUnavailable) {
-            renderer.render(scene, camera)
-          }
-          return Boolean(cloudMesh?.visible)
+          refreshRDLTextureSampling()
+          updateSunPosition()
+          requestRenderUpdate()
+          return Object.prototype.hasOwnProperty.call(_AUDIT_VIEW_ANGLES, angle) ? angle : 'top'
         },
         getDebugState() {
           return buildDebugState()
@@ -1818,6 +2482,7 @@
           isReady = false
           isDestroyed = true
           renderer.setAnimationLoop(null)
+          if (_sunUpdateInterval) { clearInterval(_sunUpdateInterval); _sunUpdateInterval = null }
           if (visibilityChangeHandler) {
             document.removeEventListener('visibilitychange', visibilityChangeHandler)
             visibilityChangeHandler = null
@@ -1826,26 +2491,25 @@
           if (observer) observer.disconnect()
           if (skyGeometry) skyGeometry.dispose()
           if (skyMaterial) skyMaterial.dispose()
-          if (cloudMesh?.parent) cloudMesh.parent.remove(cloudMesh)
-          if (cloudGeometry) cloudGeometry.dispose()
-          if (cloudMaterial) cloudMaterial.dispose()
-          if (cloudTexture) cloudTexture.dispose()
           if (earthGeometry) earthGeometry.dispose()
           if (atmosphere?.geometry) atmosphere.geometry.dispose()
           if (stars?.geometry) stars.geometry.dispose()
           skyGeometry = null
           skyMaterial = null
           skyMesh = null
-          cloudGeometry = null
-          cloudMaterial = null
-          cloudMesh = null
-          cloudTexture = null
           if (earthMaterial) earthMaterial.dispose()
           if (atmosphereMaterial) atmosphereMaterial.dispose()
           if (stars?.material) stars.material.dispose()
-          if (dayTexture) dayTexture.dispose()
+          if (tileManager) {
+            tileManager.dispose()
+            tileManager = null
+            dayTexture = null
+          } else if (dayTexture) {
+            dayTexture.dispose()
+          }
           if (nightTexture) nightTexture.dispose()
           if (oceanSpecularTexture) oceanSpecularTexture.dispose()
+          if (normalMapTexture) normalMapTexture.dispose()
           if (oceanTintMesh?.parent) oceanTintMesh.parent.remove(oceanTintMesh)
           if (oceanTintGeometry) oceanTintGeometry.dispose()
           if (oceanTintMaterial) oceanTintMaterial.dispose()

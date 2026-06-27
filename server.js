@@ -1292,9 +1292,23 @@ app.get('/manifest.json', (req, res) => {
 })
 
 app.get('/sw.js', (req, res) => {
+  res.set('Cache-Control', 'no-cache')
   res.type('application/javascript').send(`
-const CACHE_NAME = 'claudio-static-v1'
-const ASSETS = ['/', '/manifest.json', '/sw.js']
+const CACHE_NAME = 'claudio-static-v3'
+const ASSETS = ['/manifest.json', '/icon-192.svg', '/icon-512.svg']
+
+function isLocalDevHost() {
+  return self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1'
+}
+
+function isShellRequest(requestUrl, request) {
+  return request.mode === 'navigate' ||
+    requestUrl.pathname === '/' ||
+    requestUrl.pathname === '/index.html' ||
+    requestUrl.pathname === '/sw.js' ||
+    requestUrl.pathname.endsWith('.js') ||
+    requestUrl.pathname.endsWith('.css')
+}
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)))
@@ -1313,18 +1327,37 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return
 
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached
-      return fetch(event.request).then(response => {
-        const clone = response.clone()
-        if (event.request.url.startsWith(self.location.origin)) {
+  if (isLocalDevHost()) {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
+  const url = new URL(event.request.url)
+  if (!event.request.url.startsWith(self.location.origin)) return
+
+  if (url.pathname.startsWith('/cache/tts/')) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        if (cached) return cached
+        return fetch(event.request).then(response => {
+          const clone = response.clone()
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {})
-        }
-        return response
+          return response
+        })
       })
-    })
-  )
+    )
+    return
+  }
+
+  if (ASSETS.includes(url.pathname) || isShellRequest(url, event.request)) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const clone = response.clone()
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {})
+        return response
+      }).catch(() => caches.match(event.request))
+    )
+  }
 })
   `.trim())
 })
@@ -1346,8 +1379,23 @@ app.get('/icon-512.svg', (req, res) => {
   res.type('image/svg+xml').send(iconSvg(512))
 })
 
-app.use(express.static(path.join(__dirname, 'pwa'), { maxAge: '7d', etag: true }))
+app.use(express.static(path.join(__dirname, 'pwa'), {
+  maxAge: '7d',
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-cache')
+    }
+  }
+}))
 app.use('/cache', express.static(path.join(__dirname, 'cache'), { maxAge: '30d', etag: true }))
+app.use(
+  '/assets/earth/bmng21k',
+  express.static(
+    path.join(__dirname, 'd5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG'),
+    { maxAge: '30d', etag: true }
+  )
+)
 
 // POST /api/chat
 app.post('/api/chat', async (req, res) => {

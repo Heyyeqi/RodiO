@@ -224,6 +224,169 @@
     background: rgba(201, 169, 110, 0.08);
   }
 
+  .earth-audit-control {
+    position: absolute;
+    top: 288px;
+    right: 22px;
+    z-index: 6;
+    width: 168px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    pointer-events: auto;
+  }
+
+  .earth-audit-btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text-sub);
+    padding: 6px 8px;
+    min-width: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .earth-audit-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .earth-audit-row.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .earth-audit-btn[data-audit-move] {
+    min-height: 30px;
+    font-size: 10px;
+  }
+
+  .earth-audit-btn.active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .earth-audit-label {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.10);
+    color: var(--text-dim);
+    padding: 5px 7px;
+    min-height: 28px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    line-height: 1.35;
+    letter-spacing: 0.03em;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .rdl-zoom-control {
+    position: absolute;
+    top: 288px;
+    left: 22px;
+    z-index: 6;
+    width: 172px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    pointer-events: auto;
+  }
+
+  .rdl-zoom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .rdl-zoom-row.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rdl-zoom-btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text-sub);
+    padding: 8px 9px;
+    min-height: 34px;
+    min-width: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .rdl-zoom-btn:active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .rdl-zoom-btn.active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .rdl-zoom-label {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.10);
+    color: var(--text-dim);
+    padding: 5px 7px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .rdl-tile-preview {
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    top: 78px;
+    bottom: 190px;
+    z-index: 5;
+    display: none;
+    border: 1px solid rgba(201, 169, 110, 0.38);
+    background: rgba(3, 8, 18, 0.88);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .rdl-tile-preview.active {
+    display: block;
+  }
+
+  .rdl-tile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: auto;
+  }
+
+  .rdl-tile-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.46);
+    color: var(--text-sub);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
   .hero-center {
     position: relative;
     z-index: 2;
@@ -737,6 +900,7 @@
 
   .overlay.visible {
     display: flex;
+    pointer-events: none;
   }
 
   .overlay-button {
@@ -754,6 +918,7 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: color 200ms ease, border-color 200ms ease;
+    pointer-events: auto;
   }
 
   .overlay-button:hover {
@@ -828,6 +993,39 @@
           </div>
 
           <div class="theme-preview" id="theme-preview"></div>
+          <div class="rdl-zoom-control" id="rdl-zoom-control">
+            <div class="rdl-zoom-row">
+              <button class="rdl-zoom-btn" id="rdl-zoom-out" type="button">FAR</button>
+              <button class="rdl-zoom-btn" id="rdl-zoom-in" type="button">NEAR</button>
+            </div>
+            <div class="rdl-zoom-row three" aria-label="Earth audit angle">
+              <button class="rdl-zoom-btn active" type="button" data-audit-angle="top">TOP</button>
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="oblique">45°</button>
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="low">LOW</button>
+            </div>
+            <div class="rdl-zoom-label" id="rdl-zoom-label">DIST · 0.00 · TOP</div>
+          </div>
+
+          <div class="earth-audit-control" id="earth-audit-control" aria-label="Earth color audit region">
+            <div class="earth-audit-row compact">
+              <button class="earth-audit-btn" id="earth-audit-prev" type="button">PREV</button>
+              <button class="earth-audit-btn" id="earth-audit-next" type="button">NEXT</button>
+            </div>
+            <div class="earth-audit-row">
+              <span></span>
+              <button class="earth-audit-btn" type="button" data-audit-move="up">UP</button>
+              <span></span>
+              <button class="earth-audit-btn" type="button" data-audit-move="left">LEFT</button>
+              <button class="earth-audit-btn" type="button" data-audit-move="down">DOWN</button>
+              <button class="earth-audit-btn" type="button" data-audit-move="right">RIGHT</button>
+            </div>
+            <div class="earth-audit-label" id="earth-audit-label">READY · 01 中国华东 / 长三角</div>
+          </div>
+
+          <div class="rdl-tile-preview" id="rdl-tile-preview" aria-hidden="true">
+            <img id="rdl-tile-preview-img" alt="">
+            <div class="rdl-tile-caption" id="rdl-tile-preview-caption"></div>
+          </div>
 
           <div class="hero-center">
             <h1 class="hero-title" id="hero-title">Waiting</h1>
@@ -930,8 +1128,9 @@
 
 <div class="error-overlay" id="error-overlay"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="/earth3d.js"></script>
+<script src="/three.min.js"></script>
+<script src="/earth_modes.js?v=rdl-overlay-gate-v5"></script>
+<script src="/earth3d.js?v=rdl-overlay-gate-v5"></script>
 <script>
 (() => {
   const errorOverlay = document.getElementById('error-overlay')
@@ -1313,6 +1512,72 @@
   const dislikeButton = document.getElementById('btn-dislike')
   const heartButton = document.getElementById('btn-heart')
   const themePreview = document.getElementById('theme-preview')
+  const earthAuditPrev = document.getElementById('earth-audit-prev')
+  const earthAuditNext = document.getElementById('earth-audit-next')
+  const earthAuditLabel = document.getElementById('earth-audit-label')
+  const rdlZoomIn = document.getElementById('rdl-zoom-in')
+  const rdlZoomOut = document.getElementById('rdl-zoom-out')
+  const rdlZoomLabel = document.getElementById('rdl-zoom-label')
+  const auditMoveButtons = Array.from(document.querySelectorAll('[data-audit-move]'))
+  const auditAngleButtons = Array.from(document.querySelectorAll('[data-audit-angle]'))
+  let currentAuditAngle = 'top'
+
+  function updateRDLZoomLabel(level) {
+    const pct = Math.round(level * 100)
+    let tier = 'BASE'
+    if (level >= 0.60) tier = 'RDL FULL'
+    else if (level >= 0.28) tier = 'RDL FADE'
+    rdlZoomLabel.textContent = `DIST · ${level.toFixed(2)} · ${currentAuditAngle.toUpperCase()} · ${tier}`
+  }
+
+  function setAuditDistance(level) {
+    const next = window.earth3d?.setRDLZoomLevel?.(level) ?? level
+    updateRDLZoomLabel(next)
+    return next
+  }
+
+  rdlZoomIn.addEventListener('click', () => setAuditDistance(1))
+  rdlZoomOut.addEventListener('click', () => setAuditDistance(0.35))
+
+  function setAuditAngle(angle) {
+    currentAuditAngle = angle
+    window.earth3d?.setAuditViewAngle?.(angle)
+    auditAngleButtons.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.auditAngle === angle)
+    })
+    updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+  }
+
+  auditAngleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setAuditAngle(btn.dataset.auditAngle || 'top'))
+  })
+
+  function bindHoldButton(button, action) {
+    let repeatTimer = null
+    let delayTimer = null
+    const stop = () => {
+      if (delayTimer) clearTimeout(delayTimer)
+      if (repeatTimer) clearInterval(repeatTimer)
+      delayTimer = null
+      repeatTimer = null
+    }
+    const start = (event) => {
+      event.preventDefault()
+      stop()
+      action()
+      delayTimer = setTimeout(() => {
+        repeatTimer = setInterval(action, 90)
+      }, 240)
+    }
+    button.addEventListener('pointerdown', start)
+    button.addEventListener('pointerup', stop)
+    button.addEventListener('pointerleave', stop)
+    button.addEventListener('pointercancel', stop)
+  }
+
+  function getActiveAuditRegion() {
+    return EARTH_AUDIT_REGIONS[currentEarthAuditIndex] || null
+  }
 
   let localQueue = []
   let commentaryAudio = null
@@ -1320,6 +1585,8 @@
   let playedHistory = []
   let hasUnlockedAudio = false
   let pendingTuneInAutoplay = false
+  let currentEarthAuditIndex = -1
+  let auditGlobeImageRefreshTimer = null
   let pendingTuneInSpeech = false
   let waitingForServerTrack = false
   let stationPayload = null
@@ -1350,6 +1617,20 @@
         globeImageCache.lastLon = lon
       }
       day.src = `/api/globe-image?phase=day&lat=${lat}&lon=${lon}`
+    }
+  }
+
+  function scheduleAuditGlobeImageRefresh(lat, lon, delayMs = 180) {
+    if (auditGlobeImageRefreshTimer) clearTimeout(auditGlobeImageRefreshTimer)
+    auditGlobeImageRefreshTimer = setTimeout(() => {
+      auditGlobeImageRefreshTimer = null
+      loadGlobeImages(lat, lon)
+    }, delayMs)
+  }
+
+  function ensureAuditLightingEnabled() {
+    if (!window.earth3d?.getAuditLightingMode?.()) {
+      window.earth3d?.setAuditLightingMode?.(true)
     }
   }
   let weatherParticles = []
@@ -1629,6 +1910,25 @@
     { key: 'sunset', label: '落日' },
     { key: 'evening', label: '夜晚' },
     { key: 'deepNight', label: '深夜' },
+  ]
+  const EARTH_AUDIT_REGIONS = [
+    { label: '中国华东 / 长三角', lat: 31.2, lon: 121.5 },
+    { label: '台湾', lat: 23.7, lon: 121.0 },
+    { label: '日本本州', lat: 36.2, lon: 138.3 },
+    { label: '冲绳 / 琉球', lat: 26.5, lon: 127.9, rdlId: 'ryukyu' },
+    { label: '菲律宾', lat: 12.9, lon: 122.0, rdlId: 'philippines_central' },
+    { label: '印度尼西亚东部', lat: -4.5, lon: 127.5, rdlId: 'indonesia_east' },
+    { label: '南海', lat: 14.0, lon: 114.0, rdlId: 'south_china_sea' },
+    { label: '喜马拉雅', lat: 28.0, lon: 86.9 },
+    { label: '青藏高原', lat: 32.0, lon: 89.0 },
+    { label: '马尔代夫', lat: 3.2, lon: 73.2, rdlId: 'maldives' },
+    { label: '撒哈拉', lat: 23.5, lon: 13.0 },
+    { label: '大堡礁', lat: -18.3, lon: 147.5, rdlId: 'great_barrier_reef' },
+    { label: '夏威夷', lat: 20.5, lon: -157.8, rdlId: 'hawaii' },
+    { label: '大溪地', lat: -17.5, lon: -149.4 },
+    { label: '加勒比 / 巴哈马', lat: 24.2, lon: -76.5, rdlId: 'caribbean_bahamas' },
+    { label: '亚马逊', lat: -3.5, lon: -62.0 },
+    { label: '格陵兰', lat: 72.0, lon: -40.0 },
   ]
   window.__rodioVisualState = state
 
@@ -1921,12 +2221,113 @@
     })
   }
 
+  function renderEarthAuditControl() {
+    if (!earthAuditLabel || !earthAuditNext || !earthAuditPrev) return
+    const activeRegion = EARTH_AUDIT_REGIONS[currentEarthAuditIndex]
+    const nextIndex = (currentEarthAuditIndex + 1 + EARTH_AUDIT_REGIONS.length) % EARTH_AUDIT_REGIONS.length
+    const nextRegion = EARTH_AUDIT_REGIONS[nextIndex]
+    earthAuditNext.classList.toggle('active', Boolean(activeRegion))
+    earthAuditPrev.classList.toggle('active', Boolean(activeRegion))
+    earthAuditNext.textContent = activeRegion ? 'NEXT' : 'START'
+    earthAuditPrev.textContent = 'PREV'
+    if (activeRegion) {
+      const lat = Number.isFinite(state.lat) ? state.lat : activeRegion.lat
+      const lon = Number.isFinite(state.lon) ? state.lon : activeRegion.lon
+      earthAuditLabel.textContent = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${activeRegion.label} · ${lat.toFixed(2)}, ${lon.toFixed(2)}`
+    } else {
+      earthAuditLabel.textContent = `READY · 01 ${nextRegion.label}`
+    }
+  }
+
+  // Theme keys ordered by UTC+8 hour for sun-positioning
+  const _AUDIT_THEME_HOURS = {
+    dawn: 5.4, sunrise: 6.3, earlyMorning: 7.4, morning: 9.5,
+    noon: 13, afternoon: 15.4, goldenApproach: 16.5, sunset: 18.2,
+  }
+
+  function getBestThemeForLon(lon) {
+    // UTC+8 hour when sun is overhead this longitude
+    let h = (20 - lon / 15) % 24
+    if (h < 0) h += 24
+    // Clamp to daytime range so we always get a lit view
+    const hDay = Math.max(5.4, Math.min(18.2, h))
+    return Object.entries(_AUDIT_THEME_HOURS).reduce((best, [key, hour]) =>
+      Math.abs(hour - hDay) < Math.abs(_AUDIT_THEME_HOURS[best] - hDay) ? key : best, 'noon')
+  }
+
+  function setEarthAuditRegion(index) {
+    const count = EARTH_AUDIT_REGIONS.length
+    if (!count) return
+    currentEarthAuditIndex = ((index % count) + count) % count
+    const region = EARTH_AUDIT_REGIONS[currentEarthAuditIndex]
+    state.lat = region.lat
+    state.lon = region.lon
+    window.__rodioVisualState = {
+      ...(window.__rodioVisualState || {}),
+      lat: region.lat,
+      lon: region.lon,
+    }
+    loadGlobeImages(region.lat, region.lon)
+    ensureAuditLightingEnabled()
+    if (window.earth3d?.setDebugLocation) {
+      window.earth3d.setDebugLocation(region.lon, region.lat, { center: true })
+    }
+    if (window.earth3d?.setRDLInspectRegion) {
+      const activeRDL = window.earth3d.setRDLInspectRegion(region.rdlId || null)
+      updateRDLZoomLabel(window.earth3d.getRDLZoomLevel?.() ?? 0)
+    }
+    console.log('[earth-audit] region:', {
+      index: currentEarthAuditIndex + 1,
+      label: region.label,
+      lat: region.lat,
+      lon: region.lon,
+    })
+    renderEarthAuditControl()
+  }
+
+  let _lastRDLInspectId = undefined
+
+  function applyAuditLocation(label, lat, lon, rdlId = null) {
+    state.lat = Math.max(-80, Math.min(80, lat))
+    state.lon = ((lon + 540) % 360) - 180
+    window.__rodioVisualState = {
+      ...(window.__rodioVisualState || {}),
+      lat: state.lat,
+      lon: state.lon,
+    }
+    scheduleAuditGlobeImageRefresh(state.lat, state.lon)
+    ensureAuditLightingEnabled()
+    window.earth3d?.setDebugLocation?.(state.lon, state.lat, { center: true })
+    if (window.earth3d?.setRDLInspectRegion && rdlId !== _lastRDLInspectId) {
+      _lastRDLInspectId = rdlId
+      window.earth3d.setRDLInspectRegion(rdlId)
+    }
+    updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+    earthAuditLabel.textContent = `${label} · ${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}`
+  }
+
+  function nudgeAuditView(direction) {
+    const zoom = window.earth3d?.getRDLZoomLevel?.() ?? 0
+    const step = zoom >= 0.75 ? 0.5 : zoom >= 0.45 ? 1.0 : 2.0
+    const region = EARTH_AUDIT_REGIONS[currentEarthAuditIndex] || {}
+    const label = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${region.label || 'CUSTOM'}`
+    const lat = Number.isFinite(state.lat) ? state.lat : region.lat || 31.2
+    const lon = Number.isFinite(state.lon) ? state.lon : region.lon || 121.5
+    const next = {
+      up: [lat + step, lon],
+      down: [lat - step, lon],
+      left: [lat, lon - step],
+      right: [lat, lon + step],
+    }[direction]
+    if (!next) return
+    applyAuditLocation(label, next[0], next[1], region.rdlId || null)
+  }
+
   function applyForcedTheme(nextTheme) {
     forcedThemeKey = forcedThemeKey === nextTheme ? null : nextTheme
     const visualTheme = getInterpolatedThemeState(Date.now())
     state.themeKey = visualTheme.themeKey
     setTheme(visualTheme.themeState, visualTheme.themeKey)
-    if (state.weather) initCloudSystem(state.weather, state.astronomy)
     renderThemePreview()
   }
 
@@ -2018,6 +2419,7 @@
     renderControls()
     renderOverlay()
     renderThemePreview()
+    renderEarthAuditControl()
   }
 
   function setLocalQueue(items) {
@@ -2812,7 +3214,6 @@
     dpr: 1,
     phaseSeeds: {},
     starField: null,
-    cloudSystem: [],
     currentWeatherProfile: null,
     previousWeatherProfile: null,
     weatherTransitionStart: 0,
@@ -3220,77 +3621,11 @@
     return profile
   }
 
-  function initCloudSystem(weather, astronomy) {
-    const width = visualState.width
-    const height = visualState.height
-    const main = weather?.main || 'Clear'
-    const cloudiness = weather?.cloudiness ?? 0
-    const themeKey = state.themeKey
-    let cloudColor
-    let cloudCount
-    let cloudAlphaRange
-    let cloudHeightRange
-
-    if (main === 'Rain' || main === 'Drizzle' || main === 'Thunderstorm') {
-      cloudColor = themeKey === 'night' || themeKey === 'sunset'
-        ? { r: 40, g: 40, b: 50 }
-        : { r: 120, g: 118, b: 125 }
-      cloudCount = 5
-      cloudAlphaRange = [0.18, 0.28]
-      cloudHeightRange = [0.05, 0.45]
-    } else if (main === 'Clouds') {
-      if (cloudiness > 70) {
-        cloudColor = themeKey === 'night'
-          ? { r: 30, g: 30, b: 45 }
-          : themeKey === 'sunset'
-            ? { r: 80, g: 55, b: 45 }
-            : { r: 180, g: 178, b: 182 }
-        cloudCount = 4
-        cloudAlphaRange = [0.12, 0.2]
-        cloudHeightRange = [0.04, 0.5]
-      } else {
-        cloudColor = themeKey === 'night'
-          ? { r: 35, g: 38, b: 55 }
-          : themeKey === 'sunset'
-            ? { r: 200, g: 120, b: 70 }
-            : themeKey === 'sunrise'
-              ? { r: 220, g: 160, b: 120 }
-              : { r: 240, g: 238, b: 242 }
-        cloudCount = 2
-        cloudAlphaRange = [0.08, 0.14]
-        cloudHeightRange = [0.08, 0.38]
-      }
-    } else {
-      cloudCount = 0
-      cloudColor = { r: 255, g: 255, b: 255 }
-      cloudAlphaRange = [0, 0]
-      cloudHeightRange = [0, 0]
-    }
-
-    visualState.cloudSystem = Array.from({ length: cloudCount }, () => ({
-      x: rand(-width * 0.15, width * 1.05),
-      y: height * rand(cloudHeightRange[0], cloudHeightRange[1]),
-      w: rand(width * 0.28, width * 0.52),
-      h: rand(height * 0.06, height * 0.12),
-      speed: rand(0.08, 0.18) * (main === 'Thunderstorm' ? 2.2 : 1),
-      alpha: rand(cloudAlphaRange[0], cloudAlphaRange[1]),
-      color: cloudColor,
-      blobSeeds: Array.from({ length: 5 }, () => ({
-        offsetX: rand(-0.3, 0.3),
-        offsetY: rand(-0.15, 0.15),
-        rx: rand(0.22, 0.35),
-        ry: rand(0.55, 0.85),
-      })),
-      seed: rand(0, Math.PI * 2),
-    }))
-  }
-
   function startWeatherSystem(weather, astronomy, immediate = false) {
     const signature = getWeatherSignature(weather)
     if (!immediate && signature === visualState.weatherSignature) return
     visualState.previousWeatherProfile = immediate ? null : visualState.currentWeatherProfile
     visualState.currentWeatherProfile = createWeatherProfile(weather, astronomy)
-    initCloudSystem(weather, astronomy)
     visualState.weatherTransitionStart = performance.now()
     visualState.weatherSignature = signature
     canvas.style.filter = visualState.currentWeatherProfile?.hazeFilter || 'none'
@@ -3922,42 +4257,6 @@
     })
   }
 
-  function drawCloudSystem(nowMs, alphaScale) {
-    const clouds = visualState.cloudSystem
-    if (!clouds || !clouds.length) return
-
-    const width = visualState.width
-    const height = visualState.height
-
-    clouds.forEach((cloud) => {
-      cloud.x += cloud.speed
-      if (cloud.x - cloud.w * 0.5 > width * 1.1) {
-        cloud.x = -cloud.w * 0.6
-        cloud.y = height * rand(0.04, 0.48)
-      }
-
-      const { r, g, b } = cloud.color
-      const alpha = cloud.alpha * alphaScale
-      cloud.blobSeeds.forEach((blob) => {
-        const bx = cloud.x + blob.offsetX * cloud.w
-        const by = cloud.y + blob.offsetY * cloud.h + Math.sin(nowMs / 9000 + cloud.seed) * 2
-        const grad = ctx.createRadialGradient(bx, by, 0, bx, by, blob.rx * cloud.w)
-        grad.addColorStop(0, `rgba(${r},${g},${b},${alpha.toFixed(4)})`)
-        grad.addColorStop(0.6, `rgba(${r},${g},${b},${(alpha * 0.6).toFixed(4)})`)
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`)
-
-        ctx.save()
-        ctx.translate(bx, by)
-        ctx.scale(1, blob.ry / blob.rx)
-        ctx.beginPath()
-        ctx.arc(0, 0, blob.rx * cloud.w, 0, Math.PI * 2)
-        ctx.fillStyle = grad
-        ctx.fill()
-        ctx.restore()
-      })
-    })
-  }
-
   function getSunMoonTransitionAlpha(themeKey, nowMs, sunriseTs, sunsetTs) {
     // 日出模式：月亮淡出，太阳淡入（日出前30分钟到日出后30分钟）
     if (themeKey === 'sunrise') {
@@ -4162,7 +4461,6 @@
       }
     }
 
-    // 大风：云层移动速度在initCloudSystem里处理，这里只加轻微动感
     if (profile.windSpeed > 8) {
       const windAlpha = Math.min(0.06, (profile.windSpeed - 8) / 100)
       ctx.fillStyle = `rgba(200,205,215,${windAlpha.toFixed(3)})`
@@ -4510,7 +4808,6 @@
     }
     if (themeKeyChanged || forceKeyChanged) {
       renderThemePreview()
-      if (state.weather) initCloudSystem(state.weather, state.astronomy)
       lastRenderedForceKey = forcedThemeKey
     }
     if (!inThemeTransition) {
@@ -4543,7 +4840,6 @@
     ctx.clip()
 
     drawStarField(nowMs, state.astronomy, 1)
-    drawCloudSystem(nowMs, 1)
     if (state.astronomy) {
       const { sunAlpha, moonAlpha } = getSunMoonTransitionAlpha(
         state.themeKey, nowMs, state.sunriseTs, state.sunsetTs
@@ -4617,6 +4913,15 @@
     }
   })
   startButton.addEventListener('click', startListening)
+  earthAuditPrev?.addEventListener('click', () => {
+    setEarthAuditRegion(currentEarthAuditIndex - 1)
+  })
+  earthAuditNext?.addEventListener('click', () => {
+    setEarthAuditRegion(currentEarthAuditIndex + 1)
+  })
+  auditMoveButtons.forEach((button) => {
+    bindHoldButton(button, () => nudgeAuditView(button.dataset.auditMove))
+  })
   progressLine.addEventListener('click', seekTo)
   queueList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-queue-index]')
@@ -4650,14 +4955,15 @@
     advanceToNext()
   })
 
-  const DEV_CACHE_NAME = 'claudio-v1'
-  const STATIC_CACHE_NAME = 'claudio-static-v1'
+  const DEV_CACHE_NAME = 'claudio-v2'
+  const STATIC_CACHE_NAME = 'claudio-static-v3'
   const STATIC_CACHE_PATHS = new Set([
     '/',
     '/index.html',
     '/app.js',
     '/style.css',
     '/earth3d.js',
+    '/earth_modes.js',
     '/manifest.json',
     '/sw.js',
   ])
@@ -4671,7 +4977,8 @@
     if (!('caches' in window)) return
 
     try {
-      await caches.delete(STATIC_CACHE_NAME)
+      const keys = await caches.keys()
+      await Promise.all(keys.filter((key) => key.startsWith('claudio-static-')).map((key) => caches.delete(key)))
     } catch {}
 
     try {
