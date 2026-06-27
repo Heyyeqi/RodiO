@@ -3787,3 +3787,19 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - 无（路径修复一次性解锁了 DEM 和 climate 两条链路）
+
+## 2026-06-27 M1 biome refinement — Köppen 信号正确落到 biome_mask
+
+### 做了什么
+- 发现 `_climate_signal` 固定返回 `"land"`（忽略 Köppen class），导致 climate 权重（0.30）始终强化 land，landcover 的 0.15 不足翻盘
+- 修复：Köppen 1-3→forest, 4-7→desert, 29-30→ice, else→land
+- 新增 MaskGenerator 后置 biome refinement：SAL final_class="land" 时，若 landcover 给出具体 biome 且 climate 不反对 → 提升到具体 biome（SAL 仍主导 ocean/land 判定）
+- 5 点验收全通过：Sahara→desert, Singapore→forest, Himalayas→ice, Pacific→ocean, Dead Sea→desert
+
+### 改动文件
+- `core/signal/providers/m1_bridge.py`：`_climate_signal` Köppen class 映射
+- `core/m1/mask_generator.py`：`_PROMOTABLE_BIOMES` + biome refinement block
+- `core/m1/_test_real_signal_provider.py`：更新断言 + 新增 `run_biome_acceptance()`
+
+### 遗留问题
+- 无；M1 regression 4/4 pass，biome acceptance 5/5 pass
