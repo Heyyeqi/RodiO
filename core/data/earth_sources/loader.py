@@ -46,8 +46,8 @@ class EarthDataLoader:
         resolution_mode: str = "8k",
     ) -> None:
         if source_root is None:
-            # Default: project cache directory (same convention as DEMRegistry)
-            self.source_root = Path(__file__).parents[4] / "cache"
+            # GEE source cache: contains exported_8k/, external_raw/, external_processed_8k/
+            self.source_root = Path(__file__).parents[3] / "d5b_processor_v3/source_cache/gee_global"
         else:
             self.source_root = Path(source_root)
         self.resolution_mode = resolution_mode

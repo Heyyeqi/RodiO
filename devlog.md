@@ -3768,3 +3768,21 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 说明
 - Copernicus DEM elevation 用于 ACA reef depth gate，不等于 M1 elevation source 替换（后者仍待完成）
 - 下一项：Copernicus DEM → M1 高山/高原 mask 升级
+
+## 2026-06-27 EarthDataLoader 路径修复 → Copernicus DEM + Köppen-Geiger 接入 M1
+
+### 做了什么
+- 发现 `EarthDataLoader` 默认 `source_root` 指向 `cache/` 目录（不存在），导致 Copernicus DEM 和 Köppen-Geiger 层静默返回 None，M1 fallback 到合成数据
+- 修复：将默认路径改为 `d5b_processor_v3/source_cache/gee_global`（GEE 实际下载目录）
+- 验证：DEMRegistry 加载成功，Everest(5287m)、Tibetan Plateau(4740m)、Pacific(-5297m) 数据正确；Köppen class 4(Sahara)、1(Singapore)、29(Himalayas) 全部正确
+
+### 改动文件
+- `core/data/earth_sources/loader.py`：`__init__` 中 source_root 默认值修正（1 行）
+
+### 效果
+- RealWorldSignalProvider.get_dem() 现在返回真实 Copernicus/GEBCO 数据
+- RealWorldSignalProvider.get_climate() 现在返回真实 Köppen-Geiger 分类
+- M1 terrain mask 和 SAL desert/arid 判断均升级到真实数据驱动
+
+### 遗留问题
+- 无（路径修复一次性解锁了 DEM 和 climate 两条链路）
