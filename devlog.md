@@ -3734,3 +3734,19 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 - 无胶感 ✓
 - 切换速度明显改善 ✓
 - 巴哈马 8k 模糊待处理（pipeline 任务）
+
+## 2026-06-27 RDL Batch 3 landforms apply
+
+### 做了什么
+- 确认 earth_modes.js 已通过 window.EARTH_MODES 正确接入 earth3d.js，tile 目录结构完整
+- 确认 D2（GEE 8K 下载）、D3（import test）均已完成，copernicus elevation 也已到位
+- Batch 3 landforms 选择最终确认：63 keep（含 15 manual review 全部 accept）/ 21 revert
+- 写 rdl_batch3_apply_selection.py，将 63 个 keep 区域的 `tile_noon_air_mapbox_m3m4_dem_landforms.jpg` 提升为 `tile_noon_air_mapbox.jpg`（生产版）；旧版备份为 `_pre_landforms.jpg`；21 个 revert 区域不动
+
+### 改动文件
+- `scripts/geo/rdl_batch3_apply_selection.py`（新建）
+- `tiles_rdl_regions/{63 regions}/tile_noon_air_mapbox.jpg`（tile 数据，gitignore 内）
+
+### 遗留问题
+- Batch 3 只处理了标准分辨率 tile，8k 变体未做 landforms 更新（没有对应候选文件）
+- Batch 4 或下一阶段待确认（D6 binding / Noon Air 上色前置条件 checklist 是否已就绪）
