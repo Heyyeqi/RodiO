@@ -3803,3 +3803,25 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - 无；M1 regression 4/4 pass，biome acceptance 5/5 pass
+
+## 2026-06-27 Batch 5 Global Aridity Index — 独立 8K raster
+
+### 做了什么
+- 从 CGIAR Global Aridity Index v3.1 年均 zip 提取 ai_v31_yr.tif（43200×18000 原始）
+- 重采样至 8192×4096（全球坐标系），南 -60° 以下补 nodata=0，PIL LANCZOS 下采样
+- 输出：`external_processed_8k/global_aridity_index_8192x4096.tif`（uint16，scale=AI×10000，21.4MB LZW）
+- 更新 `external_manifests/global_aridity_pet_manifest.json`（processed_8k_file_path 字段）
+- 质量验证：Sahara=hyperarid(0.021)、Singapore=humid(1.676)、Dead Sea=hyperarid(0.049)、Pacific/Antarctica=nodata ✓
+
+### License 说明
+- CGIAR-CSI，非商业/研究用途；manifest 中已记录 research_only=true 和商业替换要求
+- 本阶段仅生成独立 raster，不混入 production 语义链路
+
+### 改动文件
+- `scripts/geo/process_aridity_index.py`（新建）
+- `d5b_processor_v3/source_cache/gee_global/external_manifests/global_aridity_pet_manifest.json`（processed_8k_file_path 更新）
+- `d5b_processor_v3/source_cache/gee_global/external_processed_8k/global_aridity_index_8192x4096.tif`（新建，gitignore 范围内）
+
+### 遗留问题
+- 未接入 EarthDataLoader（待后续作为 "aridity" layer 接入，或作为 desert biome confidence 增强信号）
+- 月度 ET0 zip 未处理（暂无需求）
