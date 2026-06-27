@@ -3749,4 +3749,22 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - Batch 3 只处理了标准分辨率 tile，8k 变体未做 landforms 更新（没有对应候选文件）
-- Batch 4 或下一阶段待确认（D6 binding / Noon Air 上色前置条件 checklist 是否已就绪）
+
+## 2026-06-27 Batch 4 ACA reef — 47 个珊瑚礁区域接入 production
+
+### 做了什么
+- 确认 Allen Coral Atlas reef mask 已覆盖 47 个 RDL 区域（M2 层此前与 batch3 主链独立）
+- 写 rdl_batch4_aca_reef_apply.py：在 batch3 production tile 上叠加 ACA reef 颜色（复用 apply_m2_aca_reef），引入 Copernicus DEM elevation 做深度门控（首次在 batch 流程中使用 elevation 数据）
+- 写 rdl_batch4_contact_sheet.py：生成 before/after contact sheet + diff stats
+- 全部 47 个区域 apply：caribbean_bahamas(Δ2.05)、red_sea(Δ1.40) 最明显；各 _pre_b4.jpg 备份已保留
+- 提升至 production（tile_noon_air_mapbox.jpg 覆盖），生成 production contact sheet
+
+### 改动文件
+- `scripts/geo/rdl_batch4_aca_reef_apply.py`（新建）
+- `scripts/geo/rdl_batch4_contact_sheet.py`（新建）
+- `docs/preview_archives/rdl_batch4_aca_reef_20260627/`（新建）
+- `tiles_rdl_regions/{47 regions}/tile_noon_air_mapbox.jpg`（tile 数据，gitignore 内）
+
+### 说明
+- Copernicus DEM elevation 用于 ACA reef depth gate，不等于 M1 elevation source 替换（后者仍待完成）
+- 下一项：Copernicus DEM → M1 高山/高原 mask 升级
