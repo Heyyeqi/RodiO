@@ -1,0 +1,53 @@
+{
+  "source_name": "Global Aridity Index and Potential Evapotranspiration (ET0) Climate Database v3.1",
+  "source_version": "v3.1 (figshare version 4)",
+  "provider": "CGIAR-CSI / Trabucco & Zomer",
+  "official_url": "https://cgiarcsi.community/data/global-aridity-and-pet-database/",
+  "download_url": "https://doi.org/10.6084/m9.figshare.7504448.v4",
+  "download_date": "2026-06-24",
+  "raw_file_path": "d5b_processor_v3/source_cache/gee_global/external_raw/global_aridity_pet/",
+  "processed_8k_file_path": "d5b_processor_v3/source_cache/gee_global/external_processed_8k/global_aridity_index_8192x4096.tif",
+  "spatial_metadata": {
+    "crs": "EPSG:4326 (WGS84)",
+    "pixel_size_deg": 0.0083333333,
+    "pixel_size_arcsec": 30,
+    "native_width_px": 43200,
+    "native_height_px": 18000,
+    "coverage_west": -180.0,
+    "coverage_east": 180.0,
+    "coverage_north": 90.0,
+    "coverage_south": -60.0,
+    "note_coverage": "Does NOT cover south of -60 deg"
+  },
+  "processed_8k_metadata": {
+    "crs": "EPSG:4326 (WGS84)",
+    "width_px": 8192,
+    "height_px": 4096,
+    "resampling": "PIL BOX (area-average)",
+    "geotiff_tags": [
+      "ModelPixelScaleTag (33550)",
+      "ModelTiepointTag (33922)",
+      "GeoKeyDirectoryTag (34735) EPSG:4326",
+      "GDAL_NODATA (42113) = 0"
+    ],
+    "nodata_value": 0,
+    "nodata_rows_south": 683,
+    "coverage_south_padded": -90.0,
+    "scale": "uint16 = AI * 10000"
+  },
+  "license": "non-commercial use only; attribution required",
+  "attribution_required": true,
+  "attribution_text": "CGIAR-CSI Global-Aridity and Global-PET Database; Trabucco, Antonio; Zomer, Robert (2019). Global Aridity Index and Potential Evapotranspiration (ET0) Climate Database v3. figshare. doi:10.6084/m9.figshare.7504448.v4",
+  "commercial_clearance": false,
+  "research_only": true,
+  "replacement_required_before_commercial": true,
+  "processing_readiness": "processed_8k_available",
+  "use_in_rodio": "M1 desert/arid zone mask derivation (research phase only). Replace with CC-licensed aridity source before commercial release.",
+  "classification_thresholds_unep": {
+    "hyperarid": "AI < 0.05  (value < 500)",
+    "arid": "AI 0.05\u20130.20  (500\u20132000)",
+    "semi_arid": "AI 0.20\u20130.50  (2000\u20135000)",
+    "sub_humid": "AI 0.50\u20130.65  (5000\u20136500)",
+    "humid": "AI \u2265 0.65  (\u2265 6500)"
+  }
+}
