@@ -11,15 +11,15 @@ All layers are lazy: no data is read until load_layer() is called.
 load_layer() returns None when the underlying file does not exist, allowing
 RealWorldSignalProvider to fall back to synthetic values gracefully.
 
+Default source_root: {project}/d5b_processor_v3/source_cache/gee_global/
+
 Directory layout assumed under source_root:
-    dem/
-        exported_8k/etopo1_bedrock_8192x4096.tif
-        exported_8k/copernicus_dem_glo30_elevation_8192x4096.tif
-        external_raw/gebco/gebco_2026_sub_ice_topo_geotiff/   (tile dir)
+    exported_8k/etopo1_bedrock_8192x4096.tif
+    exported_8k/copernicus_dem_glo30_elevation_8192x4096.tif
+    external_raw/gebco/gebco_2026_sub_ice_topo_geotiff/   (tile dir)
     landcover/
         <any single-band GeoTIFF>
-    climate/
-        external_processed_8k/koppen_geiger_1991_2020_8192x4096.tif
+    external_processed_8k/koppen_geiger_1991_2020_8192x4096.tif
 """
 
 from __future__ import annotations
@@ -36,8 +36,9 @@ class EarthDataLoader:
     Lazy loader that maps layer names to the appropriate adapter / indexer.
 
     Args:
-        source_root: root directory that contains dem/, landcover/, climate/ sub-dirs.
-                     Defaults to the project-level "cache/" directory if omitted.
+        source_root: root of the GEE source cache (contains exported_8k/,
+                     external_raw/, external_processed_8k/ sub-dirs).
+                     Defaults to d5b_processor_v3/source_cache/gee_global/ if omitted.
     """
 
     def __init__(

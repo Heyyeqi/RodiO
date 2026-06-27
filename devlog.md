@@ -3780,9 +3780,10 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 - `core/data/earth_sources/loader.py`：`__init__` 中 source_root 默认值修正（1 行）
 
 ### 效果
-- RealWorldSignalProvider.get_dem() 现在返回真实 Copernicus/GEBCO 数据
-- RealWorldSignalProvider.get_climate() 现在返回真实 Köppen-Geiger 分类
-- M1 terrain mask 和 SAL desert/arid 判断均升级到真实数据驱动
+- RealWorldSignalProvider.get_dem() 现在返回真实 Copernicus/GEBCO 数据（Everest 5287m、Dead Sea -417m 等验证通过）
+- RealWorldSignalProvider.get_climate() 现在返回真实 Köppen-Geiger 分类（class 4=Sahara、1=Singapore 等验证通过）
+- M1 / SAL 的 elevation 和 climate **输入信号**已升级到真实数据；Köppen veto 逻辑生效
+- 注：M1 目前无显式 high_mountain_mask / plateau_mask 字段；Köppen → biome_signal 的映射已进入链路，但 biome_mask 多数仍落为通用 land；显式 desert/terrain mask 的稳定输出需后续 SAL/biome refinement 调整
 
 ### 遗留问题
 - 无（路径修复一次性解锁了 DEM 和 climate 两条链路）
