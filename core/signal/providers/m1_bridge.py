@@ -79,7 +79,15 @@ def _dem_confidence(elevation: Optional[float]) -> float:
 
 
 def _climate_signal(climate_class: Optional[int]) -> Optional[str]:
-    return "land" if climate_class is not None and climate_class > 0 else None
+    if climate_class is None or climate_class <= 0:
+        return None
+    if climate_class in {1, 2, 3}:    # Af, Am, Aw — tropical
+        return "forest"
+    if climate_class in {4, 5, 6, 7}: # BSh, BSk, BWh, BWk — arid/steppe
+        return "desert"
+    if climate_class in {29, 30}:      # EF, ET — polar/ice cap
+        return "ice"
+    return "land"  # temperate, continental, boreal (classes 8–28)
 
 
 def _climate_confidence(climate_class: Optional[int]) -> float:

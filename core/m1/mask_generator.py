@@ -20,8 +20,12 @@ from core.runtime import SpatialProfile
 from core.signal.providers.m1_bridge import M1BridgeProvider
 from .mask_types import (
     TileBBox, SemanticMaskTile, SignalProvider,
-    SEMANTIC_TO_BIOME, BIOME_UNKNOWN,
+    SEMANTIC_TO_BIOME, BIOME_UNKNOWN, BIOME_LAND,
 )
+
+# Biome classes that a landcover/climate signal can promote "land" to.
+# Must be a subset of SEMANTIC_TO_BIOME keys and exclude "land"/"ocean".
+_PROMOTABLE_BIOMES = frozenset({"desert", "forest", "ice", "wetland"})
 from .tile_segmenter import TileSegmenter
 from .semantic_field_builder import SemanticFieldBuilder
 
@@ -173,9 +177,21 @@ class MaskGenerator:
                 fields = self._field_builder.build(sal_result, d6)
                 pts    = self._field_builder.fields_to_point_masks(fields)
 
+                # Biome refinement: SAL is authoritative for ocean vs land.
+                # When SAL resolves to generic "land", promote to a specific
+                # biome if landcover is specific and climate doesn't contradict.
+                biome_code = pts["biome_code"]
+                if biome_code == BIOME_LAND:
+                    lc = signals.get("landcover_signal", "land")
+                    cl = signals.get("climate_signal") or "land"
+                    if lc in _PROMOTABLE_BIOMES and (
+                        cl not in _PROMOTABLE_BIOMES or cl == lc
+                    ):
+                        biome_code = SEMANTIC_TO_BIOME.get(lc, BIOME_LAND)
+
                 ocean_mask[row, col]       = pts["ocean_mask"]
                 land_mask[row, col]        = pts["land_mask"]
-                biome_mask[row, col]       = pts["biome_code"]
+                biome_mask[row, col]       = biome_code
                 uncertainty_mask[row, col] = pts["uncertainty"]
                 confidence_mask[row, col]  = pts["confidence"]
                 ocean_prob_mask[row, col]  = pts["ocean_prob"]
