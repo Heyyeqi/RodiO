@@ -42,7 +42,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: var(--bg);
+    background: #060608;
   }
 
   body {
@@ -1010,6 +1010,7 @@
             <div class="earth-audit-row compact">
               <button class="earth-audit-btn" id="earth-audit-prev" type="button">PREV</button>
               <button class="earth-audit-btn" id="earth-audit-next" type="button">NEXT</button>
+              <button class="earth-audit-btn" id="earth-audit-lighting-toggle" type="button" hidden>AUDIT LIGHT OFF</button>
             </div>
             <div class="earth-audit-row">
               <span></span>
@@ -1129,8 +1130,8 @@
 <div class="error-overlay" id="error-overlay"></div>
 
 <script src="/three.min.js"></script>
-<script src="/earth_modes.js?v=rdl-overlay-gate-v5"></script>
-<script src="/earth3d.js?v=rdl-overlay-gate-v5"></script>
+<script src="/earth_modes.js?v=rdl-overlay-gate-v17"></script>
+<script src="/earth3d.js?v=rdl-overlay-gate-v17"></script>
 <script>
 (() => {
   const errorOverlay = document.getElementById('error-overlay')
@@ -1514,6 +1515,7 @@
   const themePreview = document.getElementById('theme-preview')
   const earthAuditPrev = document.getElementById('earth-audit-prev')
   const earthAuditNext = document.getElementById('earth-audit-next')
+  const earthAuditLightingToggle = document.getElementById('earth-audit-lighting-toggle')
   const earthAuditLabel = document.getElementById('earth-audit-label')
   const rdlZoomIn = document.getElementById('rdl-zoom-in')
   const rdlZoomOut = document.getElementById('rdl-zoom-out')
@@ -1522,12 +1524,31 @@
   const auditAngleButtons = Array.from(document.querySelectorAll('[data-audit-angle]'))
   let currentAuditAngle = 'top'
 
+  function getAuditLightingStatus() {
+    return Boolean(window.earth3d?.getAuditLightingMode?.())
+  }
+
+  function syncAuditLightingUI() {
+    const enabled = getAuditLightingStatus()
+    if (earthAuditLightingToggle) {
+      const isLocal = isLocalDevHost()
+      earthAuditLightingToggle.hidden = !isLocal
+      if (isLocal) {
+        earthAuditLightingToggle.textContent = enabled ? 'AUDIT LIGHT ON' : 'AUDIT LIGHT OFF'
+        earthAuditLightingToggle.classList.toggle('active', enabled)
+        earthAuditLightingToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false')
+      }
+    }
+    return enabled
+  }
+
   function updateRDLZoomLabel(level) {
     const pct = Math.round(level * 100)
     let tier = 'BASE'
     if (level >= 0.60) tier = 'RDL FULL'
     else if (level >= 0.28) tier = 'RDL FADE'
-    rdlZoomLabel.textContent = `DIST · ${level.toFixed(2)} · ${currentAuditAngle.toUpperCase()} · ${tier}`
+    const auditSuffix = getAuditLightingStatus() ? ' · AUDIT LIGHT' : ''
+    rdlZoomLabel.textContent = `DIST · ${level.toFixed(2)} · ${currentAuditAngle.toUpperCase()} · ${tier}${auditSuffix}`
   }
 
   function setAuditDistance(level) {
@@ -1551,6 +1572,20 @@
   auditAngleButtons.forEach((btn) => {
     btn.addEventListener('click', () => setAuditAngle(btn.dataset.auditAngle || 'top'))
   })
+
+  if (earthAuditLightingToggle) {
+    earthAuditLightingToggle.addEventListener('click', () => {
+      const nextEnabled = !getAuditLightingStatus()
+      const actual = window.earth3d?.setAuditLightingMode?.(nextEnabled)
+      syncAuditLightingUI()
+      updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+      renderEarthAuditControl()
+      console.log('[earth-audit] audit lighting override:', {
+        enabled: Boolean(actual),
+        reason: 'manual_toggle',
+      })
+    })
+  }
 
   function bindHoldButton(button, action) {
     let repeatTimer = null
@@ -1629,9 +1664,7 @@
   }
 
   function ensureAuditLightingEnabled() {
-    if (!window.earth3d?.getAuditLightingMode?.()) {
-      window.earth3d?.setAuditLightingMode?.(true)
-    }
+    return getAuditLightingStatus()
   }
   let weatherParticles = []
   const autoExplainedTracks = new Set()
@@ -1641,6 +1674,13 @@
   let inThemeTransition = false
   let lastRenderedForceKey = null
   let lastSentEarth3DThemeKey = null
+
+  function hasVisibleEarth3DCanvas() {
+    const canvas3d = document.querySelector('#earth3d-layer #earth3d-canvas')
+    if (!canvas3d) return false
+    const style = getComputedStyle(canvas3d)
+    return style.display !== 'none' && style.opacity !== '0' && canvas3d.width > 0 && canvas3d.height > 0
+  }
 
   const VISUAL_PHASES = {
     dawn: {
@@ -1779,6 +1819,29 @@
         { pos: 1,    color: 'rgba(20,90,190,1)' },
       ],
     },
+    goldenApproach: {
+      name: '暮前',
+      accent: '#D4905A',
+      textMain: '#F0E8D8',
+      textSub: 'rgba(240,232,216,0.72)',
+      textDim: 'rgba(240,232,216,0.38)',
+      line: 'rgba(240,232,216,0.18)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(212,144,90,0.12)',
+      control: '#B88060',
+      bg: '#120C06',
+      bgGradient: 'linear-gradient(to bottom, #0E0906 0%, #1C1008 30%, #281408 55%, #1A0C06 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(14,9,6,1)' },
+        { pos: 0.25, color: 'rgba(28,16,8,1)' },
+        { pos: 0.55, color: 'rgba(48,24,10,1)' },
+        { pos: 0.80, color: 'rgba(38,18,8,1)' },
+        { pos: 1,    color: 'rgba(20,10,4,1)' },
+      ],
+    },
     sunset: {
       name: '落日',
       accent: '#D4845A',
@@ -1822,6 +1885,28 @@
         { pos: 0.40, color: 'rgba(6,11,20,1)' },
         { pos: 0.75, color: 'rgba(5,10,18,1)' },
         { pos: 1,    color: 'rgba(3,6,11,1)' },
+      ],
+    },
+    lateEvening: {
+      name: '入夜',
+      accent: '#8EA8C8',
+      textMain: '#E8EEF4',
+      textSub: 'rgba(232,238,244,0.65)',
+      textDim: 'rgba(232,238,244,0.35)',
+      line: 'rgba(232,238,244,0.14)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(142,168,200,0.10)',
+      control: '#707A8A',
+      bg: '#04070D',
+      bgGradient: 'linear-gradient(to bottom, #030608 0%, #040810 40%, #030709 75%, #020405 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(3,6,8,1)' },
+        { pos: 0.40, color: 'rgba(4,8,16,1)' },
+        { pos: 0.75, color: 'rgba(3,7,9,1)' },
+        { pos: 1,    color: 'rgba(2,4,5,1)' },
       ],
     },
     deepNight: {
@@ -1901,15 +1986,17 @@
     ],
   }
   const TIME_OF_DAY_OPTIONS = [
-    { key: 'dawn', label: '黎明' },
-    { key: 'sunrise', label: '日出' },
-    { key: 'earlyMorning', label: '清晨' },
-    { key: 'morning', label: '上午' },
-    { key: 'noon', label: '正午' },
-    { key: 'afternoon', label: '下午' },
-    { key: 'sunset', label: '落日' },
-    { key: 'evening', label: '夜晚' },
-    { key: 'deepNight', label: '深夜' },
+    { key: 'dawn',          label: '黎明' },
+    { key: 'sunrise',       label: '日出' },
+    { key: 'earlyMorning',  label: '清晨' },
+    { key: 'morning',       label: '上午' },
+    { key: 'noon',          label: '正午' },
+    { key: 'afternoon',     label: '下午' },
+    { key: 'goldenApproach',label: '暮前' },
+    { key: 'sunset',        label: '落日' },
+    { key: 'evening',       label: '夜晚' },
+    { key: 'lateEvening',   label: '入夜' },
+    { key: 'deepNight',     label: '深夜' },
   ]
   const EARTH_AUDIT_REGIONS = [
     { label: '中国华东 / 长三角', lat: 31.2, lon: 121.5 },
@@ -2035,19 +2122,22 @@
     return `rgba(${Math.round(mix(c1.r, c2.r))}, ${Math.round(mix(c1.g, c2.g))}, ${Math.round(mix(c1.b, c2.b))}, ${mix(c1.a, c2.a).toFixed(4)})`
   }
 
-  function getPhaseWindows(nowMs, sunriseTs, sunsetTs) {
-    // Use local-timezone 6am/7pm as fallback — the UTC-midnight+6h formula produces
-    // 14:00 CST in Shanghai, which puts evening hours into the "sunset" window.
-    const defaultSunrise = new Date(nowMs).setHours(6, 0, 0, 0) / 1000
-    const defaultSunset = new Date(nowMs).setHours(19, 0, 0, 0) / 1000
-    const sunrise = (sunriseTs || defaultSunrise) * 1000
-    const sunset = (sunsetTs || defaultSunset) * 1000
-
+  function getPhaseWindows(nowMs) {
+    const d = new Date(nowMs)
+    const h = (hr, mn) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), hr, mn, 0, 0).getTime()
+    const nextMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0).getTime()
     return [
-      { key: 'sunrise', start: sunrise - 40 * 60000, end: sunrise + 70 * 60000 },
-      { key: 'morning', start: sunrise + 70 * 60000, end: new Date(nowMs).setHours(11, 30, 0, 0) },
-      { key: 'noon', start: new Date(nowMs).setHours(11, 30, 0, 0), end: new Date(nowMs).setHours(14, 30, 0, 0) },
-      { key: 'sunset', start: new Date(nowMs).setHours(14, 30, 0, 0), end: sunset + 40 * 60000 },
+      { key: 'deepNight',     start: h(0, 0),  end: h(4, 30) },
+      { key: 'dawn',          start: h(4, 30), end: h(5, 50) },
+      { key: 'sunrise',       start: h(5, 50), end: h(7, 0) },
+      { key: 'earlyMorning',  start: h(7, 0),  end: h(9, 0) },
+      { key: 'morning',       start: h(9, 0),  end: h(11, 0) },
+      { key: 'noon',          start: h(11, 0), end: h(14, 0) },
+      { key: 'afternoon',     start: h(14, 0), end: h(16, 0) },
+      { key: 'goldenApproach',start: h(16, 0), end: h(17, 20) },
+      { key: 'sunset',        start: h(17, 20),end: h(18, 30) },
+      { key: 'evening',       start: h(18, 30),end: h(20, 30) },
+      { key: 'lateEvening',   start: h(20, 30),end: nextMidnight },
     ]
   }
 
@@ -2056,7 +2146,7 @@
     const nowMs = now.getTime()
     const windows = getPhaseWindows(nowMs, sunriseTs, sunsetTs)
     const dayPhase = windows.find(window => nowMs >= window.start && nowMs < window.end)
-    return dayPhase ? dayPhase.key : 'night'
+    return dayPhase ? dayPhase.key : 'deepNight'
   }
 
   function getPhaseProgress(phaseKey, nowMs, sunriseTs, sunsetTs) {
@@ -2093,9 +2183,9 @@
   }
 
   function getAdjacentThemeKeys(themeKey) {
-    const order = ['night', 'sunrise', 'morning', 'noon', 'sunset', 'night']
+    const order = ['deepNight', 'dawn', 'sunrise', 'earlyMorning', 'morning', 'noon', 'afternoon', 'goldenApproach', 'sunset', 'evening', 'lateEvening', 'deepNight']
     const index = order.indexOf(themeKey)
-    if (index === -1) return { prev: 'night', next: 'night' }
+    if (index === -1) return { prev: 'deepNight', next: 'deepNight' }
     return {
       prev: order[Math.max(0, index - 1)],
       next: order[Math.min(order.length - 1, index + 1)],
@@ -2146,8 +2236,7 @@
     root.style.setProperty('--bubble-you', theme.bubbleYou)
     root.style.setProperty('--control', theme.control)
     root.style.setProperty('--control-hover', theme.accent)
-    document.body.style.background = theme.bg
-    app.style.background = theme.bgGradient || theme.bg
+    // body and app backgrounds are frozen — do not override with per-theme values
     const fillEl = document.getElementById('progress-fill')
     if (fillEl) {
       const gradients = {
@@ -2223,6 +2312,7 @@
 
   function renderEarthAuditControl() {
     if (!earthAuditLabel || !earthAuditNext || !earthAuditPrev) return
+    const auditLightingEnabled = syncAuditLightingUI()
     const activeRegion = EARTH_AUDIT_REGIONS[currentEarthAuditIndex]
     const nextIndex = (currentEarthAuditIndex + 1 + EARTH_AUDIT_REGIONS.length) % EARTH_AUDIT_REGIONS.length
     const nextRegion = EARTH_AUDIT_REGIONS[nextIndex]
@@ -2233,9 +2323,9 @@
     if (activeRegion) {
       const lat = Number.isFinite(state.lat) ? state.lat : activeRegion.lat
       const lon = Number.isFinite(state.lon) ? state.lon : activeRegion.lon
-      earthAuditLabel.textContent = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${activeRegion.label} · ${lat.toFixed(2)}, ${lon.toFixed(2)}`
+      earthAuditLabel.textContent = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${activeRegion.label} · ${lat.toFixed(2)}, ${lon.toFixed(2)}${auditLightingEnabled ? ' · AUDIT LIGHT' : ''}`
     } else {
-      earthAuditLabel.textContent = `READY · 01 ${nextRegion.label}`
+      earthAuditLabel.textContent = `READY · 01 ${nextRegion.label}${auditLightingEnabled ? ' · AUDIT LIGHT' : ''}`
     }
   }
 
@@ -2268,7 +2358,6 @@
       lon: region.lon,
     }
     loadGlobeImages(region.lat, region.lon)
-    ensureAuditLightingEnabled()
     if (window.earth3d?.setDebugLocation) {
       window.earth3d.setDebugLocation(region.lon, region.lat, { center: true })
     }
@@ -2296,14 +2385,13 @@
       lon: state.lon,
     }
     scheduleAuditGlobeImageRefresh(state.lat, state.lon)
-    ensureAuditLightingEnabled()
     window.earth3d?.setDebugLocation?.(state.lon, state.lat, { center: true })
     if (window.earth3d?.setRDLInspectRegion && rdlId !== _lastRDLInspectId) {
       _lastRDLInspectId = rdlId
       window.earth3d.setRDLInspectRegion(rdlId)
     }
     updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
-    earthAuditLabel.textContent = `${label} · ${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}`
+    earthAuditLabel.textContent = `${label} · ${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}${getAuditLightingStatus() ? ' · AUDIT LIGHT' : ''}`
   }
 
   function nudgeAuditView(direction) {
@@ -4814,7 +4902,7 @@
       lastAppliedThemeKey = themed.themeKey
     }
 
-    const useEarth3D = Boolean(window.earth3d?.isReady)
+    const useEarth3D = Boolean(window.earth3d?.isReady || hasVisibleEarth3DCanvas())
     ctx.clearRect(0, 0, visualState.width, visualState.height)
 
     if (window.earth3d?.setTimeOfDay) {
@@ -5073,6 +5161,251 @@
   // Spotify：如果 SDK 已经加载完毕（onSpotifyWebPlaybackSDKReady 已触发），手动初始化
   // 如果 SDK 还没好，onSpotifyWebPlaybackSDKReady 会在就绪时自动调用 initSpotifyPlayer
   if (window.Spotify) initSpotifyPlayer()
+})()
+</script>
+
+<!-- ── Dev-only Theme Tuner (localhost only) ──────────────────────────────
+     Loads lil-gui and builds a real-time parameter panel for globe theming.
+     Uses earth3d.patchTheme() to update live without page reload.
+     Only active on localhost — stripped out in production by the Railway env.
+──────────────────────────────────────────────────────────────────────────-->
+<script>
+;(function () {
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return
+
+  function buildTuner() {
+    const GUI  = window.lil.GUI
+    const e3d  = window.earth3d
+    if (!GUI || !e3d) return
+
+    const gui = new GUI({ title: 'Theme Tuner', width: 300 })
+
+    // ── Theme switcher ────────────────────────────────────────────────────
+    const THEMES = [
+      'deepNight','night','evening','lateEvening',
+      'dawn','sunrise','earlyMorning','morning',
+      'noon','afternoon','goldenApproach','sunset',
+    ]
+    const currentThemeFromState = e3d.getDebugState?.()?.currentTheme || 'deepNight'
+    const ctrl = { theme: currentThemeFromState }
+    gui.add(ctrl, 'theme', THEMES).name('Mode').onChange(function (v) {
+      e3d.setTimeOfDay(v)
+      ctrl.theme = v
+      setTimeout(syncFromState, 80)
+    })
+
+    // ── Live params ───────────────────────────────────────────────────────
+    var p = {
+      mapColor: '#1e3240', emissiveColor: '#ffd07a',
+      emissiveIntensity: 1.35,
+      atmoColor: '#7fd7f6', atmoOpacity: 0.072,
+      ambient: 0.072,
+    }
+
+    function patch() {
+      e3d.patchTheme(ctrl.theme, {
+        texture:    { mapColor: parseInt(p.mapColor.replace('#',''), 16),
+                      emissiveColor: parseInt(p.emissiveColor.replace('#',''), 16),
+                      emissiveIntensity: p.emissiveIntensity },
+        atmosphere: { color: p.atmoColor, opacity: p.atmoOpacity },
+        lighting:   { ambient: p.ambient },
+      })
+    }
+
+    var fTex = gui.addFolder('Texture')
+    fTex.addColor(p, 'mapColor').name('mapColor').onChange(patch)
+    fTex.addColor(p, 'emissiveColor').name('emissiveColor').onChange(patch)
+    fTex.add(p, 'emissiveIntensity', 0, 5, 0.05).name('emissiveIntensity').onChange(patch)
+
+    var fAtmo = gui.addFolder('Atmosphere')
+    fAtmo.addColor(p, 'atmoColor').name('color').onChange(patch)
+    fAtmo.add(p, 'atmoOpacity', 0, 0.5, 0.005).name('opacity').onChange(patch)
+
+    var fLight = gui.addFolder('Lighting')
+    fLight.add(p, 'ambient', 0, 1.0, 0.01).name('ambient').onChange(patch)
+
+    // ── Night grade ───────────────────────────────────────────────────────
+    var g = {
+      // v17.1 Night Base Grade (daybase darkened — darker)
+      nightExposure: 0.155, nightSaturation: 0.72, nightGamma: 0.88,
+      nightBlueBias: 0.07, nightGreenBias: 0.015, nightRedReduce: 0.045,
+      // Ocean tone grade: deepNight ocean stays on raw day texture
+      oceanBlendStrength: 0.45,
+      oceanDarken: 0.92,
+      oceanContrast: 1.08,
+      oceanSaturation: 1.08,
+      oceanBlueBias: 0.035,
+      oceanRedReduce: 0.045,
+      oceanGreenReduce: 0.015,
+      coastProtection: 0.75,
+      iceNeutralize: 1.0,
+      landLift: 0.035, landGamma: 0.85, landStr: 0,
+      landRedRed: 0.025, landGreenB: 0.045,
+      landGlowStr: 0,
+      // DeepNight city mask defaults
+      cityLumLow: 0.012, cityLumHigh: 0.074,
+    }
+    function patchGrade() {
+      e3d.patchTheme(ctrl.theme, { nightGrade: {
+        nightExposure:   g.nightExposure,
+        nightSaturation: g.nightSaturation,
+        nightGamma:      g.nightGamma,
+        nightBlueBias:   g.nightBlueBias,
+        nightGreenBias:  g.nightGreenBias,
+        nightRedReduce:  g.nightRedReduce,
+        oceanBlendStrength: g.oceanBlendStrength,
+        oceanDarken:        g.oceanDarken,
+        oceanContrast:      g.oceanContrast,
+        oceanSaturation:    g.oceanSaturation,
+        oceanBlueBias:      g.oceanBlueBias,
+        oceanRedReduce:     g.oceanRedReduce,
+        oceanGreenReduce:   g.oceanGreenReduce,
+        coastProtection:    g.coastProtection,
+        iceNeutralize:      g.iceNeutralize,
+        landLift:     g.landLift,
+        landGamma:    g.landGamma,
+        landStr:      g.landStr,
+        landRedRed:   g.landRedRed,
+        landGreenB:   g.landGreenB,
+        landGlowStr:  g.landGlowStr,
+        cityLumLow:   g.cityLumLow,
+        cityLumHigh:  g.cityLumHigh,
+      }})
+    }
+    var fGrade = gui.addFolder('Night Grade')
+    fGrade.close()
+    var fNightBase = fGrade.addFolder('Night Base Grade (v17)')
+    fNightBase.add(g, 'nightExposure',   0.05, 1.0,  0.01).name('exposure').onChange(patchGrade)
+    fNightBase.add(g, 'nightSaturation', 0.0,  1.0,  0.01).name('saturation').onChange(patchGrade)
+    fNightBase.add(g, 'nightGamma',      0.5,  1.5,  0.01).name('gamma').onChange(patchGrade)
+    fNightBase.add(g, 'nightBlueBias',  -0.1,  0.2,  0.005).name('+blue bias').onChange(patchGrade)
+    fNightBase.add(g, 'nightGreenBias', -0.1,  0.2,  0.005).name('+green bias').onChange(patchGrade)
+    fNightBase.add(g, 'nightRedReduce', -0.1,  0.2,  0.005).name('-red reduce').onChange(patchGrade)
+    fNightBase.add(g, 'iceNeutralize',   0,    1.5,  0.01 ).name('ice neutralize').onChange(patchGrade)
+    var fOcean = fGrade.addFolder('Ocean Tone Grade')
+    fOcean.add(g, 'oceanBlendStrength', 0,    1.0,  0.01 ).name('blend strength').onChange(patchGrade)
+    fOcean.add(g, 'oceanDarken',        0.5,  1.1,  0.005).name('darken').onChange(patchGrade)
+    fOcean.add(g, 'oceanContrast',      0.8,  1.4,  0.01 ).name('contrast').onChange(patchGrade)
+    fOcean.add(g, 'oceanSaturation',    0.6,  1.4,  0.01 ).name('saturation').onChange(patchGrade)
+    fOcean.add(g, 'oceanBlueBias',      -0.1, 0.12, 0.002).name('+blue bias').onChange(patchGrade)
+    fOcean.add(g, 'oceanRedReduce',     0,    0.12, 0.002).name('-red reduce').onChange(patchGrade)
+    fOcean.add(g, 'oceanGreenReduce',   0,    0.12, 0.002).name('-green reduce').onChange(patchGrade)
+    fOcean.add(g, 'coastProtection',    0,    1.0,  0.01 ).name('coast protection').onChange(patchGrade)
+    var fLand = fGrade.addFolder('Land Minor Assist')
+    fLand.add(g, 'landLift',    0,    0.15, 0.002).name('land lift').onChange(patchGrade)
+    fLand.add(g, 'landGamma',   0.65, 1.30, 0.01 ).name('land γ').onChange(patchGrade)
+    fLand.add(g, 'landStr',     0,    1.0,  0.02 ).name('land str').onChange(patchGrade)
+    fLand.add(g, 'landRedRed',  0,    0.15, 0.005).name('land -red').onChange(patchGrade)
+    fLand.add(g, 'landGreenB',  0,    0.20, 0.005).name('land +green').onChange(patchGrade)
+    fLand.add(g, 'landGlowStr', 0,    0.40, 0.005).name('land glow').onChange(patchGrade)
+    var fCity = fGrade.addFolder('City Lights')
+    fCity.add(g, 'cityLumLow',  0,    0.05, 0.001).name('city lum low').onChange(patchGrade)
+    fCity.add(g, 'cityLumHigh', 0.01, 0.15, 0.002).name('city lum high').onChange(patchGrade)
+
+    // ── Sync sliders from theme config (reads THEME_VISUAL_CONFIG directly) ──
+    function syncFromState() {
+      var cfg = e3d.getThemeConfig ? e3d.getThemeConfig(ctrl.theme) : null
+      if (!cfg) return
+      function toHex(n) { return '#' + (n >>> 0).toString(16).padStart(6, '0') }
+      if (typeof cfg.mapColor          === 'number') p.mapColor          = toHex(cfg.mapColor)
+      if (typeof cfg.emissiveColor     === 'number') p.emissiveColor     = toHex(cfg.emissiveColor)
+      if (typeof cfg.emissiveIntensity === 'number') p.emissiveIntensity = cfg.emissiveIntensity
+      if (typeof cfg.atmosphereOpacity === 'number') p.atmoOpacity       = cfg.atmosphereOpacity
+      if (cfg.atmosphereColor)                       p.atmoColor         = cfg.atmosphereColor
+      if (typeof cfg.ambient           === 'number') p.ambient           = cfg.ambient
+      var ng = cfg.nightGrade || {}
+      if (typeof ng.nightExposure   === 'number') g.nightExposure   = ng.nightExposure
+      if (typeof ng.nightSaturation === 'number') g.nightSaturation = ng.nightSaturation
+      if (typeof ng.nightGamma      === 'number') g.nightGamma      = ng.nightGamma
+      if (typeof ng.nightBlueBias   === 'number') g.nightBlueBias   = ng.nightBlueBias
+      if (typeof ng.nightGreenBias  === 'number') g.nightGreenBias  = ng.nightGreenBias
+      if (typeof ng.nightRedReduce  === 'number') g.nightRedReduce  = ng.nightRedReduce
+      if (typeof ng.oceanBlendStrength === 'number') g.oceanBlendStrength = ng.oceanBlendStrength
+      if (typeof ng.oceanDarken        === 'number') g.oceanDarken = ng.oceanDarken
+      if (typeof ng.oceanContrast      === 'number') g.oceanContrast = ng.oceanContrast
+      if (typeof ng.oceanSaturation    === 'number') g.oceanSaturation = ng.oceanSaturation
+      if (typeof ng.oceanBlueBias      === 'number') g.oceanBlueBias = ng.oceanBlueBias
+      if (typeof ng.oceanRedReduce     === 'number') g.oceanRedReduce = ng.oceanRedReduce
+      if (typeof ng.oceanGreenReduce   === 'number') g.oceanGreenReduce = ng.oceanGreenReduce
+      if (typeof ng.coastProtection    === 'number') g.coastProtection = ng.coastProtection
+      if (typeof ng.iceNeutralize      === 'number') g.iceNeutralize = ng.iceNeutralize
+      if (typeof ng.landLift     === 'number') g.landLift     = ng.landLift
+      if (typeof ng.landGamma    === 'number') g.landGamma    = ng.landGamma
+      if (typeof ng.landStr      === 'number') g.landStr      = ng.landStr
+      if (typeof ng.landRedRed   === 'number') g.landRedRed   = ng.landRedRed
+      if (typeof ng.landGreenB   === 'number') g.landGreenB   = ng.landGreenB
+      if (typeof ng.landGlowStr  === 'number') g.landGlowStr  = ng.landGlowStr
+      if (typeof ng.cityLumLow   === 'number') g.cityLumLow   = ng.cityLumLow
+      if (typeof ng.cityLumHigh  === 'number') g.cityLumHigh  = ng.cityLumHigh
+      gui.controllersRecursive().forEach(function (c) { c.updateDisplay() })
+    }
+
+    // ── Layer isolation (diagnostic) ──────────────────────────────────────
+    var fDbg = gui.addFolder('Diagnose')
+    fDbg.close()
+    var dbgBtns = {
+      daybaseOnly:    function () { e3d.setDebugLayer('daybaseOnly') },
+      cityMaskOnly:   function () { e3d.setDebugLayer('cityMaskOnly') },
+      cityColorOnly:  function () { e3d.setDebugLayer('cityColorOnly') },
+      final:          function () { e3d.setDebugLayer('final') },
+      baseOnly:       function () { e3d.setDebugLayer('baseOnly') },
+      emissiveOnly:   function () { e3d.setDebugLayer('emissiveOnly') },
+      atmosphereOnly: function () { e3d.setDebugLayer('atmosphereOnly') },
+      landOnly:       function () { e3d.setDebugLayer('landOnly') },
+      landGlowOnly:   function () { e3d.setDebugLayer('landGlowOnly') },
+      shadowOnly:     function () { e3d.setDebugLayer('shadowOnly') },
+      oceanMaskOnly:  function () { e3d.setDebugLayer('oceanMaskOnly') },
+      oceanGradeOnly: function () { e3d.setDebugLayer('oceanGradeOnly') },
+    }
+    fDbg.add(dbgBtns, 'daybaseOnly').name('▶ v17 Daybase darkened only')
+    fDbg.add(dbgBtns, 'cityMaskOnly').name('▶ v17 City luma mask')
+    fDbg.add(dbgBtns, 'cityColorOnly').name('▶ v17 City color / legacy lights only')
+    fDbg.add(dbgBtns, 'final').name('▶ Restore final')
+    fDbg.add(dbgBtns, 'baseOnly').name('① Base (no emissive)')
+    fDbg.add(dbgBtns, 'emissiveOnly').name('② Emissive raw (before recolor)')
+    fDbg.add(dbgBtns, 'atmosphereOnly').name('③ Atmosphere only')
+    fDbg.add(dbgBtns, 'landOnly').name('⑤ Land grade+glow (no city lights)')
+    fDbg.add(dbgBtns, 'landGlowOnly').name('⑥ Land glow only')
+    fDbg.add(dbgBtns, 'shadowOnly').name('⑦ Shadow weight map')
+    fDbg.add(dbgBtns, 'oceanMaskOnly').name('⑧ Ocean mask confidence')
+    fDbg.add(dbgBtns, 'oceanGradeOnly').name('⑨ Ocean tone grade only')
+
+    // ── Copy config snippet ───────────────────────────────────────────────
+    gui.add({
+      copy: function () {
+        function h(s) { return '0x' + parseInt(s.replace('#',''), 16).toString(16).padStart(6,'0').toUpperCase() }
+        var s = [
+          'mapColor: '          + h(p.mapColor)          + ',',
+          'emissiveColor: '     + h(p.emissiveColor)     + ',',
+          'emissiveIntensity: ' + p.emissiveIntensity    + ',',
+          "atmosphere: { color: '" + p.atmoColor + "', opacity: " + p.atmoOpacity + ' },',
+          'ambient: '           + p.ambient              + ',',
+        ].join('\n')
+        console.log('[ThemeTuner]\n' + s)
+        navigator.clipboard && navigator.clipboard.writeText(s)
+      }
+    }, 'copy').name('Copy config →')
+
+    window._earthTuner = { gui: gui, sync: syncFromState }
+    setTimeout(syncFromState, 120)
+    console.log('[ThemeTuner] ready. Switch modes with the dropdown, drag sliders, hit "Copy config →"')
+  }
+
+  // Wait for both earth3d and lil-gui to be ready
+  function tryBuild() {
+    if (window.earth3d && window.earth3d.isReady && window.lil) {
+      buildTuner()
+    } else {
+      setTimeout(tryBuild, 200)
+    }
+  }
+
+  // Load lil-gui UMD from CDN, then build
+  var s = document.createElement('script')
+  s.src = 'https://cdn.jsdelivr.net/npm/lil-gui@0.19/dist/lil-gui.umd.min.js'
+  s.onload  = tryBuild
+  s.onerror = function () { console.warn('[ThemeTuner] lil-gui CDN blocked — panel unavailable') }
+  document.head.appendChild(s)
 })()
 </script>
 </body>
