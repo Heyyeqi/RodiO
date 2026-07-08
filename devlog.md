@@ -3825,3 +3825,1176 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - 未接入 EarthDataLoader（待后续作为 "aridity" layer 接入，或作为 desert biome confidence 增强信号）
 - 月度 ET0 zip 未处理（暂无需求）
+
+## 2026-07-01 HZ清晨视觉分层修复
+
+### 做了什么
+- 只针对 `earlyMorning` 重建 sky / atmosphere / horizonGlow 职责边界，保留专用 sky plane，撤出 shared sky shader 的 Plan A screen-gradient 残留
+- 将 `earlyMorning` 收敛为“单 sky plane + 单层主 atmosphere + 关闭 horizonGlow 主发光源”，移除当前主题上的 `atmosphere2` 叠加
+- 调整 `earlyMorning` 的 day texture / lighting / starSphere 参数，使地球进入清晨白昼可读状态，同时保持无城市灯、无星场
+- 做了两项验证：`node --check pwa/earth3d.js` 通过；本地 `http://127.0.0.1:8080` 切换到“清晨”可正常渲染，控制台仅有既有 Spotify token 警告
+
+### 改动文件
+- `pwa/earth3d.js`：清理 shared sky 残留、重写 earlyMorning sky plane 渐变、收紧 atmosphere / horizonGlow / lighting 参数
+
+### 遗留问题
+- 已做轻量浏览器核验，但还没有基于最终目标图做逐像素级微调；如果你要继续逼近参考图，下一轮应只细调 `earlyMorningSkyPlane` 渐变和主 atmosphere rim
+
+## 2026-07-01 HZ清晨辉光微调
+
+### 做了什么
+- 在保留 `earlyMorning` 单独 sky plane 架构的前提下，把顶部天空再压暗一点，同时扩大近地平线冷白蓝亮区的扩散范围
+- 将主 `atmosphere` 稍微提亮，继续承担贴边 core rim；恢复 `horizonGlow` 为极弱外层散光辅助，只做 outer haze，不让它重新成为主亮带
+- 保持 `atmosphere2` 不启用，继续维持无城市灯、无星场
+- 复查通过：`node --check pwa/earth3d.js` 通过，本地页面可重新加载并切换到“清晨”
+
+### 改动文件
+- `pwa/earth3d.js`：微调 earlyMorning sky plane、atmosphere、horizonGlow 参数
+
+### 遗留问题
+- 浏览器内轻量截图受当前会话视口影响，只能确认路径正常运行；是否更接近目标图仍建议你在本机主视图里肉眼对照最终效果
+
+## 2026-07-01 HZ清晨明显增强版
+
+### 做了什么
+- 直接提高 `earlyMorning` 天空亮区扩散：扩大 near-horizon glow 高度、提高冷白蓝提亮强度，让天空亮区更容易一眼看出来
+- 明显加强主 `atmosphere` 的贴边辉光，同时把 `horizonGlow` 外层 haze 再抬一档，继续维持“内亮外散”的结构
+- 保持 `atmosphere2` 关闭，不把它重新引回多层厚白带路径
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：提高 earlyMorning sky diffusion / atmosphere rim / outer haze 强度
+
+### 遗留问题
+- 这轮是刻意做成“明显可见改动”的版本；是否过强需要你直接看主界面判断
+
+## 2026-07-01 HZ清晨借 deepNight 几何修正辉光
+
+### 做了什么
+- 参考 `deepNight` 的自然辉光结构，重设 `earlyMorning.horizonGlow` 的几何关系：让 haze 更贴边、rim 更清楚、外层衰减更慢，而不是继续把天空整体抬亮
+- 相应回收 `earlyMorning.atmosphere`，避免 3D atmosphere 和 CSS glow 叠成厚白带
+- 保持清晨配色不变，只借用 deepNight 的“几何关系”和“主次职责”
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：按 deepNight 辉光结构重设 earlyMorning horizonGlow，并回收 atmosphere
+
+### 遗留问题
+- 还需要你在主界面直接判断这版是否比上一版更自然；如果方向对，下一轮应只做强度微调，不再改结构
+
+## 2026-07-01 HZ清晨去实体感回调
+
+### 做了什么
+- 按“辉光是光，不是带子”的方向回调 `earlyMorning`：明显削弱 rim 的实体感，提高 blur，降低 core 存在感
+- 将 `horizonGlow` 调成更透、更雾、更慢衰减的 outer haze，同时回收 `atmosphere`，避免边缘被压成一条线
+- 轻微收回 sky plane 的 near-horizon 提亮，避免天空亮区继续把地平线做实
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：回调 earlyMorning sky diffusion / atmosphere / horizonGlow，减少带状实体感
+
+### 遗留问题
+- 需要你在主界面确认这版是否已经回到“雾气里的光”而不是“有形发光边”
+
+## 2026-07-01 HZ清晨失败方向归档
+
+### 做了什么
+- 记录本轮清晨视觉修复中已证伪的方向，后续明确规避：
+- 不要再把 `earlyMorning` 的主辉光交给 screen-space `horizonGlow`；白天背景一亮，它会暴露成“椭圆带子”
+- 不要再同时提高 `rim.strength`、`sky plane` near-horizon glow、`atmosphere.strengthOuter`；三层一起抬会把空气感压成实体边
+- 不要再追求“明显可见改动”式的强化；清晨目标需要的是透、雾、散，不是边缘存在感
+- 不要再让 `CSS rim` 负责定义地球边缘轮廓；它最多只能做极弱远端薄雾，或者完全关闭
+- 基于这些结论，已将 `earlyMorning` 收敛为 `atmosphere` 主发光、CSS 仅保留近乎不可察觉的薄雾辅助
+
+### 改动文件
+- `devlog.md`：追加失败方向与规避原则
+- `pwa/earth3d.js`：将 earlyMorning 主边缘发光切回 atmosphere，CSS glow 退到极弱
+
+### 遗留问题
+- 新结构是否足够自然仍需主界面直看；但后续不应再回到“screen-space 带子强化”这条路线
+
+## 2026-07-01 HZ清晨结构重做为 3D limb glow
+
+### 做了什么
+- 放弃将 `earlyMorning` 主辉光建立在 screen-space `horizonGlow` 上的路线，新增专用 3D `earlyMorningLimb` 发光层，让发光重新绑定到球体边缘附近的 3D 空间
+- 将 `earlyMorning` 调整为：`sky plane` 只做天空背景，基础 `atmosphere` 只保留很轻的空气层，主边缘发光由 `earlyMorningLimb` 承担，CSS glow 退回几乎不可察觉的薄雾辅助
+- 保留失败方向归档，后续继续规避“把白天辉光做成一条 screen-space 带子”的实现方式
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：新增 `earlyMorningLimb` 3D glow shell，并重配 earlyMorning sky / atmosphere / horizonGlow 职责
+
+### 遗留问题
+- 这次是机制层面的重做，不再是参数微调；最终观感仍需你在主界面直接判断
+
+## 2026-07-01 HZ清晨移除 sky-plane 假亮带
+
+### 做了什么
+- 直接移除 `earlyMorningSkyPlane` 内部那段 near-horizon 屏幕空间加亮逻辑，避免天空自己继续画出一条弧形亮带
+- 同时提高 `earlyMorningLimb` 的可见度，并进一步收窄基础 `atmosphere`，让“地球边缘发光”与“天空背景渐变”彻底分离
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：删除 earlyMorning sky plane 假亮带，提升 3D limb，收回基础 atmosphere
+
+### 遗留问题
+- 新版是否终于从“背景带子”切换成“地球边缘发光”，需要你直接看主界面确认
+
+## 2026-07-01 HZ清晨拆分为 core limb + outer limb
+
+### 做了什么
+- 将原本单层 `earlyMorningLimb` 继续拆成两层 3D glow shell：贴边更白更窄的 `core limb`，以及更外侧、更蓝、更散的 `outer limb`
+- 继续保持 sky plane 只做天空、基础 atmosphere 只做很轻的空气层，避免再回到“背景弧线发光”模式
+- 复查通过：`node --check pwa/earth3d.js` 通过
+
+### 改动文件
+- `pwa/earth3d.js`：新增 `earlyMorningLimbOuter`，并把 earlyMorning 发光结构调整为 core + outer 两层
+
+### 遗留问题
+- 是否终于接近参考图里“地球边缘发白、向外化成蓝雾”的观感，仍需主界面直接判断
+
+## 2026-07-02 大气层太阳方向感知
+
+### 做了什么
+- 在 `_atmVert` 顶点着色器中增加 `vWorldNormal`（`mat3(modelMatrix) * normal`），将世界坐标系法线传入片元着色器
+- 在 `_atmFrag` 片元着色器中增加 `uSunDir`（世界坐标太阳方向）和 `uSunInfluence` uniform，用 `dot(vWorldNormal, uSunDir)` 调制大气光晕：向阳面 100%，终结线约 55%，背阳面 ~6%；`uSunInfluence=0.85` 保留暗侧微弱散射
+- 为 `atmosphereMaterial` 和 `atmosphere2Material` 均添加 `uSunDir`、`uSunInfluence` uniform
+- 新增 `_syncAtmSunDir()` 工具函数，在 `updateSunPosition()` 全部三条分支（真实太阳位、override、audit 模式）末尾同步大气 uniform
+
+### 改动文件
+- `pwa/earth3d.js`：着色器扩展 + 材质 uniform + `_syncAtmSunDir()` + `updateSunPosition()` 三处调用
+
+### 遗留问题
+- `uSunInfluence` 各主题默认值（0.85）是否需要分主题调整，待视觉评估后决定
+- 可继续迭代的方向：法线贴图增强地表浮雕感、海洋高光散射
+
+## 2026-07-02 清晨大气内沿白线修复
+
+### 做了什么
+- 在 `earlyMorningRimOverlay` 片元着色器中加回了内沿白色 corona 项：`core = exp(-pow(signedD / uCoreWidth, 2.0)) * uCoreStrength`
+- 新增 uniforms：`uCoreColor: '#f3f9ff'`、`uCoreWidth: 0.016`、`uCoreStrength: 0.75`
+- 同时将 `uSkyHaloStrength` 从 0.52 上调到 0.62，外晕更明显
+- 参考原型 HTML（清晨：内沿白色细线 + 宽蓝软晕）对标自然感
+
+### 改动文件
+- `pwa/earth3d.js`：`_emRimOverlayMat` uniforms 扩展 + fragment shader 新增 core 项
+
+### 遗留问题
+- 内沿白线宽度/强度可继续微调（当前 width=0.016, strength=0.75 是第一次落点）
+- 其他时段（黎明/日出/落日）是否也需要类似内沿增强，待后续评估
+
+## 2026-07-02 清晨大气 overlay 线性混合修复
+
+### 做了什么
+- 发现 `earlyMorningRimOverlay` shader 的合成 bug：alpha=glow、color=glow×glowColor，
+  在 AdditiveBlending 下实际等效为 `glow² × color + dst`，导致有效宽度缩小 √2 倍
+- 修复：改为 `alpha=1.0`（纯加法叠加 `1×color + dst`），消除二次压缩
+- 相应下调强度参数（线性混合比 glow² 亮约 2×）：
+  `uSkyHaloStrength: 0.80 → 0.42, uCoreStrength: 0.90 → 0.55, uSkyHaloWidth: 0.36 → 0.22`
+- 同步压暗 earlyMorning 天空底图的地平线色（uHorizonColor/uLowerColor），提升蓝晕与背景的对比度
+
+### 改动文件
+- `pwa/earth3d.js`：overlay fragment shader 混合公式 + 天空底图颜色 + overlay uniform 参数
+
+### 遗留问题
+- 当前 uSkyHaloWidth=0.22 / Strength=0.42 是第一次落点，实机测试后可继续微调
+- 其他 overlay 或 Fresnel 大气的类似 glow² 问题尚未排查
+
+## 2026-07-02 清晨主题辉光定版
+
+### 做了什么
+- 将 earlyMorningRimOverlay 的 sky halo 从单一 Gaussian 重构为双层叠加（near + far），实现"贴边亮 + 宽拖尾"效果
+- 增加距离驱动三段颜色渐变：near=青白 → mid=浅蓝(#9dd8ff) → far=深蓝(vec3(0.35,0.55,0.75))
+- 将 haloT 从 linear clamp 改为 smoothstep，消除 near→far 颜色切换的硬台阶
+- farT 过渡系数从 1.5 调整到 2.5，让中段亮蓝维持更久再收尾
+- 最终微调 uSkyHaloWidthNear 0.055→0.07，内沿到中段过渡更柔和
+- 在代码中写入定版注释（清晨主题辉光 - 已定版 2026-07-02），列出所有参数和颜色公式，供后续其他时段参考
+
+### 改动文件
+- `pwa/earth3d.js`：earlyMorningRimOverlay uniform 结构、fragment shader 颜色计算、定版注释块
+
+### 定版参数
+- uCoreWidth=0.007 / uCoreStrength=0.55 / uCoreColor=#eef6ff
+- uSkyHaloWidthNear=0.07 / uSkyHaloStrengthNear=0.50
+- uSkyHaloWidthFar=0.28 / uSkyHaloStrengthFar=0.26
+- haloT=smoothstep(0.0, widthFar×0.8, signedD)
+- farT=clamp((signedD - widthNear) / (widthFar×2.5), 0.0, 1.0)
+
+### 遗留问题
+- 其他时段（日出、黎明、落日等）辉光尚未按同结构调整，均使用旧的单层 Gaussian
+
+## 2026-07-03 清晨主题辉光系统重构 + 基础值定版
+
+### 做了什么
+- earlyMorning 抗锯齿修复：inside/signedD 判断改用 fwidth() 驱动的 smoothstep，消除地平线弧线的锯齿阶梯感
+- Ocean Tone Grade 解耦：新增 rodioOceanToneGradeStandalone()，海洋调色不再必须经过 v17 daybase 夜间压暗管线，任意主题下都能生效，不再强制陆地一起变暗
+- Rim Overlay 结构重构：outerMask 严格限制在天空侧（signedD>0），移除混入的 surfVeil 逻辑
+- 新增 Inner Horizon Veil 独立图层（_emInnerVeilMat）：地表侧（signedD<0）单独一层，NormalBlending 而非纯 additive，避免刺眼堆叠
+- 新增 Land / Ocean Tint 直接选色控件（uLandTintColor/uOceanTintColor + 强度），独立于渐进式调色滑块
+- 修复 window.earth3d.isReady 因 Object.assign 拷贝 getter 快照值导致永远为 false 的 bug，影响 Theme Tuner 面板挂载时机
+- 修复贴图分块加载失败无重试机制的问题（新增最多 4 次递增延迟重试）
+- 修复 RDL 区域高精度图层纹理未加载完成就被设为可见导致的黑色楔形闪块（新增 entry.loaded 门槛）
+- 清晨主题基础值定版：Sky Background / Rim Overlay / Inner Horizon Veil 三组参数固化为代码默认值，3D Fresnel atmosphere 默认关闭（opacity 0），改由 Rim Overlay + Inner Horizon Veil 接管地平线辉光
+
+### 改动文件
+- `pwa/earth3d.js`：earlyMorning sky/rim/veil 材质与 shader、Ocean Tone Grade 解耦、isReady 属性定义修复、tile streaming 重试、RDL loaded 门槛、THEME_VISUAL_CONFIG.earlyMorning.atmosphere.opacity
+- `pwa/index.html`：Theme Tuner 新增 Land/Ocean Tint、Sky Background、Rim Overlay、Inner Horizon Veil 折叠面板，各面板默认值同步为定版数值
+
+### 定版参数（清晨）
+- Sky Background: uTopColor #061a3a / uMidColor #0b315f / uLowerColor #1a5b8f / uHorizonColor #92c8e8
+- Rim Overlay: haloWidth 0.28 / coreFraction 0.43 / corePower 9.4 / coreStrength 0.9 / tailPower 1.5 / haloStrength 0.35
+- Inner Horizon Veil: innerVeilColor #d9f0ff / innerVeilWidth 0.16 / innerVeilStrength 0.43 / innerVeilFalloff 1.8
+- 3D Fresnel Atmosphere: opacity 0.0（关闭）
+
+### 遗留问题
+- Land / Ocean Tint 强度默认 0，尚未针对各主题调出推荐值
+- 其他非清晨主题尚未复用这套 fwidth 抗锯齿 + outerMask/innerMask 分层结构
+
+## 2026-07-03 (续) 陆地/海洋调色定版 + 面板同步修复
+
+### 做了什么
+- 澄清确认：清晨地平线的白光是 Rim Overlay + Inner Horizon Veil（有意设计），不是遗留的大气光圈，3D Atmosphere 已单独关闭，两者不混淆
+- 修正 coast protection 参数方向的误解：数值越高是让近岸区域越不参与海洋调色（保护原始纹理），不是让过渡带更明显；实际要更明显的过渡带应调低
+- 定位 Land Minor Assist 之前"调了没反应"的根因：land str 默认是 0，是所有陆地增量调色的总开关
+- 验证得出陆地绿色主要靠 Land / Ocean Tint 直接染色（Colorize 算法）推动，Land Minor Assist 负责打底提亮；海洋主要靠 Ocean Tone Grade 出层次
+- 把验证过的 Ocean Tone Grade / Land Minor Assist / Land Ocean Tint 三组参数写入 THEME_VISUAL_CONFIG.earlyMorning.nightGrade / landOceanTint，成为代码默认值
+- 新增 landOceanTint 配置读取链路：applyTheme() 里应用/重置 uLandTintColor 等 4 个 uniform，getThemeConfig() 暴露 landOceanTint 字段，Theme Tuner 的 syncFromState() 同步到 tintU
+- 发现并记录：Theme Tuner 面板的 Mode 下拉框与地球画面自带的主题按钮是两套独立状态，互不同步——用地球按钮切主题不会更新面板显示，需要用面板自己的下拉框才能看到面板同步的效果
+
+### 改动文件
+- `pwa/earth3d.js`：THEME_VISUAL_CONFIG.earlyMorning 新增 nightGrade + landOceanTint 配置块，applyTheme() 新增 landOceanTint 应用/重置逻辑，getThemeConfig() 暴露 landOceanTint
+- `pwa/index.html`：syncFromState() 新增 landOceanTint → tintU 同步
+
+### 定版参数（清晨陆地/海洋）
+- Ocean Tone Grade: blendStrength 0.45 / darken 0.86 / contrast 1.08 / saturation 1.2 / blueBias 0.035 / redReduce 0.045 / greenReduce 0.015 / coastProtection 0.35
+- Land Minor Assist: landStr 0.6 / landLift 0.1 / landGamma 0.82 / landRedRed 0.06 / landGreenB 0.1
+- Land/Ocean Tint: landColor #3d8b34 / landStrength 0.65 / oceanColor #1560c9 / oceanStrength 0.2
+
+### 遗留问题
+- Theme Tuner 面板 Mode 下拉框与主 UI 主题按钮状态不同步，调试时需注意用哪一个切换
+- landOceanTint 目前只在 earlyMorning 定义，其他主题默认关闭（off），未来如需要可仿照此结构扩展
+
+## 2026-07-03 (续) 清晨页面二次审计与修改方案确认
+
+### 做了什么
+- 二次审计清晨模式的真实渲染链路，确认当前页面同时存在 3D Atmosphere、Rim Overlay、Inner Horizon Veil、Sky Background、Ocean Tone Grade、Land Minor Assist、Land/Ocean Tint 多套可叠加调参入口
+- 定位 `Atmosphere` 面板“默认显示关闭但仍见外圈”的直接根因：atmosphere shader 的 `outer` 项未受 `uOpacity` 约束，且 Theme Tuner 首次 `syncFromState()` 只更新 checkbox 显示，不会主动执行 `toggleAtmosphere3d(false)` 隐藏 mesh
+- 定位海陆配色风险：Land Minor Assist 与 Direct Tint 都依赖 ocean mask 分陆海；当 `landStr`、`landLift`、Ocean Tone Grade、Tint 混用时，近海和海岸带容易被串色，形成发灰发浅的海水
+- 对比参考图后确认后续修改方向：清晨视觉应优先收敛为“清晨专属 sky/rim/veil + 轻量 ocean tone + 极轻 land assist”，而不是继续依赖高强度 land tint / land lift 硬推整体颜色
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 尚未正式修改 `pwa/index.html` / `pwa/earth3d.js`
+- 修改时需要同时解决：首次进入外圈残留、Theme Tuner 语义混淆、清晨海陆颜色回到参考图方向
+
+## 2026-07-03 (续) 清晨试版一轮修改
+
+### 做了什么
+- 修复清晨 3D atmosphere 首次进入“显示关闭但仍残留外圈”的 bug：将 atmosphere shader 的 outer halo 也纳入 `uOpacity` 控制，并在 `applyTheme()` 中按当前 opacity 同步 atmosphere mesh 可见性
+- 修正 Theme Tuner 的 Atmosphere 语义：面板更名为 `Atmosphere (3D Shell)`，首次 `syncFromState()` 时会同步真实 3D shell 可见状态；在 shell 关闭时，其他 patch 不会再把 opacity 偷偷写回非 0
+- 为 `earlyMorning` 增加一组更克制的默认海陆调色：Ocean Tone Grade 改为轻量压深海水、Land Minor Assist 改为极轻提亮陆地，避免继续依赖高强度 tint 把近海洗灰
+- 微调清晨默认 sky/rim/inner veil：低空天空更通透，外圈拖尾更柔，内侧白雾减弱，目标是更接近参考图二而不是图一那种“外圈亮但地表偏灰白”的状态
+- 运行 `node -c pwa/earth3d.js`，确认当前脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这版仍需真实浏览器肉眼判断是否足够接近参考图二，尤其是海水深度、陆地绿色和地平线亮度
+- 如果这版方向不对，建议优先回退 `earlyMorning.nightGrade` 和 sky/rim/veil 默认值，而保留 atmosphere 首屏 bug 修复
+
+## 2026-07-03 (续) 回滚清晨海陆调色试版
+
+### 做了什么
+- 按反馈回滚本轮试版里新增的 `earlyMorning.nightGrade` 默认海陆调色，撤销对清晨海水/陆地颜色方向的这次试探
+- 保留 `atmosphere` 首屏残留外圈的 bug 修复，以及 Theme Tuner 中 `Atmosphere (3D Shell)` 的语义修正
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 清晨 sky/rim/inner veil 的这轮细调仍然保留，是否继续保留需要看你下一轮肉眼判断
+- 海陆颜色需要改走新的方向，不能继续沿用这一轮的默认调色思路
+
+## 2026-07-03 (续) 清晨海陆颜色窄调一轮
+
+### 做了什么
+- 为 `earlyMorning` 补入一组轻量 `nightGrade` 默认值，只做两件事：让植被区更偏绿、让海水整体更深一档
+- 海水方向采用轻量 `Ocean Tone Grade`，避免再次用高强度 tint 把近海洗灰
+- 陆地方向只启用很轻的 `Land Minor Assist`，通过小幅 `landGreenB` 和低强度 `landStr` 推植被色，不大改整体地表气质
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 这版仍需肉眼判断“更绿”和“更深”是否到位；如果还不够，下一轮建议先继续加深海水，再单独微调植被区
+- 当前未对天空、辉光做新改动，本轮视觉变化应主要集中在海陆颜色
+
+## 2026-07-03 (续) 海陆层极端红验证
+
+### 做了什么
+- 按“逆向验证”思路，把海洋与陆地植被区的测试色直接接入主题级 `landOceanTint`
+- 为避免 `Theme Tuner` 的 `lateEvening` 与主界面 `清晨` 可能不同步造成误判，临时同时给 `earlyMorning` 和 `lateEvening` 都配置了极端红色 `landOceanTint`
+- 补回 `landOceanTint` 的主题配置读取与应用链路：`applyTheme()` 会把主题里的 `landColor/oceanColor` 与强度写入 shader uniform，`getThemeConfig()` / `syncFromState()` 也会同步这组值
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这是临时诊断配置，不是最终视觉方案；确认哪一层生效后需要立刻回退测试红色
+- 如果画面仍然不变，需要继续检查当前真实渲染主题与 Theme Tuner 显示主题是否一致
+
+## 2026-07-03 (续) 确认 Tint 层职责并修正主题同步
+
+### 做了什么
+- 根据极端红验证结果，确认 `Land / Ocean Tint` 确实接到了最终画面，但它只负责整体色相染色，不负责海水层次或植被细节塑形
+- 回退临时的主题级大红测试值，避免继续污染正常视觉判断
+- 修正 Theme Tuner 与主画面主题不同步的问题：主视觉成功切换 3D 主题后会触发 `window._earthTuner.sync()`，同步右侧面板；`syncFromState()` 也会把面板 `Mode` 回写为当前真实主题
+- 由此确认：后续要做“海水更深、更有层次”和“植被更绿但保留细节”，应主要转去 `Night Grade -> Ocean Tone Grade / Land Minor Assist`，而不是继续推 `Land / Ocean Tint`
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 还没有开始真正的新一轮细节调色；这一步主要是确认系统职责并消除主题不同步干扰
+- 下一轮应改走分层 grade，而不是整体 tint
+
+## 2026-07-03 (续) 黄色验证版
+
+### 做了什么
+- 按反馈继续使用“明显但不过分打满”的验证色，将主题级 `landOceanTint` 从极端红改为较强黄色测试值
+- 仍同时作用于 `earlyMorning` 与 `lateEvening`，避免因主题状态切换或观察窗口不同造成误判
+- 保持这一步的目的为验证“是否看得到改动”，而不是追求最终正确视觉
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 黄色验证通过后仍需立刻撤掉这组测试色，回到真正负责层次的 grade 链路
+- 这一步仍然是整体色相验证，不代表最终海水层次和植被细节方案
+
+## 2026-07-03 (续) 撤掉黄色验证并切回分层细调
+
+### 做了什么
+- 撤掉 `earlyMorning` / `lateEvening` 上用于验证的黄色 `landOceanTint`
+- 将清晨真实调色重新收敛到 `nightGrade`：提高 `Ocean Tone Grade` 的存在感，让海水明显再深一档；同时提高 `Land Minor Assist` 的可见度，让植被区更绿但仍保留地形与明暗层次
+- 保留 `Land / Ocean Tint` 这条链路与 Theme Tuner 同步修复，作为后续微调工具，但不再用它做主调色
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 这轮是真正的层次调色，不再是测试色；仍需要肉眼确认海水深度和植被绿度是否到位
+- 如果还不够明显，下一轮应继续加强 `Ocean Tone Grade` 与 `Land Minor Assist`，而不是回到 tint
+
+## 2026-07-03 (续) 向参考清晨图靠拢一轮
+
+### 做了什么
+- 参照目标清晨图，将 `earlyMorning` 的真实调色继续往“陆地更青绿、海水更蓝”方向推进
+- 海水继续只走 `Ocean Tone Grade`：提高 blend/contrast/saturation/blue bias，并略收 red/green，让蓝度更明显但仍保留海盆与近岸层次
+- 陆地继续只走 `Land Minor Assist`：提高 `landStr`、`landGreenB` 与轻微 lift，让植被区更偏青绿，同时保持原始地形与明暗细节
+- 保持 `Land / Ocean Tint` 不参与主调色，避免重新落回整片偏色
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续肉眼确认这轮是否已经接近参考图，尤其是东北与华北植被色、渤海/东海蓝度、近岸过渡是否自然
+- 如果方向对但力度还不够，下一轮应继续小步推进同一组 `nightGrade` 参数
+
+## 2026-07-04 清晨海陆颜色再增强一档
+
+### 做了什么
+- 按反馈继续增强 `earlyMorning` 的海陆真实调色，不碰整体 tint
+- 海水继续加大 `Ocean Tone Grade`：提高 blend/contrast/saturation/blue bias，略降 coast protection，让蓝度与存在感更明显
+- 陆地继续加大 `Land Minor Assist`：提高 `landStr`、`landGreenB`、`landLift`，让植被区更青绿一些，但仍保留原有明暗和地形纹理
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续确认这轮增强后是否已经达到“一眼可见”的程度，以及近岸层次是否仍自然
+- 如果这轮仍偏轻，下一步应继续沿同一组参数推进，而不是切换到 tint
+
+## 2026-07-04 清晨海陆颜色回退一档
+
+### 做了什么
+- 按反馈回退刚才“再增强一档”的清晨海陆颜色参数，恢复到上一个较自然的版本
+- 仅回退 `earlyMorning.nightGrade` 里海水与陆地增强幅度，不影响此前已经确认有效的主题同步、atmosphere 首屏修复和分层调色链路
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 当前已恢复到上一档较自然的版本，后续如需继续调，建议改成更小步的微调而不是整档增强
+
+## 2026-07-04 清晨海水去灰雾感微调
+
+### 做了什么
+- 按反馈对 `earlyMorning` 海水做一次 very small 微调，目标不是继续明显加蓝，而是减少近岸与远海过渡里的灰雾感
+- 仅小步调整 `Ocean Tone Grade`：略增 blend/contrast/saturation/blue bias，并同步微调 red/green reduce 与 coast protection，让海水更干净但不走回“太假”的蓝
+- 保持陆地参数不变，避免本轮海水修正连带破坏已经接受的陆地状态
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续肉眼确认渤海、黄海和远海过渡区的灰感是否已经足够收掉
+- 如果还需要推进，下一轮应继续 very small 地微调海水，不建议同步再动陆地
+
+## 2026-07-04 新增地球观测角度
+
+### 做了什么
+- 在主界面的审计角度区新增两个视角按钮：`TILT` 和 `GLOBE`
+- 为 3D 地球补充两套相机预设：一套更接近参考图的斜切观察角度，一套更远的全球视角
+- 同步修正角度标签逻辑，避免界面仍然只按 `toUpperCase()` 显示旧的三种名称
+- 运行 `node -c pwa/earth3d.js` 与 `node -c server.js`，确认语法通过
+
+### 改动文件
+- `pwa/index.html`
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续肉眼验证 `TILT` 是否已经足够接近参考图的空间关系；如果不够，下一轮优先继续调相机 `y/z/lookY`
+- `GLOBE` 当前先提供一个偏全球总览的安全版本，后续可再按需要增加“更正”“更斜”两种全球角度
+
+## 2026-07-04 清晨辉光错位修复
+
+### 做了什么
+- 定位 `earlyMorning` 角度切换后辉光错位的根因：Rim Overlay / Inner Horizon Veil 仍按“球心投影 + 半径近似”估算屏幕弧线，角度一陡就会与真实可见地平线脱开
+- 将 `updateEarlyMorningRimProjection()` 改为投影真实切线轮廓：先在相机空间构造球体的切线圆，再把该圆的中心与上下左右极值投到屏幕，驱动 `uRimCenter / uRimRadius`
+- 保持清晨现有 sky / rim / veil 分层结构不变，只修正投影几何，避免再次扰动已经定下来的颜色与强度
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续实机切换 `TOP / 45° / LOW / TILT / GLOBE` 观察是否还有极端角度下的细小偏移
+- 如果仍有残余错位，下一步应检查是否要把 CSS horizon glow 与 earlyMorning overlay 的几何口径进一步统一
+
+## 2026-07-04 清晨初始构图辉光偏顶修正
+
+### 做了什么
+- 继续定位发现：上一轮“真实切线圆”修复虽然解决了切换角度时的明显漂移，但在初始构图这种偏轴视角下，直接用少数切线点反推中心/半径，仍会把弧线整体抬到画面顶部
+- 将 `updateEarlyMorningRimProjection()` 改为采样整圈真实切线轮廓（96 点），再按屏幕投影结果的实际包围盒反推 `uRimCenter / uRimRadius`
+- 这样初始界面和后续 `TOP / 45° / LOW / TILT / GLOBE` 都走同一套“真实轮廓 -> 屏幕椭圆”链路，不再依赖少量点的几何近似
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 仍需实机确认初始构图下辉光是否已经回落到正确的地平线位置
+- 如果还存在轻微偏差，下一步应检查 overlay 椭圆假设本身是否需要进一步升级为非轴对齐轮廓拟合
+
+## 2026-07-04 清晨审计近景自动切换 3D 壳层
+
+### 做了什么
+- 根据 `near` 截图确认：清晨的屏幕空间 `Rim Overlay + Inner Horizon Veil` 在大变焦审计视角下不稳定，即使继续修椭圆拟合，也会反复出现“辉光压进地表”的问题
+- 新增 `updateEarlyMorningGlowMode()`：默认构图继续使用清晨定版 overlay；当进入 `near` 近景或 `low / tilt / global` 这类极端视角时，自动关闭 overlay，切换到更稳的 3D atmosphere shell
+- 将该切换接入渲染循环、`setRDLZoomLevel()` 和 `setAuditViewAngle()`，确保缩放与角度切换时辉光模式同步更新
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续实机确认 3D shell 在 `near` 下的观感是否足够自然，尤其是亮度是否需要再压一点
+- 如果后续想在极端视角下也保留更细腻的清晨 glow，就需要单独做一套非屏幕拟合的 3D 清晨辉光，而不是继续复用当前 overlay
+
+## 2026-07-04 清晨审计视角规则收口
+
+### 做了什么
+- 根据 `near -> far` 仍然出错的反馈，确认问题不是单一阈值，而是“默认展示视角”和“审计视角”两套视觉语义没有彻底分开
+- 收紧 `updateEarlyMorningGlowMode()` 规则：现在只有“默认首页构图（top + base zoom）”允许使用清晨 screen-space overlay；只要发生任何审计交互（FAR/NEAR 改变 zoom，或切换到任意非 top 角度），就统一强制走 3D atmosphere shell
+- 这样可以避免从 `near` 回到 `far` 时 overlay 被重新打开，重新套回一个它本来就不稳定的相机/构图上
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续做一次系统性审查，把“首页展示模式”和“审计模式”的职责、允许效果、允许镜头范围写清楚
+- 如果后续希望 `far` 也保留清晨 overlay 质感，那应为审计模式单独设计一套 3D glow，而不是让首页 overlay 回流
+
+## 2026-07-04 FAR 按钮语义修正
+
+### 做了什么
+- 在系统审查过程中确认一个关键语义问题：`FAR` 原先并没有回到默认展示态，而是把缩放设为 `0.35`
+- 这会导致用户从 `near` 点回 `far` 时，实际上仍停留在半审计状态，界面与辉光规则都不会真正回到首页默认构图
+- 将 `FAR` 按钮改为恢复 `0.00` 基准缩放，让它真正承担“回到默认视图”的职责
+- 运行 `node -c server.js`，确认页面脚本整体语法通过
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 还需要继续验证 `FAR` 恢复默认缩放后，清晨 overlay 与 3D shell 的切换是否终于符合直觉
+- 下一步仍需要把“默认展示模式”和“审计模式”的完整状态机审计出来，避免继续靠按钮语义猜测
+
+## 2026-07-04 审计模式清晨 3D 辉光补强
+
+### 做了什么
+- 按“第二条路”继续推进：不让审计角度回退到旧的 screen-space overlay，而是专门增强审计模式下的清晨 3D atmosphere shell
+- 在 `updateEarlyMorningGlowMode()` 中为审计模式单独设置一组更可见的 shell 参数：提高 `uOpacity`，放宽 `uPower / uPowerOuter`，提高 `uStrengthOuter`，并轻微增大 `uRadius`
+- 保持首页默认构图仍使用原来的清晨 overlay；只有审计模式切到这套更稳定的 3D glow
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续肉眼验证 `GLOBE / 45° / LOW / TILT` 下这套 3D glow 是否已经“看得见但不过假”
+- 如果仍偏弱，下一步优先继续微调审计模式 shell，不回退到 overlay
+
+## 2026-07-04 角度切换时清除 RDL inspect overlay
+
+### 做了什么
+- 根据极区截图确认另一条独立问题链：黑色/深色三角形并非清晨辉光，而是 `RDL inspect region` 高精区域 overlay 在角度/缩放切换后残留
+- 新增 `clearRDLInspectRegion()`，并接入 `setAuditDistance()` 与 `setAuditAngle()`，确保 `FAR / NEAR / TOP / 45° / LOW / TILT / GLOBE` 这类纯镜头控制不会继续带着旧的区域 overlay 一起走
+- 这样镜头切换时优先回到干净的底图 + 当前辉光模式，不再让某个历史 audit region 的高精 patch 以球面窗口形状压在“对面”
+- 运行 `node -c server.js`，确认页面脚本整体语法通过
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 还需要继续验证 audit region 真正需要高精 patch 时，是否仍能按预期重新启用
+- 后续系统审查里应把“镜头控制”和“区域 inspect 控制”彻底拆开，避免再次共享状态
+
+## 2026-07-04 关闭非 inspect 状态的自动 RDL 区域贴片
+
+### 做了什么
+- 继续追查后确认：问题不只是 inspect 残留，还包括 `updateRDLOverlays()` 在非 inspect 状态下会自动挑一个“最朝向相机”的区域 patch 显示
+- 这会在极区和某些斜视角下暴露出明显的球面窗口边界，看起来像黑色/深色三角形或异常贴片，并不属于“渲染延迟”
+- 将非 inspect 状态的 RDL 逻辑改为全部隐藏；只有明确设置 `_rdlInspectRegion` 时，才允许显示高精区域 patch
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 需要继续验证 audit region 显式 inspect 时，高精 patch 是否仍按预期显示
+- 如果后续还需要“自动区域增强”，必须重新设计成不暴露球面窗口边界的方案，不能恢复当前 best-facing 逻辑
+
+## 2026-07-06 修复深夜背景被清晨式辉光污染
+
+### 做了什么
+- 排查“今天下午深夜模式背景修改失败”的反馈：本地起独立预览进程（8081，不影响用户已在跑的 8080 实例），在浏览器里对比 `入夜` 与 `深夜` 两个主题，发现 `深夜` 的天空被一层明显的浅蓝白色雾状光晕覆盖，观感接近“清晨”而不是“深夜”
+- 定位根因：未提交的改动把 `RIM_OVERLAY_THEMES` 从 `['earlyMorning']` 扩成了 `['earlyMorning', 'deepNight']`，让 `深夜` 复用清晨专用的 Rim Overlay + Inner Horizon Veil 屏幕空间辉光系统；虽然 `deepNight` 配了自己的 `rimGlow` 颜色，但沿用了清晨量级的 `uSkyHaloWidth: 0.30`（覆盖近 1/3 屏幕高度）与 `haloStrength: 0.55`（比清晨默认值更强），导致本该纯黑的夜空被大范围点亮
+- 诊断过程中发现一个方法论坑：`updateEarlyMorningGlowMode()` 每帧都会把 rim overlay 的 `uOpacity` 强制写回 1.0，所以单纯在控制台改 uniform 的 `.value` 会在下一帧被覆盖、看起来“毫无效果”；改用 `Object.defineProperty` 钉住 setter 才能在运行时验证因果关系
+- 修复方式：把 `RIM_OVERLAY_THEMES` 缩回 `['earlyMorning']`，`deepNight` 回退到未叠加辉光前的渲染路径；`deepNight.rimGlow` 配置块保留在主题对象里未删除，等以后单独给深夜做一版明显更弱的辉光再启用
+- 修复后用真实浏览器交叉验证：`深夜`（黑天空 + 稀疏暖光城市群，无雾感）、`入夜`（同样正常）、`清晨`（不受影响，辉光弧线仍在）均符合预期
+- 运行 `node -c pwa/earth3d.js`，确认脚本语法通过
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- `.claude/launch.json` 的预览端口从占位的 3000 改成了 8081（原值 3000 与 `server.js` 实际默认端口 8080 不符，8080 又被用户另一个正在跑的进程占用），后续如需要可再调整
+
+## 2026-07-06 (续) 深夜重新启用辉光，改为细线荧蓝配色
+
+### 做了什么
+- 用户看过黑天空的回退版之后反馈：其实想要深夜也有辉光，效果要像清晨那样——没有大片光圈、地平线内外都有光，只是颜色要换成参考图里那种荧蓝色细线（ISS 拍摄风格：贴着地平线一条锐利亮线，快速衰减到黑，而不是大片雾）
+- 之前判断错的地方：以为清晨能看起来"干净"是因为整套系统本身很克制，实际是因为清晨的辉光叠加在明亮蓝天背景上不显眼；深夜背景是纯黑，同样强度的 haze 会显得刺眼——所以正确修法不是关掉整个 rim overlay，而是把 `deepNight.rimGlow` 单独调窄调弱
+- 重新把 `deepNight` 加回 `RIM_OVERLAY_THEMES`，并重写 `deepNight.rimGlow`：
+  - outer（天空侧）：颜色改荧蓝 `#33d6ff`（近端 `#d8fbff` 死白高光，远端 `#062a4a` 深蓝收尾）；`width` 从 0.30 收到 0.045，`haloStrength` 从 0.55 压到 0.12，`tailPower` 从 1.5 提到 3.0——核心变化是让"尾巴"快速衰减，不再铺满小三分之一屏幕
+  - inner（地表侧）：颜色改 `#3fc8f0`，`width` 0.16→0.05，`falloff` 1.8→2.2，同样收窄
+- 本地起独立预览进程验证：深夜现在是贴地平线一条锐利荧蓝细线，上方迅速转黑、下方带一点蓝色再过渡到暗地表，符合参考图；清晨不受影响
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 目前只在 TOP 默认机位肉眼验证过；`45°/LOW/TILT/GLOBE` 等审计角度走的是 3D Fresnel shell 而非这套 rim overlay，需要另外确认审计视角下深夜观感是否也需要同步调整
+- 荧蓝配色和线宽是按参考图目测调的，建议实机（非压缩截图）再确认一遍亮度是否刺眼
+
+## 2026-07-06 (续) 排查"深夜陆地海洋消失" — 结论：不是渲染 bug，是亮度定版太暗
+
+### 做了什么
+- 用户看到辉光修好后反馈"陆地和海洋消失了"，深夜画面除了那条细线几乎全黑
+- 花了大量时间排查，中间踩了好几个坑，记录下来避免下次重复：
+  - 直接改 `earthShaderUniforms.emissive.value` 没用——three.js 每帧都会用 `material.emissive × material.emissiveIntensity` 重新覆盖这个 uniform，必须改 `earthMaterial.emissive` / `.emissiveIntensity` 本身才有效
+  - `renderer` 没开 `preserveDrawingBuffer`，异步 `toDataURL()` / 延迟的 `gl.readPixels()` 读到的都是空 buffer（全 0），必须在**同一个同步调用里**先 `renderer.render()` 再立刻 `gl.readPixels()` 才能拿到真实像素
+  - 粗网格取样（132 点撒在整个可见半球）完全没扫到任何城市光斑——深夜的 emissiveIntensity(0.72) 和 cityLum 阈值把城市光压得又暗又稀疏，随手撒点大概率全部落空，必须用密集网格（4px 步长）才能扫到真实亮点
+- 用密集像素级取样确认：深夜的城市灯光**渲染逻辑本身是对的**——用当前配置的 emissiveIntensity/cityLumLow/High 密集扫描，确实能在预期位置扫到暖色（181,166,129）的城市光斑；把 `earthMaterial.emissiveIntensity` 强行拉到 30、`uCityLumHigh` 降到 0.01 也确实能扫到更多亮点
+- 结论：这不是 bug，是"定版 2026-07-05"这版 `nightGrade`/`emissiveIntensity: 0.72` 把深夜整体亮度压得太狠——陆地/海洋/城市灯光都还在渲染，只是数值太低，在压缩截图或普通观察距离下基本等于看不见，读起来像"全黑一片"
+- 已把临时加的 `__debugGetInternals()` 调试钩子从 `earth3d.js` 移除，不影响正式代码
+
+### 改动文件
+- `devlog.md`（本轮排查没有改动实际渲染参数，等用户确认方向后再动手调亮度）
+
+### 遗留问题
+- 需要用户明确：深夜是否要整体调亮（比如 emissiveIntensity 0.72→1.3~1.6，nightExposure 0.085→0.14 左右），把陆地轮廓和城市灯光调到"看得清"但仍比入夜暗很多的程度；还是这套"几乎全黑，只剩零星光点"就是想要的效果，只是这次截图/环境让人以为它坏了
+- 如果确认要调亮，下一步直接改 `THEME_VISUAL_CONFIG.deepNight.texture.emissiveIntensity` 和 `nightGrade.nightExposure/cityLumHigh`，再实机验证
+
+## 2026-07-07 HZ复核 deepNight 陆海“消失”结论
+
+### 做了什么
+- 按仓库当前代码重新核对 `deepNight` 的主题配置、`applyTheme()` 赋值路径和 shader 夜间分级逻辑，确认这不是 uniform 没生效、纹理没挂上，或后续分支把地球隐藏掉
+- 复核结果与前一轮排查一致：`applyTheme()` 会把 `deepNight.texture.emissiveIntensity = 0.72` 直接写到 `earthMaterial.emissiveIntensity`，同时把 `nightGrade.nightExposure = 0.085`、`cityLumLow = 0.014`、`cityLumHigh = 0.065` 写入 shader uniform；这些值叠加后会把陆地、海洋和城市灯整体压到极暗，只剩极少数亮区还能露头
+- 结合截图判断，当前现象仍应归类为“定版参数刻意过暗导致读起来像消失”，不是新渲染回归
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 如需把深夜调回“仍然很暗，但能看出陆海结构”，建议直接回调 `pwa/earth3d.js` 中 `deepNight` 的 `emissiveIntensity`、`nightExposure` 与城市阈值，而不是继续查渲染链路
+
+## 2026-07-07 HZ深夜切到“明显可见”亮度档
+
+### 做了什么
+- 按“方案 2”直接回调 `deepNight` 的核心亮度参数，让深夜仍然保持黑底和细线辉光，但陆地、海洋、城市网络在正常观察距离下能被读出来
+- 提高 `deepNight.texture.emissiveIntensity`：`0.72 → 1.62`，把城市灯从“极少数亮点”拉回到能形成连续暖色网络的级别
+- 提高 `deepNight.nightGrade.nightExposure`：`0.085 → 0.15`，同时把 `oceanDarken` 从 `2.8` 回调到 `2.35`，避免海面在新曝光下仍被额外压成纯黑
+- 放宽城市亮度阈值：`cityLumLow 0.014 → 0.012`、`cityLumHigh 0.065 → 0.052`，让中高密度城区在常规观看距离下也能稳定露头
+- 更新 `pwa/index.html` 的脚本版本号 `rdl-overlay-gate-v17 → v18`，避免本地浏览器继续命中旧版 `earth3d.js`
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这轮是按“明显可见”目标做的静态参数回调，仍建议你在真实设备上看一眼：如果觉得城市灯偏多，下一步优先微收 `emissiveIntensity` 或把 `cityLumHigh` 略抬回去；如果陆海还不够清楚，再继续抬 `nightExposure`
+
+## 2026-07-07 HZ定位 deepNight 真正发黑层并二次回调 daybase
+
+### 做了什么
+- 用浏览器实机复验，不靠截图猜：同一审计区域下，`morning/noon` 能正常显示陆海；切到 `deepNight` 后，即使打开 Diagnose 里的 `v17 Daybase darkened only`，底球仍几乎全黑
+- 同时复核 Diagnose 日志，确认这次问题**不是** `oceanMask` 丢失，也不是城市灯没挂上：
+  - `oceanMaskOnly` 日志显示 `maskState: ready`、`uOceanMask uniform: 4096×2048`、`isPlaceholder: false`
+  - `cityColorOnly` 日志显示 `emissiveMap: SET`、`emissiveIntensity: 1.62`
+- 因此把修复点收敛到 `deepNight.nightGrade` 的 daybase 暗化本身，继续上调基底曝光并回收过度海洋压黑：
+  - `nightExposure: 0.15 → 0.30`
+  - `oceanDarken: 2.35 → 1.65`
+  - `landLift: 0.035 → 0.06`
+  - `landGamma: 0.85 → 0.82`
+- 将脚本版本号提升到 `rdl-overlay-gate-v19`，避免浏览器继续命中旧版深夜参数
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 如果 `v19` 下 deepNight 仍然读不出陆海，那么下一步就不再只调 theme config，而是直接检查 `rodioNightBaseFromRaw()` 的暗化公式本身是否需要抬底或加最低可见地表 floor
+
+## 2026-07-07 HZ继续追 deepNight 发黑到 daybase 调试层
+
+### 做了什么
+- 继续用浏览器实机排除“看起来像黑，其实是机位/区域不对”的可能：
+  - 同一区域、同一套审计控件下，`noon` 画面能稳定显示陆地、海洋和雪盖
+  - 切回 `deepNight` 后，正式画面仍近乎纯黑
+- 进一步核验 Diagnose 里的 `daybaseOnly`，确认发黑不是城市灯层造成：
+  - `oceanMask` 已在日志中确认 `ready`
+  - `cityColorOnly` 日志也确认 `emissiveMap: SET`
+  - 但 `daybaseOnly` 仍几乎不可见，说明问题收敛在 `deepNight` 的 daybase/最终成像链路，而不是资源丢失
+- 试了两种修法但浏览器实机仍未看到可见改善：
+  - 仅调 theme config：`nightExposure`、`oceanDarken`、`landLift`、`landGamma`
+  - 在 `rodioNightBaseFromRaw()` 里加入低强度 structural floor
+- 为了继续分诊，又把 `daybaseOnly` 调试模式改成“把 daybase 直接写进 emissive，绕过 Phong 光照”，用于判断问题究竟在 night base 公式本身，还是在 diffuse → lighting 的后半段；但本轮浏览器自动化在最终复验这一步超时，结论还差最后一张对照图
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 目前能确认：`deepNight` 的发黑不再是相机、区域、`oceanMask`、或城市灯挂载问题；真正的故障点在 daybase 暗化/最终成像链路
+- 还需要补完最后一步验证：看“emissive-bypass 的 daybaseOnly”是否可见。若可见，问题在材质光照乘法；若仍不可见，问题就在 `map_fragment` / `rodioNightBaseFromRaw()` 本身
+
+## 2026-07-07 HZ deepNight 系统审计阶段性结论
+
+### 做了什么
+- 停止继续试 theme 参数，改为按链路审计 `deepNight`：`主题配置 → applyTheme → shader uniform → Diagnose 调试层 → 浏览器表现`
+- 结合代码和浏览器实机，把已经证实的事实与尚未证实的点分开：
+  - 同一区域、同一审计控件下，`noon` 可见、`deepNight` 近乎全黑，因此不是相机/区域问题
+  - `oceanMaskOnly` 日志已证实 `oceanMask` 为 `ready`，不是海洋 mask 丢失
+  - `cityColorOnly` 日志已证实 `emissiveMap: SET` 且 `emissiveIntensity` 生效，不是城市灯未挂载
+  - `daybaseOnly` 日志已证实 `uDaybaseMode`、`uNightExposure` 等 uniform 被成功写入，但浏览器观感仍几乎全黑，因此继续只调 `deepNight.nightGrade` 已被证伪
+- 进一步定位到：问题现在收敛在 `deepNight` 的 daybase / final shading 链路，而不是资源缺失或主题按钮状态不同步
+- 为了继续分诊，在 Diagnose 的 `daybaseOnly` 上加了一个“绕过 Phong 光照、直接把 daybase 写入 emissive”的诊断通道；这一步代码已落地，但浏览器自动化本轮未稳定产出最终对照图
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 还差最后一刀证据来区分：问题是在 `rodioNightBaseFromRaw()` / `map_fragment` 本身，还是在 `diffuseColor` 进入 `MeshPhongMaterial` 光照后的后半段
+- 在这个分诊结论出来前，不建议再继续改 `deepNight` 的 theme config 数值
+
+## 2026-07-07 HZ补上 3D 可用性误判护栏
+
+### 做了什么
+- 在系统审计过程中，额外检查了 `index.html` 的 `useEarth3D` 判定链，发现主循环此前把“canvas 仍可见”也当作 3D 可用信号的一部分
+- 这会放大一种坏状态：如果 `window.earth3d` 已失效/被删除，但某次异常下 DOM 里残留了旧 canvas，页面可能继续认为自己在 3D 模式，从而既不真正显示 3D 地球，也不回退到 2D
+- 因此给 `hasVisibleEarth3DCanvas()` 加了 API 存活护栏：只有 `window.earth3d` 仍存在、且 `isAvailable()` 没明确返回 false 时，才允许“可见 canvas”参与 3D 可用判断
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这只是运行时护栏，不足以解释当前 deepNight 发黑的全部现象；真正的主故障点仍在 `deepNight` 的 daybase / final shading 链路
+
+## 2026-07-07 HZ补上 3D 残留层自愈兜底
+
+### 做了什么
+- 在系统审计中抓到一个更硬的运行时异常：页面上 `#earth3d-canvas` 还在，但 `window.earth3d` 已经不存在，这说明用户看到的“全黑地球”有一部分其实是失效后的 3D 残留层
+- 因此在 `index.html` 里补了 `syncEarth3DLayerHealth()` / `hideStaleEarth3DLayer()` 这组自愈逻辑
+- 现在只要 `window.earth3d` 缺失，或 `isAvailable()` 明确为 false 且 `isReady` 也不成立，就会直接清空 `#earth3d-layer` 残留 DOM，强制让 2D fallback 接管，而不是继续把一张失效的黑 canvas 留在界面上
+- 同时把 `startVisualLoop()` 的 `useEarth3D` 判定改成先过这一层健康检查，再决定是否跳过 2D 绘制
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这个修复解决的是“3D runtime 丢了以后，页面为什么还能留着一块黑幕”这个系统性问题
+- `deepNight` 自身的 daybase / final shading 是否还存在独立偏黑链路，仍需在稳定浏览器会话里继续验证
+
+## 2026-07-07 HZ整理 deepNight 审计交接摘要
+
+### 做了什么
+- 把本轮 `deepNight` 问题里已经证实、尚未证实、以及适合交给外部代理继续修改的边界整理成了统一摘要
+- 明确区分了两类问题：一类是 3D runtime 失效后的残留黑幕问题，另一类是 `deepNight` 自身 shader / daybase 链路可能仍然偏黑的问题
+- 给后续代理预留了更清晰的修改范围，避免继续回到“盲调参数”的路径
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 还需要在稳定浏览器会话里验证：当前残留层兜底生效后，`deepNight` 是否仍有独立的 shader 偏黑问题
+
+## 2026-07-07 HZ复核外部代理的条件式 deepNight patch
+
+### 做了什么
+- 复核了一版新的外部代理结论：它已把“atlas 占位色湮灭”降级为待验证假设，不再直接写成已证实根因
+- 同时审查了它提出的条件式 shader patch，重点检查是否比“全局亮度地板”更窄、更不容易误伤正常 deepNight 渲染
+- 结论是：这版思路明显比上一版更稳，但仍属于“可进一步试验”的候选修复，不应在拿到实机验证前直接当成最终根因定案
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 仍需在 `window.earth3d` 存活且 `isReady === true` 的稳定会话里，实机验证 `daybaseOnly` 是否真的命中 atlas 占位色场景
+- 若要落 patch，建议先让外部代理补充一个更直接的“占位色判定证据”或给出实机前后对照
+
+## 2026-07-07 HZ复核 rawDayAtlas 诊断方案的隔离性
+
+### 做了什么
+- 继续按代码审查标准复核了外部代理提出的 `rawDayAtlas` 诊断模式
+- 确认这条思路本身是对的：直接看 `_rawDay` 比继续猜 `daybaseOnly` 更接近“一锤定音”的证据
+- 但也确认目前提案还不够隔离：如果只在 `map_fragment` 里把 `diffuseColor.rgb = _rawDay`，后续的 standalone ocean grade、land/ocean tint、以及默认 emissive 分支仍可能继续污染观测结果
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 外部代理还需要把 `rawDayAtlas` 做成真正的“原始 atlas 观察模式”，至少要避免被后续 ocean/tint/emissive 链路继续改写
+
+## 2026-07-07 HZ复核 rawDayAtlas 最终 patch 草案
+
+### 做了什么
+- 继续复核了外部代理给出的“最终版” `rawDayAtlas` patch 草案
+- 这版已经修正了最关键的问题：不再把 `diffuseColor.rgb` 当作原始 atlas，而是改成 `mapTexelToLinear(texture2D(map, vUv)).rgb` 直接采样 `map`
+- 同时它也保留了此前正确的隔离策略：`map_fragment` 侧用 `else` 门控绕开后续 night grade / ocean grade / tint，`emissivemap_fragment` 侧显式清零 emissive，`setDebugLayer('rawDayAtlas')` 里补上 `earthMaterial.color.set(0xffffff)` 作为前置状态保险
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 这版 patch 思路已基本过关，但当前仍只是“草案说明”，还没有真正落到仓库代码里
+- 若要实际使用 Diagnose 面板触发该模式，还需要补上对应 UI/按钮绑定（如果不打算只靠控制台调用）
+
+## 2026-07-07 HZ落地 deepNight 可见性救援并更新脚本版本
+
+### 做了什么
+- 直接核对仓库后确认：`rawDayAtlas` 诊断模式其实已经在代码里落地了，但它本身只用于定位 atlas 占位色问题，不会默认改变 `deepNight` 的最终外观
+- 因此补上了真正影响默认 `deepNight` 观感的最小 rescue patch：在 v17 `diffuseColor.rgb = mix(_nightBase, _oceanTone, ...)` 之后，对疑似 `#020514` 占位色的陆地区域施加条件式最低可见地板
+- 同时把 `earth_modes.js` / `earth3d.js` 的脚本 query version 从 `rdl-overlay-gate-v19` bump 到 `rdl-overlay-gate-v20`，避免页面继续命中旧脚本缓存
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 还需要你这边做一次硬刷新，确认页面已经加载 `v20` 脚本
+- 如果 `deepNight` 仍然纯黑，下一步就该直接用 Diagnose 里的 `rawDayAtlas` / `daybaseOnly` 做实机分流，而不是再继续猜
+
+## 2026-07-07 HZ修复 ThemeTuner 绑定旧 earth3d 对象
+
+### 做了什么
+- 在浏览器运行态里抓到一个直接原因：当前页面的 `window.earth3d` 已不存在，因此 Diagnose 按钮“点了没反应”并不是按钮本身没绑定，而是 ThemeTuner 还在闭包里调用启动时那份旧 `e3d`
+- 因此把 ThemeTuner 的关键动作改成每次操作都重新读取 `window.earth3d`：包括 theme 切换、`patchTheme`、atmosphere 开关、shader/tint 同步、以及 Diagnose 的 `setDebugLayer`
+- 同时在 runtime 缺失或不可用时打印明确警告，避免继续出现“界面能点，但实际没有任何后端对象在响应”的假象
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这一步修复的是“ThemeTuner 绑死旧对象导致按钮无反应”的问题
+- 若刷新后仍提示 runtime 缺失，就需要继续追 `window.earth3d` 为什么在当前页面生命周期里消失
+
+## 2026-07-07 HZ回滚 deepNight 实验链到 7 月 6 日辉光基线
+
+### 做了什么
+- 回滚了这轮为排查 `deepNight` 黑屏而加入的实验链，去掉 `rawDayAtlas` 诊断模式、atlas placeholder rescue 地板、`daybaseOnly` 的 emissive 绕行，以及 Theme Tuner 里对应的诊断入口
+- 把本地调试页的脚本版本号从 `rdl-overlay-gate-v20` 回退到 `rdl-overlay-gate-v17`，避免继续沿用这轮实验版缓存标识
+- 保留了与本次回滚无关的其他视觉与渲染改动，不做整文件硬回退，尽量把影响收窄在 `deepNight` 这条链路上
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 这次回滚的目标是先回到 7 月 6 日“深夜辉光基线”，不是继续修复当前 `deepNight` 的根因
+- 回滚后仍需要浏览器硬刷新一次，确认页面确实加载的是回退后的脚本
+
+## 2026-07-07 HZ继续回退后续审计 UI 到旧版
+
+### 做了什么
+- 继续把未完全回退的页面审计 UI 收回：移除了 `TILT / GLOBE` 两个扩展视角按钮，以及它们对应的标签映射、清理逻辑和缩放行为改动
+- 让首页左侧地球审计控制重新回到旧版三档视角与原始 `FAR` 行为，避免看起来仍像“实验中间态”
+- 重新做了 `index.html` 内联脚本语法检查，确认页面结构没有被本次回退破坏
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 如果浏览器不做硬刷新，仍可能继续显示旧缓存里的审计 UI
+- 当前截图右侧的 `goldenApproach` 是页面当前模式，不代表 `deepNight` 已自动恢复，需要刷新后再切回 `deepNight` 实看
+
+## 2026-07-07 HZ直接回调 deepNight 到可见亮度档
+
+### 做了什么
+- 确认当前问题已经不是缓存，也不是审计 UI 残留，而是 `deepNight` 主题参数本身仍处在过黑档位
+- 直接把 `deepNight.nightGrade.nightExposure` 从 `0.30` 回调到 `0.15`，把陆地/海洋基底重新抬回正常观察距离下可读的级别
+- 同时把 `oceanDarken` 调回 `2.35`，并将城市阈值恢复到 `cityLumLow=0.014 / cityLumHigh=0.065`，对应此前已经确认过的“明显可见”档
+- 保持 `emissiveIntensity=1.62` 不变，继续使用这版较容易形成连续暖色城市网络的强度
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 这次调整只回调 `deepNight` 的亮度参数，没有再动 shader 结构
+- 仍需要你在浏览器里直接看 `deepNight` 的陆海是否恢复可读；如果还不行，再继续查结构链路
+
+## 2026-07-07 (续) Claude 接手，定位到验证方法本身有问题并修复 deepNight
+
+### 做了什么
+- 用户反馈 Codex 的回滚"没有回滚成功"：核对后发现 Codex 的回滚只清掉了实验性诊断代码（`rawDayAtlas`、TILT/GLOBE、脚本版本号），但 `emissiveIntensity` 停在调亮后的 `1.62`、其余亮度参数又退回了原始偏暗值，是个不上不下的中间态；用户授权由 Claude 接手继续修
+- 关键突破：发现`之前一直用来验证效果的 preview_screenshot 直接截图，对这个 WebGL canvas 本身就不可靠——同一帧内容，用 `renderer.render()` 后立刻 `gl.readPixels()` 量出的像素明明是亮的（城市光斑 luma 160-200），但 `preview_screenshot` 截出来的图还是纯黑。改用"把 WebGL canvas 内容 `drawImage` 到一个新 2D canvas 再截图"的方式后，同一帧立刻能看到清晰的深绿陆地、深蓝海洋和暖色城市网络——说明之前好几轮"改了但看起来没区别"的截图判断本身就是假阴性，不是真的没生效
+- 定位到这一点后，重新调整 `deepNight` 参数并用可靠方法验证：
+  - `emissiveIntensity: 1.62 → 1.05`
+  - `nightExposure: 0.15 → 0.115`
+  - `oceanDarken: 2.35 → 2.15`
+  - `cityLumLow: 0.014 → 0.006`，`cityLumHigh: 0.065 → 0.028`（原阈值下城市光其实也在正常渲染，只是单个城市在整球视角下只有 1-3 像素，被压缩/正常观看距离直接吞掉；放宽阈值让暗一档的郊区像素也能计入，光斑连成可辨认的团块而不是孤立像素点）
+- 用可靠截图方式对比 `深夜` 与 `入夜`：`入夜` 只有城市光、陆地海洋都是纯黑；`深夜` 因为走 v17 daybase 通道，陆地/海洋本身也有偏暗但清晰可辨的颜色，整体读起来比入夜更暗、但地理信息更丰富——两者视觉上有明确区分，不是简单的"深夜=更暗的入夜"
+- 移除了本轮排查过程中临时加的 `__debugRenderInternals()` 调试钩子
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 这次验证走的是 `renderer.render()` + `gl.readPixels()` / `drawImage` 到 2D canvas 再截图这条路径，比直接截图可靠；以后再排查 3D 渲染问题时应优先用这个方法，不要单纯依赖 `preview_screenshot` 对 WebGL canvas 的直接截图
+- 仍建议你在真实设备/浏览器里肉眼确认一遍最终效果，尤其是 `45°/LOW` 等审计角度（这次只验证了默认 TOP 视角）
+
+## 2026-07-07 (续) 排查成本过高，放弃继续调参，深夜整体回滚到 7 月 1 日已知稳定版
+
+### 做了什么
+- 用户在真机上用固定测试流程复现："`window.earth3d.getDebugState().currentTheme` 确认是 `deepNight`、按钮也高亮正确，但画面仍纯黑（只有细线）"——这个现象在 Claude 这边的自动化环境里也稳定复现了
+- 定位到一个和颜色参数无关的独立问题：点击主题按钮后，`index.html` 的 `applyForcedTheme()` 不会立刻把新主题同步给 `window.earth3d`，要等 `startVisualLoop()` 下一次 rAF tick 才会检测到 `state.themeKey` 变化再同步；如果那次同步没有及时发生，3D 画面就会停留在切换前的旧帧上——这解释了"console 确认主题对、画面却不对"的现象。已经给 `applyForcedTheme()` 加了同步调用 `window.earth3d.setTimeOfDay()` 的修复
+- 但用户综合评估后认为，为了这一个视觉效果，今天已经耗费了远超预期的排查成本（横跨 Claude 和 Codex 两个 agent、一整天时间），决定不再继续调参或验证时序修复，直接回滚
+- 回滚方案：**只回滚 `deepNight` 相关内容，保留今天其他改动**（RDL 修复、`earlyMorning` 辉光系统等）
+  - 操作前先备份了当前 `pwa/earth3d.js`、`pwa/index.html` 到 `.claude/backups/`（不进版本库，仅本地应急）
+  - `pwa/index.html`：今天唯一的净改动就是这次为排查加的 `applyForcedTheme()` 同步调用，直接 `git checkout HEAD` 整个文件复原，无副作用
+  - `pwa/earth3d.js`：只替换 `THEME_VISUAL_CONFIG.deepNight` 这一个对象，改回与上次提交（`c88ea8a`，7月1日）逐字节相同的版本（`emissiveIntensity: 0.72`、`nightExposure: 0.068`、`atmosphere.opacity: 0.30` 走 3D Fresnel 而非屏幕空间辉光、`cityLumLow/High: 0.020/0.082`），文件其他部分（`RIM_OVERLAY_THEMES`、RDL、`earlyMorning` 辉光等）保持今天已有的状态不变
+  - 同步把 `RIM_OVERLAY_THEMES` 里的 `'deepNight'` 去掉，只保留 `'earlyMorning'`——回滚后的深夜不再用屏幕空间辉光系统，走回原本的 3D Fresnel 大气层（`atmosphere.opacity: 0.30`）
+- 用 `diff` 逐字节确认 `deepNight` 配置块与 7月1日提交完全一致，`node -c` 语法检查通过
+- 浏览器实机验证（直接用 `preview_screenshot`，不需要任何绕过手段）：`深夜`、`入夜`、`清晨` 三个主题点击后画面立刻正确刷新——深夜显示清晰的暗色陆地纹理、深蓝海洋、密集暖色城市网络和柔和的蓝色大气边缘光，没有再出现纯黑或延迟问题
+
+### 改动文件
+- `pwa/earth3d.js`（`THEME_VISUAL_CONFIG.deepNight` 回滚到 7月1日提交版本；`RIM_OVERLAY_THEMES` 去掉 `'deepNight'`）
+- `pwa/index.html`（完整回滚到上次提交，去掉今天加的主题同步修复）
+- `devlog.md`
+
+### 遗留问题
+- 今天新发现的"主题切换后 3D 画面可能停留在旧帧，要等下一帧才同步"这个时序问题**仍然存在**（只是没再触发，因为回滚后的深夜不走屏幕空间辉光这条路径，可能少了触发条件）——如果以后其他主题也出现"console 显示主题对但画面不对"的情况，可以直接复用 `applyForcedTheme()` 同步调用 `setTimeOfDay()` 这个修复思路，代码已经在这次改动前验证过可用，只是这次连同 `index.html` 一起回滚掉了
+- 本地留了一份今天改动前的 `pwa/earth3d.js` / `pwa/index.html` 备份在 `.claude/backups/`（不在版本库里），如果之后想找回今天调过的"更亮"版本参数或辉光系统可以参考
+
+## 2026-07-08 HZ深夜对齐 ISS 参考图：金色灯网 + 贴地平线蓝色辉光
+
+### 做了什么
+- 用户给出目标效果图（ISS 风格夜景：近黑星空、贴地平线的亮蓝辉光弧、近黑陆地、深海军蓝海洋、金色城市灯丝网络），确认当前深夜（米色扁平灯块 + 泛蓝天空）可以通过纯参数调整对齐，不需要动渲染结构
+- 注意：昨晚 Claude 回滚后，Codex 又改过一轮 `deepNight`（emissiveIntensity 0.66 / cityLightClamp 0.38 / 重新启用 rimGlow / 新增了偏亮的深夜天空预设），本轮是在 Codex 这版基础上继续调，不是在回滚版上
+- 三轮迭代，每轮浏览器实机截图对比目标图：
+  1. 城市灯从米色扁平块改为金色渐变网络：关键是 `cityLightClamp 0.38 → 0.92`（0.38 的 Reinhard 上限把所有城市压成同一个米色调，提高上限后大都市核心能爬向亮白、郊区保持琥珀色），配合 `emissiveColor 0xE8A820 → 0xFFA22E`、`emissiveIntensity 0.66 → 1.15`
+  2. 基底对齐参考图：`nightExposure 0.068 → 0.044`（陆地压向近黑）、`oceanDarken 2.8 → 1.8` + `oceanBlueBias 0.010 → 0.070` + `oceanSaturation 0.88 → 1.0`（海洋从和陆地一样黑变成可辨认的深海军蓝）、城市阈值放宽到 `cityLumLow 0.012 / cityLumHigh 0.060`（中型城市加入灯丝网络）
+  3. 辉光收紧成贴地平线的弧：rimGlow outer `width 0.34 → 0.10`、`haloStrength 0.52 → 0.30`、`tailPower → 2.8`、颜色改饱和电光蓝（`#4a9cf0`，近端 `#e8f6ff`，远端收到近黑 `#04101f`）；第一轮 0.30 宽度会把三分之一屏幕染蓝（重蹈 7月6日 覆辙），必须收到 0.10 量级
+  4. 关键发现：天空大范围泛蓝的元凶不是辉光，而是 Codex 新加的 `getSkyThemePreset` deepNight 分支（`top #061e38 / horizon #0e3060`）；压暗到 `top #010409 / horizon #041020` 后星空才露出来，辉光弧成为地平线唯一的蓝色来源
+- `starSphereOpacity 0.32 → 0.45`（参考图星空更明显）
+- 最终截图与目标图逐项对齐：星空 ✓ 辉光弧 ✓ 近黑陆地 ✓ 深蓝海洋 ✓ 金色灯网 ✓；入夜/清晨未受影响（未触碰其配置，入夜走 default 天空分支）
+
+### 改动文件
+- `pwa/earth3d.js`（仅 `THEME_VISUAL_CONFIG.deepNight` + `getSkyThemePreset` 的 deepNight/night 分支）
+- `devlog.md`
+
+### 遗留问题
+- 参考图的灯丝比当前更纤细，这是夜景贴图分辨率在当前 zoom 下的上限，纯调参无法进一步逼近；如果想要更细的灯丝，需要换更高分辨率的夜景贴图或对贴图做锐化处理
+- 主题切换的时序 bug（点按钮后 3D 可能停留旧帧一拍）仍未修，本轮测试中又触发了一次；修复思路在 2026-07-07 devlog 里有记录
+- `getSkyThemePreset` 的 deepNight 分支同时影响 legacy `night` 主题，本轮一并变暗，若 night 主题还在使用需确认观感
+
+## 2026-07-08 (续) 深夜海水层次化 + 星空自然化
+
+### 做了什么
+- 用户对上一轮深夜整体满意，提出两个细化：海水"一团黑"不自然（参考苹果锁屏地球：整片海洋有海军蓝底色、大陆架有更浅的层次），星空的星点太假（希望有光点渐变）
+- **海水**（`deepNight.nightGrade`，三轮迭代）：
+  - 根因：海洋色调先被 `nightExposure 0.044` 压到近黑，`oceanDarken 1.8` 恢复不足，且只以 45% 权重混合，海底地形层次全被吃掉
+  - `oceanBlendStrength 0.45 → 0.9`（让分级后的海洋色主导，透出白天贴图的海底地形）
+  - `oceanDarken 1.8 → 3.6`（恢复系数与曝光成反比，注释里写明了这个耦合关系）
+  - 第二轮试过 `oceanDarken 4.3 + oceanContrast 1.22`，结果浅海变成突兀的宝蓝色块、深海还是黑的，两极分化；改用 `oceanLift 0 → 0.016`（带蓝色倾向的整体底色抬升）让深海也有海军蓝底色，同时把对比度收回 1.10，层次变成"底色之上的渐变"而不是"亮块对黑块"
+- **星空**（全主题共享的程序化星点层重写）：
+  - `buildStarField()` 增加逐星属性：幂律亮度分布（大部分暗星+少数亮星）、大小 0.35-2.35、色温三档（白/冷蓝白/暖象牙白）、随机闪烁相位
+  - 星点材质从均匀方点的 `PointsMaterial` 换成自定义 `ShaderMaterial`：高斯衰减的亮核+宽光晕（这就是用户要的"光点渐变"）、双频轻微闪烁
+  - 用 `Object.defineProperty` 把 `material.opacity` 代理到 shader uniform，所有旧调用点（applyTheme/调试工具）不用改
+  - 行为变化：星图纹理加载后不再隐藏程序化星点，两层叠加——星图提供密集的暗星/银河背景，星点精灵提供带光晕的前景亮星；白天主题的 `lighting.stars` 都是 0 或 ≤0.04，不受影响
+  - 渲染循环里星点 uTime 与星图 uTime 同步驱动闪烁
+- 浏览器实机验证：深夜海洋整片海军蓝+浅海渐变层次；星空放大 3 倍确认光晕渐变和亮度分布自然；入夜主题不受影响（自己的纯黑+金灯风格保持）
+
+### 改动文件
+- `pwa/earth3d.js`（`buildStarField` / 星点材质 / applyTheme 星点逻辑 / 渲染循环 uTime / `deepNight.nightGrade` 海洋参数）
+- `devlog.md`
+
+### 遗留问题
+- 星点层现在在所有夜间主题可见（入夜 0.62 / 深夜 0.82 等），如果哪个主题觉得星星太密可单独调它的 `lighting.stars`
+- 海洋的深浅层次来自白天贴图的海底地形数据，zoom 进去后（RDL 高精 patch）观感是否一致还没验证
+- WebGL canvas 的 `drawImage` 快照在动画循环下有时序竞争（这次读到过空 buffer），放大检查改用 CSS `transform: scale()` 更可靠，已在本轮实践验证
+
+## 2026-07-08 (续) 深夜海水改蓝黑色调 + oceanLift 色相参数化
+
+### 做了什么
+- 用户提出深夜海水从"高饱和亮蓝"改为"低饱和蓝黑"，深海目标色 #010713~#031426，浅海允许少量暗青蓝，海水亮度降到原来的 50-60%，且严格限定只动 deepNight 的海洋相关逻辑
+- 唯一的结构性改动（经用户确认）：把 `rodioOceanToneGrade()` 里硬编码的 oceanLift 色相比例 `vec3(lift*0.35, lift*0.50, lift)` 抽成 uniform `uOceanLiftTint`（vec3）：
+  - 默认值 `(0.35, 0.50, 1.0)` 与原硬编码逐分量相等——不设置 `nightGrade.oceanLiftTint` 的主题行为零变化
+  - 两处 config→uniform 赋值点（oceanMask 加载回调 + applyTheme 的 nightGrade 应用块）都带 `?? 默认值` 兜底，主题切换时自动复位；无 nightGrade 主题的 else 分支也显式复位
+  - `rodioOceanToneGradeStandalone()`（白天主题用的独立海洋分级）保持硬编码不动，按"最小改动"要求只动 deepNight 走的那条函数
+- deepNight 海洋参数调整（`nightGrade`）：
+  - `oceanDarken 3.6 → 2.0`（亮度约降到 55%）
+  - `oceanSaturation 1.15 → 0.62`（消除台湾海峡/东海/南海的纯蓝色块，层次改由明度承担）
+  - `oceanBlueBias 0.060 → 0.018`、`oceanRedReduce 0.05`、`oceanContrast 1.08`
+  - `oceanLift 0.016 → 0.010`，新增 `oceanLiftTint: [0.07, 0.45, 1.0]`（冷蓝黑底色，替代默认偏暖比例）
+- 验证（浏览器实机 + 像素直方图采样 87k 海洋像素）：
+  - 深海主体 p75~p90 落在 `#020417`~`#03051f`，命中目标区间 #010713~#031426
+  - 最亮浅海 p99 仅 `#121929`（低饱和暗青蓝），无纯蓝色块
+  - 海洋自发光结构上为 0：深夜 `daybaseMode=1`，而 legacy 海洋 emissive 路径的门控是 `uDaybaseMode < 0.5 && uOceanLift > 0.001`，直接跳过
+  - 切到入夜后 uniform 全部复位（uOceanLift 0 / uOceanDarken 1 / uOceanSaturation 1），入夜渲染不变
+  - `node -c` 通过，控制台无 shader 编译错误
+- 本轮严格未触碰：天空预设、rimGlow 辉光、城市灯光、云层、UI、相机（上一轮的目标 6-8 由用户主动收窄范围排除）
+
+### 改动文件
+- `pwa/earth3d.js`（uOceanLiftTint uniform 声明/GLSL/两处赋值+复位；deepNight nightGrade 海洋参数）
+- `devlog.md`
+
+### 遗留问题
+- `rodioOceanToneGradeStandalone()` 仍是硬编码 lift 色相，如果以后白天主题也要调 lift 色相需要做同样的参数化
+- 用户上一条消息里的天空(#020407)和辉光灰白化(#B9C8D3)目标被本轮明确排除在范围外，尚未执行，等用户验收海水后再决定是否继续
+
+## 2026-07-08 白天时段视觉系统审计与验收（morning / noon / afternoon）
+
+### 做了什么
+- 审计 earlyMorning（锁定锚点）的完整视觉链路：
+  - Sky plane：`DAY_SKY_PLANE_THEMES`（earth3d.js:327）+ `SKY_PLANE_COLORS`（:334）+ `updateEarlyMorningSkyPlane()`（:341，由 applyTheme :4343 调用），渲染在 :4937-4948 的专用三段渲染分支（sky plane → scene → rim overlay）
+  - RimGlow：Rim Overlay + Inner Horizon Veil 后处理层，`applyRimGlowThemeConfig()`（:2029，由 applyTheme :4341 调用）；earlyMorning 无 rimGlow 配置，走烘焙默认值
+  - Land/Ocean 分级：`nightGrade` → earthShaderUniforms（:4255-4307）
+  - Lighting/texture/clouds：`resetLightingForTheme` / texture.mapColor / `applyCloudThemeConfig`（对象形态云参数 :2916）
+- 确认 morning / noon / afternoon 三个主题配置已存在（THEME_VISUAL_CONFIG :3245/:3338/:3431），且与本轮目标参数**逐项完全一致**（sky plane 四段色板、lighting、mapColor、rimGlow 全字段、land/ocean 分级、OCEAN_TINT strength=0、clouds 0.20/0.12/0.12）——本轮**零代码改动**，纯运行时验收
+- 确认三个新主题已加入 `DAY_SKY_PLANE_THEMES` 和 `RIM_OVERLAY_THEMES`（:2448）白名单，参数被运行时真实消费（非死配置）
+- 浏览器实机验收（AUDIT LIGHT OFF）：earlyMorning / morning / noon / afternoon 四张截图
+  - noon 四档最亮最清晰（sun 1.14 / ambient 0.74 / 纯白 mapColor / landStr 0.08）
+  - afternoon 比 noon 略暗略暖（mapColor 0xF5F0E6，oceanSaturation 0.78）
+  - 海洋无塑料蓝/地图蒙版；rimGlow 为薄空气散射；无 JS runtime error（仅 Spotify token 无关警告）
+
+### 改动文件
+- `devlog.md`（仅本记录；earth3d.js 未改动）
+
+### 遗留问题
+- earlyMorning 的 rimGlow 走烘焙默认值（width 0.30 / coreStrength 0.82），明显比 morning/noon/afternoon 的薄 rim（width 0.055-0.070 / coreStrength 0.20-0.30）亮且厚——清晨→上午切换时地平线辉光有可见跳变。earlyMorning 已锁定不许改，如需连续性需用户决策
+- UI 时段按钮高亮跟随真实时钟调度（验收时高亮「暮前」），与 setTimeOfDay 手动覆盖不联动，属 UI 范畴未处理
+
+## 2026-07-08 白天时段视觉递进 R2：接通死掉的白天海洋分级 + 拉大四档梯度
+
+### 做了什么
+- **根因修复**：上一轮判定"参数被运行时消费"有误——shader 里专为白天写的
+  `rodioOceanToneGradeStandalone()` 定义了但从未被调用，daybase=0 分支只做 land
+  分级，白天主题的 ocean 参数全是死配置（JS 侧注释声称的 standalone 路径不存在）。
+  本轮把它接进 v16 白天分支，新增 uniform `uDayOceanGrade` 门控：只有
+  `nightGrade.dayOceanGrade: true` 的主题启用。earlyMorning 与所有夜间主题不设
+  此键 → uniform=0 → 渲染逐像素不变（锁定不破）
+- uniform 三处同步：onBeforeCompile 声明（_pv 迁移）、applyTheme nightGrade 块、
+  resetNightGradeUniforms 归零、ocean mask 加载回调
+- `resetLightingForTheme` 支持可选 `lighting.sunColor`（默认 0xfff5e0 不变，
+  其他主题零影响）
+- morning/noon/afternoon 重调（earlyMorning 锚点 ambient0.56/sun0.92 不动）：
+  - lighting 总光照梯度：EM 1.48 → morning 1.76 → noon 2.18 → afternoon 1.58；
+    sunColor 上午偏冷白 0xfff8ea / 正午近纯白 0xfffaf2 / 下午暖 0xffedd2
+  - rimGlow 放弃上一轮细描边，回归 earlyMorning 定版大气结构（width 0.30 基准），
+    按 ~0.9/0.8/0.75 递减缩放：morning 0.28/0.74、noon 0.24/0.66（最紧最净）、
+    afternoon 0.26/0.58（略暖灰）
+  - ocean（新生效路径）：morning darken0.90/sat0.80，noon darken1.04/sat0.88
+    （最亮），afternoon darken0.78/sat0.68/greenReduce0.015（最暗最灰）；
+    oceanRedReduce 全部归 0（减红会推蓝，是地图蓝倾向来源之一），blueBias 全 0
+  - land：morning lift0.016/γ0.92/str0.26，noon str0（纯贴图最锐），
+    afternoon lift0.012/γ0.97/str0.35/landRedRed -0.03（暗部暖化）
+  - SKY_PLANE_COLORS 拉大亮度梯度（仍从 EM 色板派生）：noon bottom #cfeafa 最亮，
+    afternoon bottom #c3d8dd 暖灰回落
+  - clouds：morning 0.30 / noon 0.10 / afternoon 0.18
+  - afternoon mapColor 0xF5F0E6 → 0xF3ECDC（略增暖）
+- 浏览器实机验收（AUDIT LIGHT OFF）：四档截图递进清晰——EM 冷调晨光 → morning
+  更亮 → noon 最亮最锐（沙漠高光、海洋最中性）→ afternoon 转暖回落；
+  console 无 JS/shader 错误；earlyMorning 配置抽查原值完好
+
+### 改动文件
+- `pwa/earth3d.js`（uDayOceanGrade uniform 四处 + v16 分支海洋 mix 注入 +
+  resetLightingForTheme sunColor + morning/noon/afternoon 配置 + SKY_PLANE_COLORS）
+- `devlog.md`
+
+### 遗留问题
+- 四档 rim 现在同语言但仍是离散跳变（主题切换瞬间），没有过渡动画
+- afternoon landRedRed 用负值实现暗部暖化，属参数挪用；若后续需要更强暖调，
+  应给 v16 land 分支加正式的暖色参数
+- goldenApproach（16.5h）与 afternoon（16h）时段相邻，色温衔接未验证
+
+## 2026-07-08 白天时段 R3：收尾确认 + 亮度梯度加强（阶段性锁定）
+
+### 做了什么
+- 收尾确认（用户验收 R2 方向通过后）：
+  - `dayOceanGrade: true` 仅存在于 morning(:3318) / noon(:3416) / afternoon(:3513)
+    三个配置块，其余出现处均为门控管线（两处赋值 + 注释）
+  - earlyMorning / deepNight 运行时确认无 dayOceanGrade 键（getThemeConfig 实测
+    ABSENT）；deepNight daybase=true 走另一分支，shader 注入为纯追加代码，
+    未启用主题逐像素不变
+  - smoke：earlyMorning → morning → noon → afternoon → deepNight 五连切，
+    全部正常渲染，console 无 shader/runtime error
+- 亮度梯度加强（回应"各档仍太类似"，只动幅度不动结构）：
+  - 总光照 (ambient+sun)：EM 1.48（锁定）→ morning 1.90（0.76/1.14）→
+    noon 2.44（0.98/1.46）→ afternoon 1.50（0.58/0.92）
+  - 海洋亮度 oceanDarken：morning 0.86 → noon 1.10（最亮）→ afternoon 0.70（最暗）
+  - 辉光强度 core/halo：EM 0.82/0.42（烘焙）→ morning 0.78/0.38 → noon 0.58/0.26
+    （width 0.22 最紧）→ afternoon 0.48/0.21（最柔）
+
+### 改动文件
+- `pwa/earth3d.js`（仅 morning/noon/afternoon 的 lighting、oceanDarken、rimGlow 强度）
+- `devlog.md`
+
+### 遗留问题（用户指定记录的后续小修项）
+- 浅海区域仍略偏地图蓝
+- 四档 rimGlow 是离散切换，暂无过渡动画
+- afternoon 暖化用 landRedRed 负值实现，后续可改成正式 landWarmBias 参数
+
+## 2026-07-08 V4-Day-Light-R2 阶段性通过 — 最终参数表 + 禁区确认 + 收尾 smoke
+
+### 本轮结论
+**V4-Day-Light-R2 阶段性通过。** 白天三档已形成明确递进：morning 提亮、noon 最亮最清晰、afternoon 回落偏沉。earlyMorning / morning / noon / afternoon 四档锁定。
+
+### 1. 最终参数表（当前生效值，pwa/earth3d.js THEME_VISUAL_CONFIG + SKY_PLANE_COLORS）
+
+**earlyMorning**（锚点，themeHour 7.4，本轮未改）
+- sky plane: top #061a3a / mid #0b315f / lower #235f93 / bottom #9fd0ed
+- lighting: ambient 0.56, sun 0.92, sunColor（未设，走函数默认 0xfff5e0）
+- rimGlow: 未设配置键 → 走 applyRimGlowThemeConfig 烘焙默认（outer width 0.30 / coreStrength 0.82 / haloStrength 0.42；inner width 0.16 / strength 0.36）
+- land: landLift 0.020, landGamma 0.89, landStr 0.26
+- ocean: oceanBlendStrength 0.36, oceanDarken 0.79, oceanSaturation 1.15, oceanBlueBias 0.036, coastProtection 0.77（daybaseMode=false，走 legacy ocean 混合，非 standalone）
+- dayOceanGrade: 未设（等效 false）
+- clouds: opacity 0.38（object 形态，专属曲线）
+
+**morning**（themeHour 9.0）
+- sky plane: top #082246 / mid #0f3d72 / lower #3072a6 / bottom #b0dcf4
+- lighting: ambient 0.76, sun 1.14, sunColor 0xfff8ea
+- rimGlow: outer width 0.28 / coreFraction 0.42 / coreStrength 0.78 / haloStrength 0.38 / tailPower 1.6 / color #a4dbff→#f4fbff→#5d8fc0；inner width 0.15 / strength 0.32 / falloff 1.9
+- land: landLift 0.016, landGamma 0.92, landStr 0.26
+- ocean: oceanBlendStrength 0.45, oceanDarken 0.86, oceanContrast 1.05, oceanSaturation 0.80, oceanBlueBias/RedReduce/GreenReduce 全 0, coastProtection 0.72
+- dayOceanGrade: **true**
+- clouds: opacity 0.30
+
+**noon**（themeHour 12.5，四档最亮锚点）
+- sky plane: top #0d2f5e / mid #175089 / lower #4687b8 / bottom #cfeafa（四档最亮）
+- lighting: ambient 0.98, sun 1.46（四档最高）, sunColor 0xfffaf2
+- rimGlow: 四档最紧最净 — outer width 0.22 / coreFraction 0.40 / coreStrength 0.58 / haloStrength 0.26 / tailPower 1.7；inner width 0.14 / strength 0.27 / falloff 2.0
+- land: landLift 0, landGamma 1.00, landStr 0（纯贴图，最锐利）
+- ocean: oceanBlendStrength 0.35, oceanDarken 1.10（四档唯一 >1，最亮）, oceanContrast 1.03, oceanSaturation 0.88, coastProtection 0.75
+- dayOceanGrade: **true**
+- clouds: opacity 0.10（四档最少）
+
+**afternoon**（themeHour 16.0）
+- sky plane: top #071c3c / mid #0c3462 / lower #2f6a8e / bottom #c3d8dd（暖灰回落）
+- lighting: ambient 0.58, sun 0.92（四档最低）, sunColor 0xffedd2
+- rimGlow: 四档最柔 — outer width 0.26 / coreFraction 0.40 / coreStrength 0.48 / haloStrength 0.21 / tailPower 1.8；inner width 0.14 / strength 0.24 / falloff 2.0
+- land: landLift 0.012, landGamma 0.97, landStr 0.35（四档最强，暗部暖化）, landRedRed -0.030（暖化挪用）
+- ocean: oceanBlendStrength 0.55, oceanDarken 0.70（四档最暗）, oceanContrast 1.06, oceanSaturation 0.68（四档最低）, oceanGreenReduce 0.015, coastProtection 0.72
+- dayOceanGrade: **true**
+- clouds: opacity 0.18
+- texture.mapColor: 0xF3ECDC（偏暖）
+
+### 2. 禁区确认
+- **earlyMorning**：本会话（R1/R2/R3）未对该配置块调用任何 Edit——仅作为参数派生锚点被读取。与 R1 审计截图目视比对一致。
+- **evening / lateEvening / deepNight**：本会话未对这三个配置块调用 Edit。注意：这三块与上一次 git 提交（c88ea8a）相比确有差异，但那是**会话开始前已存在于工作区的未提交改动**（对话起始的 git status 已显示 `M pwa/earth3d.js`），非本轮所加。
+- **dawn / sunrise / goldenApproach / sunset**：sunrise / sunset / goldenApproach 与上次提交逐字节相同；dawn 与上次提交有差异，同上——是会话前已存在的未提交状态，本轮未触碰。
+- **UI / camera / player / service worker**：`pwa/index.html` 的 diff（+4 行，ASIA 1/2 预设角度按钮）在 R1 第一张截图里已经可见，确认早于本轮存在，非本轮所加。未发现 camera/quaternion/orientation/player/sw.js 相关代码被本轮修改（diff 中仅有的 camera 相关行是 earlyMorning rim 投影的既有实现代码，非本轮新增逻辑变更）。
+
+### 3. 最终 smoke
+- `setTimeOfDay` 依次切换 earlyMorning → morning → noon → afternoon → deepNight，每步等待渲染稳定后截图+console 检查
+- AUDIT LIGHT 全程 OFF（`getDebugState().auditLightingEnabled === false`）
+- console error 级别日志：五档切换全程 **0 条**（仅历史性的 Spotify token 警告，warn 级别，与视觉系统无关）
+- `git status`：working tree 修改 5 个已跟踪文件（.gitignore / devlog.md / pwa/earth3d.js / pwa/index.html / server.js）+ 若干未跟踪的资源/脚本文件
+- `git diff --stat`：pwa/earth3d.js 1929 行变更（含本轮 + 此前会话未提交的天空平面/rim overlay 基础设施）
+- **建议 commit**：是。当前状态是自 c88ea8a 以来多轮会话累积的完整功能集（sky plane 基础设施 + rim overlay + dayOceanGrade 白天海洋分级 + 四档亮度递进），已过 smoke 且用户确认阶段性通过，建议提交固化为新基线，便于后续每轮改动产出干净可审的 diff。
+
+### 遗留问题（保留，未在本轮处理）
+- 浅海区域仍略偏地图蓝，可微调
+- 四档 rimGlow 是离散切换，暂无过渡动画
+- afternoon 暖化使用 landRedRed 负值实现，后续可正式化为独立的 landWarmBias 参数

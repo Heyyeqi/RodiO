@@ -1383,7 +1383,12 @@ app.use(express.static(path.join(__dirname, 'pwa'), {
   maxAge: '7d',
   etag: true,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
+    if (
+      filePath.endsWith('index.html') ||
+      filePath.endsWith('sw.js') ||
+      filePath.endsWith('earth3d.js') ||
+      filePath.endsWith('earth_modes.js')
+    ) {
       res.setHeader('Cache-Control', 'no-cache')
     }
   }

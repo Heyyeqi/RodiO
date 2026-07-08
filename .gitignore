@@ -19,3 +19,23 @@ previews/**/*.jpg
 previews/**/*.jpeg
 previews/**/*.webp
 pwa/assets/earth/candidates/
+
+# Large source assets — only runtime-needed JPEGs go into git
+*.exr
+*.tif
+*.tiff
+assets_source/
+# Regional & storm cloud variants (not used at runtime)
+pwa/assets/textures/clouds/africa_clouds_8k.jpg
+pwa/assets/textures/clouds/australia_clouds_8k.jpg
+pwa/assets/textures/clouds/europe_clouds_8k.jpg
+pwa/assets/textures/clouds/n_amer_clouds_8k.jpg
+pwa/assets/textures/clouds/s_amer_clouds_8k.jpg
+pwa/assets/textures/clouds/se_asia_clouds_8k.jpg
+pwa/assets/textures/clouds/storm_clouds_8k.jpg
+# Galactic-frame star variants (not used at runtime)
+pwa/assets/textures/stars/hiptyc_2020_8k_gal.jpg
+pwa/assets/textures/stars/milkyway_2020_8k.jpg
+pwa/assets/textures/stars/milkyway_2020_8k_gal.jpg
+pwa/assets/textures/stars/starmap_2020_8k_gal.jpg
+# hiptyc_2020_8k.jpg kept as optional low-noise fallback (small, 6.6MB)
