@@ -300,6 +300,37 @@
               bottom:  '#061626',
               opacity: 0.98,
             }
+          case 'sunrise':
+            // Cold blue morning sky — the global sky sphere stays cool.
+            // The previous '#ffb570' horizon painted warm gold across the
+            // ENTIRE horizon band, washing the whole screen yellow; the
+            // sun's warmth must come only from the localized right-side
+            // horizonGlow hotspot, never from this global gradient.
+            return {
+              top:     '#020812',
+              horizon: '#10263A',
+              bottom:  '#081522',
+              opacity: 0.98,
+            }
+          case 'goldenApproach':
+            // Still full daylight brightness, warm-shifted — a dimmer, warmer
+            // cousin of afternoon's sky, not yet approaching dusk darkness.
+            return {
+              top:     '#123252',
+              horizon: '#e8a460',
+              bottom:  '#1c3c58',
+              opacity: 0.95,
+            }
+          case 'sunset':
+            // Sun low on the horizon (sunDirection -x) — darker top than
+            // goldenApproach, saturated orange horizon band, transitioning
+            // toward evening's blue-hour palette.
+            return {
+              top:     '#050e1c',
+              horizon: '#ff8a4a',
+              bottom:  '#0a1c30',
+              opacity: 0.97,
+            }
           case 'deepNight':
           case 'night':
             // Near-black star-field sky — the horizon rimGlow supplies all the
@@ -324,7 +355,7 @@
       // Themes that render the dedicated earlyMorning sky plane (Plan B) instead
       // of the standard skyMesh sphere. morning/noon/afternoon reuse the same
       // screen-space gradient plane, each with its own 4-stop color set.
-      const DAY_SKY_PLANE_THEMES = new Set(['earlyMorning', 'morning', 'noon', 'afternoon'])
+      const DAY_SKY_PLANE_THEMES = new Set(['sunrise', 'goldenApproach', 'earlyMorning', 'morning', 'noon', 'afternoon', 'sunset'])
 
       // 4-stop sky plane gradient colors per theme. The shader maps:
       //   uTopColor     -> top of screen (y 0.68–1.00)
@@ -332,6 +363,8 @@
       //   uLowerColor   -> horizon band (y 0.08–0.32)
       //   uHorizonColor -> bottom of screen, near earth (y 0–0.08)
       const SKY_PLANE_COLORS = {
+        sunrise:      { top: '#061423', mid: '#102D46', lower: '#587D93', bottom: '#B5C7C9' },
+        goldenApproach: { top: '#061A38', mid: '#0B315D', lower: '#2E5470', bottom: '#C0C3B8' },
         earlyMorning: { top: '#061a3a', mid: '#0b315f', lower: '#235f93', bottom: '#9fd0ed' },
         // morning/noon/afternoon derive from the earlyMorning palette above —
         // same hue family, brightness/temperature ramp only. noon is the
@@ -340,6 +373,7 @@
         morning:      { top: '#082246', mid: '#0f3d72', lower: '#3072a6', bottom: '#b0dcf4' },
         noon:         { top: '#0d2f5e', mid: '#175089', lower: '#4687b8', bottom: '#cfeafa' },
         afternoon:    { top: '#071c3c', mid: '#0c3462', lower: '#2f6a8e', bottom: '#c3d8dd' },
+        sunset:       { top: '#020813', mid: '#081A2D', lower: '#102A3A', bottom: '#071018' },
       }
 
       function updateEarlyMorningSkyPlane(themeKey) {
@@ -1884,6 +1918,29 @@
           uTailPower:          { value: 1.5 },
           uHaloStrength:       { value: 0.42 },
           uOpacity:            { value: 1.0 },
+          // ─── directional sun lobe ────────────────────────────────────────
+          uSunLobeEnabled:     { value: 0.0 },
+          uSunLobeX:           { value: 0.86 },
+          uSunLobeY:           { value: 0.35 },
+          uSunLobeCoreColor:   { value: new THREE.Color('#FFF8E8') },
+          uSunLobeMainColor:   { value: new THREE.Color('#F2B36A') },
+          uSunLobeOuterColor:  { value: new THREE.Color('#496F86') },
+          uSunLobeStrength:    { value: 0.72 },
+          uSunLobeWidth:       { value: 0.18 },
+          uSunLobeFalloff:     { value: 2.8 },
+          uSunLobeRimBoost:    { value: 0.42 },
+          uSunLobeHStretch:    { value: 2.8 },
+          uSunLobeVCompress:   { value: 0.50 },
+          // ─── arc band ────────────────────────────────────────────────────
+          uArcBandEnabled:     { value: 0.0 },
+          uArcBandColorNear:   { value: new THREE.Color('#F7E7C6') },
+          uArcBandColorMid:    { value: new THREE.Color('#AFCFE0') },
+          uArcBandColorFar:    { value: new THREE.Color('#4E6F86') },
+          uArcBandStrength:    { value: 0.38 },
+          uArcBandWidth:       { value: 0.055 },
+          uArcBandSpread:      { value: 0.58 },
+          uArcBandDirX:        { value: 0.88 },
+          uArcBandDirFalloff:  { value: 1.8 },
         },
         vertexShader: `
           varying vec2 vUv;
@@ -1907,6 +1964,29 @@
           uniform float uTailPower;
           uniform float uHaloStrength;
           uniform float uOpacity;
+          // ─── directional sun lobe ────────────────────────────────────────
+          uniform float uSunLobeEnabled;
+          uniform float uSunLobeX;
+          uniform float uSunLobeY;
+          uniform vec3  uSunLobeCoreColor;
+          uniform vec3  uSunLobeMainColor;
+          uniform vec3  uSunLobeOuterColor;
+          uniform float uSunLobeStrength;
+          uniform float uSunLobeWidth;
+          uniform float uSunLobeFalloff;
+          uniform float uSunLobeRimBoost;
+          uniform float uSunLobeHStretch;
+          uniform float uSunLobeVCompress;
+          // ─── arc band ────────────────────────────────────────────────────
+          uniform float uArcBandEnabled;
+          uniform vec3  uArcBandColorNear;
+          uniform vec3  uArcBandColorMid;
+          uniform vec3  uArcBandColorFar;
+          uniform float uArcBandStrength;
+          uniform float uArcBandWidth;
+          uniform float uArcBandSpread;
+          uniform float uArcBandDirX;
+          uniform float uArcBandDirFalloff;
           varying vec2 vUv;
           void main() {
             float nx = (vUv.x - uRimCenter.x) / uRimRadius.x;
@@ -1915,10 +1995,6 @@
             vec3 color = vec3(0.0);
             float alpha = 0.0;
 
-            // Anti-aliased fade at the parabola's outer boundary (nx → ±1) —
-            // fwidth() gives the screen-space derivative so the transition
-            // width auto-scales to ~1px regardless of resolution/zoom, instead
-            // of a hard inside>0.0 cutoff that aliased into a stairstep.
             float insideAA = fwidth(inside) + 1e-5;
             float insideEdge = smoothstep(-insideAA, insideAA, inside);
 
@@ -1926,10 +2002,8 @@
               float arcY = uRimCenter.y + uRimRadius.y * sqrt(max(inside, 0.0)) + uRimOffsetY;
               float signedD = vUv.y - arcY;
 
-              // t: signed normalized distance from earth's edge; <0 = surface side
               float t = signedD / uSkyHaloWidth;
 
-              // Sky-side formula (single max() envelope: core陡峭段 vs tail拖尾段)
               float core_part = pow(clamp(1.0 - t / uCoreFraction, 0.0, 1.0), uCorePower);
               float tail_part = pow(clamp(1.0 - t,                  0.0, 1.0), uTailPower);
               float skyIntensity = max(core_part * uCoreStrength, tail_part * uHaloStrength);
@@ -1939,14 +2013,73 @@
                 ? mix(uSkyHaloColorNear, uSkyHaloColor, tC / 0.5)
                 : mix(uSkyHaloColor, uSkyHaloColorFar, (tC - 0.5) / 0.5);
 
-              // outerMask = rimMask * outsideSkyArea — strictly the sky side
-              // (signedD > 0). The surface side (signedD < 0) is handled by the
-              // separate Inner Horizon Veil material below, so this material no
-              // longer bleeds any glow onto the earth's rendered surface.
               float aa = fwidth(t) + 1e-5;
               float outerMask = smoothstep(-aa, aa, t);
 
               float intensity = skyIntensity * outerMask;
+
+              // ─── directional sun lobe (arc-following elliptical glow) ───────
+              if (uSunLobeEnabled > 0.5 && t > 0.0) {
+                float sunArcY = uRimCenter.y + uRimRadius.y * sqrt(max(1.0 - pow((uSunLobeX - uRimCenter.x) / uRimRadius.x, 2.0), 0.0)) + uRimOffsetY;
+
+                // Arc-following: the glow center at any x is the arc itself (arcY),
+                // so the glow hugs the limb curve instead of sitting at a fixed y.
+                float dx = (vUv.x - uSunLobeX) / (uSunLobeWidth * uSunLobeHStretch);
+                float dy = (vUv.y - arcY) / (uSunLobeWidth * uSunLobeVCompress);
+                float dist = sqrt(dx * dx + dy * dy);
+
+                // Directional fade: mirror-aware (right-side vs left-side sun)
+                float direction;
+                if (uSunLobeX >= 0.5) {
+                  direction = smoothstep(-0.55, 0.15, dx);
+                } else {
+                  direction = 1.0 - smoothstep(-0.15, 0.55, dx);
+                }
+
+                float lobe = pow(clamp(1.0 - dist, 0.0, 1.0), uSunLobeFalloff);
+                lobe *= uSunLobeStrength * direction;
+
+                vec3 lobeColor = dist < 0.08
+                  ? uSunLobeCoreColor
+                  : dist < 0.35
+                    ? mix(uSunLobeCoreColor, uSunLobeMainColor, (dist - 0.08) / 0.27)
+                    : mix(uSunLobeMainColor, uSunLobeOuterColor, (dist - 0.35) / 0.65);
+
+                float rimLobe = lobe * uSunLobeRimBoost;
+                intensity = max(intensity, lobe);
+                skyColor = mix(skyColor, lobeColor, lobe / max(intensity, 1e-6));
+                skyColor += lobeColor * rimLobe * outerMask;
+              }
+
+              // ─── arc band ────────────────────────────────────────────────
+              if (uArcBandEnabled > 0.5 && t > 0.0) {
+                // Tight band right above the limb, complementing sunLobe.
+                float bandT = abs(t) / uArcBandWidth;
+                float bandIntensity = exp(-bandT * bandT * 4.0);
+
+                // Horizontal spread: centered at dirX, extending left/right
+                float hDist = (vUv.x - uArcBandDirX) / uArcBandSpread;
+                float hFade = exp(-hDist * hDist * uArcBandDirFalloff);
+
+                // Bias mirror-aware: right-side or left-side sun
+                float dirBias;
+                if (uArcBandDirX >= 0.5) {
+                  dirBias = smoothstep(-0.35, 0.25, hDist * uArcBandSpread * 2.0);
+                } else {
+                  dirBias = 1.0 - smoothstep(-0.25, 0.35, hDist * uArcBandSpread * 2.0);
+                }
+
+                float ab = bandIntensity * hFade * dirBias * uArcBandStrength;
+
+                // Color: warm near limb, cooling upward
+                float abMix = clamp(abs(t) / 0.12, 0.0, 1.0);
+                vec3 abColor = abMix < 0.5
+                  ? mix(uArcBandColorNear, uArcBandColorMid, abMix / 0.5)
+                  : mix(uArcBandColorMid, uArcBandColorFar, (abMix - 0.5) / 0.5);
+
+                intensity = max(intensity, ab);
+                skyColor = mix(skyColor, abColor, ab / max(intensity, 1e-6));
+              }
 
               float endAA = fwidth(nx) + 1e-5;
               float endFade = 1.0 - smoothstep(0.92 - endAA, 0.92 + endAA, abs(nx));
@@ -1989,6 +2122,15 @@
           uInnerVeilStrength:  { value: 0.36 },
           uInnerVeilFalloff:   { value: 1.8 },
           uOpacity:            { value: 1.0 },
+          // ─── sun lobe surface warmth ─────────────────────────────────────
+          uSurfWarmthEnabled:  { value: 0.0 },
+          uSurfWarmthX:        { value: 0.90 },
+          uSurfWarmthY:        { value: 0.31 },
+          uSurfWarmthColor:    { value: new THREE.Color('#F1B46A') },
+          uSurfWarmthStrength: { value: 0.08 },
+          uSurfWarmthWidth:    { value: 0.22 },
+          uSurfWarmthFalloff:  { value: 2.4 },
+          uSurfWarmthVCompress:{ value: 0.50 },
         },
         vertexShader: `
           varying vec2 vUv;
@@ -2007,6 +2149,15 @@
           uniform float uInnerVeilStrength;
           uniform float uInnerVeilFalloff;
           uniform float uOpacity;
+          // ─── sun lobe surface warmth ─────────────────────────────────────
+          uniform float uSurfWarmthEnabled;
+          uniform float uSurfWarmthX;
+          uniform float uSurfWarmthY;
+          uniform vec3  uSurfWarmthColor;
+          uniform float uSurfWarmthStrength;
+          uniform float uSurfWarmthWidth;
+          uniform float uSurfWarmthFalloff;
+          uniform float uSurfWarmthVCompress;
           varying vec2 vUv;
           void main() {
             float nx = (vUv.x - uRimCenter.x) / uRimRadius.x;
@@ -2022,10 +2173,10 @@
               float arcY = uRimCenter.y + uRimRadius.y * sqrt(max(inside, 0.0)) + uRimOffsetY;
               float signedD = vUv.y - arcY;
 
-              // Strictly the earth-surface side (signedD < 0), antialiased to
-              // ~1px in screen space — no bleed onto the outside-sky area.
               float sideAA = fwidth(signedD) + 1e-5;
-              float innerMask = 1.0 - smoothstep(-sideAA, sideAA, signedD);
+              // Extend slightly above the limb (overlap with outer rim) so
+              // inner veil and outer glow blend instead of leaving a seam.
+              float innerMask = 1.0 - smoothstep(-sideAA, sideAA + 0.004, signedD);
 
               float innerT = clamp(-signedD / uInnerVeilWidth, 0.0, 1.0);
               float falloff = pow(1.0 - innerT, uInnerVeilFalloff);
@@ -2034,7 +2185,26 @@
               float endFade = 1.0 - smoothstep(0.92 - endAA, 0.92 + endAA, abs(nx));
 
               float veilAlpha = falloff * innerMask * insideEdge * endFade * uInnerVeilStrength * uOpacity;
-              color = uInnerVeilColor;
+
+              // ─── sun lobe surface warmth ─────────────────────────────────
+              vec3 veilColor = uInnerVeilColor;
+              if (uSurfWarmthEnabled > 0.5) {
+                float surfArcY = uRimCenter.y + uRimRadius.y * sqrt(max(1.0 - pow((uSurfWarmthX - uRimCenter.x) / uRimRadius.x, 2.0), 0.0)) + uRimOffsetY;
+                float sdx = (vUv.x - uSurfWarmthX) / (uSurfWarmthWidth * 2.6);
+                float sdy = signedD / (uSurfWarmthWidth * uSurfWarmthVCompress * 0.65);
+                float sdist = sqrt(sdx * sdx + sdy * sdy);
+                float warmthFalloff = max(uSurfWarmthFalloff, 0.5);
+                float warmth = pow(clamp(1.0 - sdist, 0.0, 1.0), warmthFalloff) * uSurfWarmthStrength;
+                // Mirror-aware: right-side vs left-side sun
+                if (uSurfWarmthX >= 0.5) {
+                  warmth *= smoothstep(-0.40, 0.10, sdx);
+                } else {
+                  warmth *= 1.0 - smoothstep(-0.10, 0.40, sdx);
+                }
+                veilColor = mix(veilColor, uSurfWarmthColor, clamp(warmth, 0.0, 1.0));
+              }
+
+              color = veilColor;
               alpha = clamp(veilAlpha, 0.0, 1.0);
             }
 
@@ -2057,6 +2227,7 @@
         if (!_emRimOverlayMat?.uniforms || !_emInnerVeilMat?.uniforms) return
         const outer = rimGlowCfg?.outer
         const inner = rimGlowCfg?.inner
+        const sunLobe = rimGlowCfg?.sunLobe
         const ro = _emRimOverlayMat.uniforms
         ro.uSkyHaloColor.value.set(outer?.color ?? '#9dd8ff')
         ro.uSkyHaloColorNear.value.set(outer?.colorNear ?? '#f2faff')
@@ -2072,6 +2243,54 @@
         rv.uInnerVeilWidth.value    = inner?.width    ?? 0.16
         rv.uInnerVeilStrength.value = inner?.strength ?? 0.36
         rv.uInnerVeilFalloff.value  = inner?.falloff  ?? 1.8
+        // ─── directional sun lobe ──────────────────────────────────────────
+        if (sunLobe) {
+          ro.uSunLobeEnabled.value     = sunLobe.enabled ? 1.0 : 0.0
+          ro.uSunLobeX.value           = sunLobe.x           ?? 0.86
+          ro.uSunLobeY.value           = sunLobe.y           ?? 0.35
+          ro.uSunLobeCoreColor.value.set(sunLobe.coreColor   ?? '#FFF8E8')
+          ro.uSunLobeMainColor.value.set(sunLobe.mainColor   ?? '#F2B36A')
+          ro.uSunLobeOuterColor.value.set(sunLobe.outerColor ?? '#496F86')
+          ro.uSunLobeStrength.value    = sunLobe.strength    ?? 0.72
+          ro.uSunLobeWidth.value       = sunLobe.width       ?? 0.18
+          ro.uSunLobeFalloff.value     = sunLobe.falloff     ?? 2.8
+          ro.uSunLobeRimBoost.value    = sunLobe.rimBoost    ?? 0.42
+          ro.uSunLobeHStretch.value    = sunLobe.hStretch    ?? 2.8
+          ro.uSunLobeVCompress.value   = sunLobe.vCompress   ?? 0.50
+          // arc band
+          const ab = sunLobe.arcBand
+          if (ab) {
+            ro.uArcBandEnabled.value     = ab.enabled ? 1.0 : 0.0
+            ro.uArcBandColorNear.value.set(ab.colorNear  ?? '#F7E7C6')
+            ro.uArcBandColorMid.value.set( ab.colorMid   ?? '#AFCFE0')
+            ro.uArcBandColorFar.value.set( ab.colorFar   ?? '#4E6F86')
+            ro.uArcBandStrength.value    = ab.strength   ?? 0.38
+            ro.uArcBandWidth.value       = ab.width      ?? 0.055
+            ro.uArcBandSpread.value      = ab.spread     ?? 0.58
+            ro.uArcBandDirX.value        = ab.dirX       ?? 0.88
+            ro.uArcBandDirFalloff.value  = ab.dirFalloff ?? 1.8
+          } else {
+            ro.uArcBandEnabled.value     = 0.0
+          }
+          // surface warmth via inner veil
+          const sw = sunLobe.surfaceWarmth
+          if (sw) {
+            rv.uSurfWarmthEnabled.value  = sw.enabled ? 1.0 : 0.0
+            rv.uSurfWarmthX.value        = sw.x        ?? sunLobe.x ?? 0.90
+            rv.uSurfWarmthY.value        = sw.y        ?? sunLobe.y ?? 0.31
+            rv.uSurfWarmthColor.value.set(sw.color     ?? '#F1B46A')
+            rv.uSurfWarmthStrength.value = sw.strength ?? 0.08
+            rv.uSurfWarmthWidth.value    = sw.width    ?? 0.22
+            rv.uSurfWarmthFalloff.value  = sw.falloff  ?? 2.4
+            rv.uSurfWarmthVCompress.value= sw.vCompress ?? 0.50
+          } else {
+            rv.uSurfWarmthEnabled.value  = 0.0
+          }
+        } else {
+          ro.uSunLobeEnabled.value     = 0.0
+          ro.uArcBandEnabled.value     = 0.0
+          rv.uSurfWarmthEnabled.value  = 0.0
+        }
       }
 
       // Projects earth's actual on-screen position/size into the rim overlay's
@@ -2472,7 +2691,7 @@
       // relying solely on the 3D Fresnel atmosphere shell for limb glow.
       // DeepNight uses the same screen-space Rim Overlay + Inner Horizon Veil
       // stack as earlyMorning; see deepNight.rimGlow in THEME_VISUAL_CONFIG.
-      const RIM_OVERLAY_THEMES = new Set(['earlyMorning', 'deepNight', 'evening', 'lateEvening', 'dawn', 'morning', 'noon', 'afternoon'])
+      const RIM_OVERLAY_THEMES = new Set(['earlyMorning', 'deepNight', 'evening', 'lateEvening', 'dawn', 'morning', 'noon', 'afternoon', 'sunrise', 'goldenApproach', 'sunset'])
 
       function updateEarlyMorningGlowMode() {
         if (!_emRimOverlayMat || !_emInnerVeilMat || !atmosphere || !atmosphereMaterial) return
@@ -3076,21 +3295,24 @@
             cityLightClamp: 0.70,
           },
           // First pre-dawn horizon micro-glow: a thin cool band at the limb,
-          // warm-tinted core — the earliest sign of the coming sun.
+          // warm-tinted core — the earliest sign of the coming sun. Directional
+          // bias pushed right (sunDirection is +x/east) so the pre-sunrise hint
+          // reads on the correct side, without yet being a full warm sunrise —
+          // opacity/color stay mostly cool per spec ("无明显太阳圆盘").
           horizonGlow: {
             enabled: true,
-            colorCore:  '#d8e6f2',
+            colorCore:  '#e8ecf0',
             colorMain:  '#9bb8cf',
             colorOuter: '#3a5a78',
-            opacity: 0.030,
+            opacity: 0.045,
             blur: 24,
             scale: 1.24,
             innerStop: 0.806,
             coreStop:  0.838,
             midStop:   0.902,
             outerStop: 0.974,
-            lightDirX: 48,
-            lightDirY: 43,
+            lightDirX: 66,
+            lightDirY: 46,
             rim: {
               color: '#e6f1fb',
               strength: 0.18,
@@ -3142,32 +3364,159 @@
           sunDirection: { x: 4, y: 1, z: 2 }, // pre-dawn eastern light, sun still low
         },
         sunrise: {
+          // V4-2C: sun breaks the eastern horizon. Previously a bare v16 stub
+          // (no rimGlow / horizonGlow / nightGrade at all) but its raw-Phong
+          // real-lighting look was already correctly bright/well-exposed —
+          // land should stay clearly visible here, not crushed toward black.
+          // First pass wrongly routed this through daybaseMode:true (the
+          // night-base exposure crush meant for near-zero-sunlight themes),
+          // which flattened land to near-black. Reverted to daybaseMode:false
+          // + dayOceanGrade (the same daytime-safe path morning/noon/afternoon/
+          // goldenApproach use) so real Phong lighting keeps driving brightness.
           themeHour: 6.3,
           texture: {
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x96a6ae,
+            // City lights fading out: dawn 0.58 → sunrise 0.20 → earlyMorning 0(off).
             emissiveColor: 0xffe3b0,
-            emissiveIntensity: 0.46,
+            emissiveIntensity: 0.20,
             nightBaseIntensity: 0.20,
           },
           material: {
             specular: 0x000102,
             shininess: 0.16,
           },
+          // 3D fresnel shell disabled — Rim Overlay + Inner Horizon Veil (below)
+          // now own the limb-glow job, same pattern as dawn/earlyMorning.
           atmosphere: {
             color: '#7ab6d8',
-            opacity: 0.106,
+            colorOuter: '#5d86a8',
+            radius: 2.04,
+            opacity: 0.0,
             power: 12.5,
+            powerOuter: 5.0,
+            strengthOuter: 0.16,
+          },
+          // Right-side sunLobe — mirror of sunset's proven left-side structure,
+          // strength scaled to ~75%, colors cooled toward morning light.
+          // Sky stays deep cold blue, warmth concentrated at eastern limb.
+          rimGlow: {
+            outer: {
+              color: '#8AA8C0', colorNear: '#FFECC8', colorFar: '#040C16',
+              width: 0.24, coreFraction: 0.30, coreStrength: 0.49, haloStrength: 0.20,
+              tailPower: 3.2,
+            },
+            inner: {
+              color: '#D0E0E8', width: 0.075, strength: 0.19, falloff: 2.8,
+            },
+            sunLobe: {
+              enabled: true,
+              x: 0.96,
+              y: 0.31,
+              coreColor: '#FFF6E8',
+              mainColor: '#E8C090',
+              outerColor: '#5A80A0',
+              strength: 0.83,
+              width: 0.34,
+              falloff: 3.2,
+              rimBoost: 0.36,
+              hStretch: 2.4,
+              vCompress: 0.42,
+              arcBand: {
+                enabled: true,
+                colorNear: '#E8C88A',
+                colorMid: '#8A9AA5',
+                colorFar: '#3A6080',
+                strength: 0.26,
+                width: 0.16,
+                spread: 0.55,
+                dirX: 0.88,
+                dirFalloff: 3.0,
+              },
+              surfaceWarmth: {
+                enabled: true,
+                x: 0.92,
+                y: 0.42,
+                color: '#D4A870',
+                strength: 0.17,
+                width: 0.42,
+                falloff: 2.4,
+              },
+            },
           },
           lighting: {
-            ambient: 0.072,
-            sun: 0.48,
-            stars: 0.2,
-            cityLightsOpacity: 0.26, // dead param — logging only
+            ambient: 0.44,
+            sun: 0.66,
+            sunColor: 0xffd9aa,
+            stars: 0.06,
+            cityLightsOpacity: 0.14,
+            cityLightClamp: 0.72,
           },
-          clouds: 0.06,
-          starSphereOpacity: 0.02,
+          // DOM horizonGlow — weak auxiliary only; primary sun via WebGL sunLobe
+          horizonGlow: {
+            enabled: true,
+            colorCore:  '#FFE8CC',
+            colorMain:  '#D4956A',
+            colorOuter: '#2E5F7A',
+            opacity: 0.03,
+            blur: 16,
+            scale: 0.55,
+            innerStop: 0.00,
+            coreStop:  0.06,
+            midStop:   0.18,
+            outerStop: 0.38,
+            lightDirX: 84,
+            lightDirY: 32,
+            rim: {
+              color: '#FFE8BE',
+              strength: 0.10,
+              halfWidth: 0.0032,
+              blur: 1.3,
+            },
+          },
+          // daybaseMode:false + dayOceanGrade:true — real daylight, ocean/land
+          // graded via the daytime-safe standalone path (same mechanism
+          // morning/noon/afternoon/goldenApproach use), not the night-base crush.
+          // Note: oceanLiftTint is only consumed by the daybase (night) shader
+          // path — the standalone day path hardcodes the 0.35/0.50/1.0 lift hue,
+          // so the tint below is recorded intent, not yet live.
+          nightGrade: {
+            daybaseMode: false,
+            dayOceanGrade: true,
+            nightExposure: 0.078,
+            nightSaturation: 0.70,
+            nightGamma: 0.92,
+            landLift: 0.016,
+            landGamma: 0.90,
+            landStr: 0.22,
+            oceanBlendStrength: 0.62,
+            oceanDarken: 0.52,
+            oceanContrast: 1.02,
+            oceanSaturation: 0.56,
+            oceanBlueBias: 0.006,
+            oceanRedReduce: 0.0,
+            oceanGreenReduce: 0.0,
+            coastProtection: 0.76,
+            iceNeutralize: 1.0,
+            oceanLift: 0.036,
+            oceanLiftTint: [0.12, 0.32, 0.56],
+            oceanTeal: 0,
+            landRedRed: 0.0,
+            landGreenB: 0.03,
+            landGlowStr: 0,
+          },
+          clouds: {
+            opacity: 0.22,
+            color: '#ffe9d2',
+            alphaLow: 0.10,
+            alphaHigh: 0.85,
+            alphaPow: 1.5,
+            oceanSuppress: 0.55,
+            deepOceanSuppress: 0.35,
+            shade: 0.5,
+          },
+          starSphereOpacity: 0.06,
           sunDirection: { x: 10, y: 0, z: 0 }, // eastern light: sun from +x (right side lit)
         },
         earlyMorning: {
@@ -3564,59 +3913,293 @@
           sunDirection: { x: 2, y: 3, z: 6 },
         },
         goldenApproach: {
+          // V6: Rebased on afternoon (NOT sunrise). Colder blue-grey sky,
+          // slightly darker & warmer than afternoon, subtle left-side
+          // warm directional sunLobe + arcBand + surfaceWarmth — 暮前.
           themeHour: 16.5,
           texture: {
             map: 'day',
-            emissiveMap: null,
-            mapColor: 0xeee8dc,
-            emissiveColor: 0x000000,
-            emissiveIntensity: 0,
+            emissiveMap: 'night',
+            mapColor: 0xF4EFE5,
+            emissiveColor: 0xFFC477,
+            emissiveIntensity: 0.08,
+            nightBaseIntensity: 0.06,
           },
           material: {
-            specular: 0x180e04,
-            shininess: 60,
+            specular: 0x020407,
+            shininess: 0.50,
           },
+          // 3D fresnel shell disabled — Rim Overlay + sky plane own the limb job.
           atmosphere: {
-            color: '#b7a169',
-            opacity: 0.095,
-            power: 11.8,
+            color: '#f7feff',
+            colorOuter: '#9fd7ff',
+            radius: 2.04,
+            opacity: 0.0,
+            power: 16.0,
+            powerOuter: 5.2,
+            strengthOuter: 0.18,
+          },
+          rimGlow: {
+            outer: {
+              color: '#7F9FB2', colorNear: '#D8DDCE',
+              coreStrength: 0.50, haloStrength: 0.22,
+              width: 0.27, coreFraction: 0.24, tailPower: 3.2,
+            },
+            inner: {
+              color: '#C8D5CE', strength: 0.12,
+              width: 0.060, falloff: 3.0,
+            },
+            sunLobe: {
+              enabled: true,
+              x: -0.04,
+              y: 0.32,
+              coreColor: '#FFE8BE',
+              mainColor: '#E7A86A',
+              outerColor: '#4E7188',
+              strength: 1.05,
+              width: 0.34,
+              falloff: 3.0,
+              rimBoost: 0.32,
+              hStretch: 2.6,
+              vCompress: 0.45,
+              arcBand: {
+                enabled: true,
+                colorNear: '#E2A76A',
+                colorMid: '#B0A28A',
+                colorFar: '#768E9E',
+                strength: 0.18,
+                width: 0.12,
+                spread: 0.55,
+                dirX: 0.12,
+                dirFalloff: 3.0,
+              },
+              surfaceWarmth: {
+                enabled: true,
+                x: 0.08,
+                y: 0.42,
+                color: '#DFA15F',
+                strength: 0.10,
+                width: 0.42,
+                falloff: 2.6,
+              },
+            },
           },
           lighting: {
-            ambient: 0.052,
-            sun: 0.88,
-            stars: 0,
-            cityLightsOpacity: 0, // dead param — logging only
+            ambient: 0.54,
+            sun: 0.84,
+            sunColor: 0xffd6a3,
+            stars: 0.02,
+            cityLightsOpacity: 0.08,
+            cityLightClamp: 0.74,
           },
-          clouds: 0.07,
-          starSphereOpacity: 0.04,
+          // DOM horizonGlow disabled — all glow via WebGL sunLobe/arcBand
+          horizonGlow: {
+            enabled: false,
+            colorCore:  '#edf8ff',
+            colorMain:  '#c2dff5',
+            colorOuter: '#6d97b8',
+            opacity: 0,
+            blur: 30,
+            scale: 1.27,
+            innerStop: 0.804,
+            coreStop:  0.832,
+            midStop:   0.900,
+            outerStop: 0.974,
+            lightDirX: 48,
+            lightDirY: 43,
+            rim: {
+              color: '#eef8ff',
+              strength: 0,
+              halfWidth: 0.0024,
+              blur: 2.2,
+            },
+          },
+          nightGrade: {
+            daybaseMode: false,
+            dayOceanGrade: true,
+            nightExposure: 0.086,
+            nightSaturation: 0.74,
+            nightGamma: 0.92,
+            landLift: 0.014,
+            landGamma: 0.91,
+            landStr: 0.30,
+            oceanBlendStrength: 0.38,
+            oceanDarken: 0.66,
+            oceanContrast: 1.07,
+            oceanSaturation: 0.70,
+            oceanBlueBias: 0.002,
+            oceanRedReduce: 0.0,
+            oceanGreenReduce: 0.0,
+            coastProtection: 0.76,
+            iceNeutralize: 1.0,
+            oceanLift: 0.0,
+            oceanTeal: 0,
+            landRedRed: -0.020,
+            landGreenB: 0.02,
+            landGlowStr: 0,
+          },
+          clouds: {
+            opacity: 0.16,
+            color: '#f0f5f2',
+            alphaLow: 0.10,
+            alphaHigh: 0.86,
+            alphaPow: 1.55,
+            oceanSuppress: 0.60,
+            deepOceanSuppress: 0.40,
+            shade: 0.5,
+          },
+          starSphereOpacity: 0.02,
           sunDirection: { x: -10, y: 0, z: 0 }, // western light: sun from -x (left side lit)
         },
         sunset: {
+          // V4-2C: sun low on the western horizon. Previously a bare stub
+          // (flat mapColor tint, no rimGlow/horizonGlow/nightGrade). First
+          // pass wrongly routed this through daybaseMode:true (evening's
+          // night-base regime), which crushed land toward black the same way
+          // it did on sunrise (see sunrise's comment) — the original raw-Phong
+          // look had land still clearly visible/warm, just dimmer than
+          // goldenApproach. Reverted to daybaseMode:false + dayOceanGrade,
+          // darker/warmer than goldenApproach via lower ambient/sun and a
+          // deeper oceanDarken, with city lights layered on top via emissive.
           themeHour: 18.2,
           texture: {
             map: 'day',
             emissiveMap: 'night',
-            mapColor: 0xb4c2cb,
-            emissiveColor: 0xffdca3,
-            emissiveIntensity: 0.16,
+            mapColor: 0xF2E0C8,
+            emissiveColor: 0xFFB15C,
+            emissiveIntensity: 0.58,
           },
           material: {
             specular: 0x000102,
-            shininess: 0.18,
+            shininess: 0.20,
           },
           atmosphere: {
             color: '#628fb5',
-            opacity: 0.072,
+            colorOuter: '#7a4a2a',
+            radius: 2.04,
+            opacity: 0.0,
             power: 12.5,
+            powerOuter: 5.0,
+            strengthOuter: 0.16,
+          },
+          // Left-side sunLobe mirroring sunrise structure, stronger + lower
+          // on the horizon than goldenApproach. Sky stays deep blue, warmth
+          // concentrated at the western limb via WebGL glow only.
+          rimGlow: {
+            outer: {
+              color: '#8FA8B6', colorNear: '#FFE0A8', colorFar: '#06101A',
+              width: 0.24, coreFraction: 0.30, coreStrength: 0.58, haloStrength: 0.24,
+              tailPower: 3.2,
+            },
+            inner: {
+              color: '#C8D8DE', width: 0.075, strength: 0.22, falloff: 2.8,
+            },
+            sunLobe: {
+              enabled: true,
+              x: -0.04,
+              y: 0.31,
+              coreColor: '#FFF1C8',
+              mainColor: '#F0A95E',
+              outerColor: '#3E6880',
+              strength: 1.10,
+              width: 0.34,
+              falloff: 3.2,
+              rimBoost: 0.48,
+              hStretch: 2.4,
+              vCompress: 0.42,
+              arcBand: {
+                enabled: true,
+                colorNear: '#F2B36A',
+                colorMid: '#7A8A90',
+                colorFar: '#285C76',
+                strength: 0.34,
+                width: 0.16,
+                spread: 0.55,
+                dirX: 0.12,
+                dirFalloff: 3.0,
+              },
+              surfaceWarmth: {
+                enabled: true,
+                x: 0.08,
+                y: 0.42,
+                color: '#E6A15A',
+                strength: 0.22,
+                width: 0.42,
+                falloff: 2.4,
+              },
+            },
           },
           lighting: {
-            ambient: 0.058,
-            sun: 0.40,
-            stars: 0.26,
-            cityLightsOpacity: 0.18, // dead param — logging only
+            ambient: 0.34,
+            sun: 0.52,
+            sunColor: 0xffc488,
+            stars: 0.18,
+            cityLightsOpacity: 0.42,
+            cityLightClamp: 0.76,
           },
-          clouds: 0.06,
-          starSphereOpacity: 0.04,
+          // DOM horizonGlow disabled — all sun warmth via WebGL sunLobe/arcBand
+          horizonGlow: {
+            enabled: false,
+            colorCore:  '#ffdcae',
+            colorMain:  '#ff8438',
+            colorOuter: '#3a2010',
+            opacity: 0,
+            blur: 22,
+            scale: 1.26,
+            innerStop: 0.806,
+            coreStop:  0.838,
+            midStop:   0.902,
+            outerStop: 0.974,
+            lightDirX: 14,
+            lightDirY: 50,
+            rim: {
+              color: '#ffcf96',
+              strength: 0,
+              halfWidth: 0.0034,
+              blur: 1.2,
+            },
+          },
+          // daybaseMode:false + dayOceanGrade:true — daytime-safe path,
+          // darker than goldenApproach, ocean deepened, city lights visible.
+          nightGrade: {
+            daybaseMode: false,
+            dayOceanGrade: true,
+            nightExposure: 0.050,
+            nightSaturation: 0.56,
+            nightGamma: 0.88,
+            nightBlueBias: 0.018,
+            nightGreenBias: 0.002,
+            nightRedReduce: 0.010,
+            landLift: 0.010,
+            landGamma: 0.92,
+            landStr: 0.38,
+            landGlowStr: 0.04,
+            oceanBlendStrength: 0.54,
+            oceanDarken: 0.62,
+            oceanContrast: 1.04,
+            oceanSaturation: 0.62,
+            oceanBlueBias: 0.0,
+            oceanRedReduce: 0.0,
+            oceanGreenReduce: 0.0,
+            oceanLift: 0.006,
+            oceanLiftTint: [0.10, 0.28, 0.42],
+            coastProtection: 0.72,
+            iceNeutralize: 1.0,
+            oceanTeal: 0,
+            landRedRed: -0.010,
+            landGreenB: 0.0,
+          },
+          clouds: {
+            opacity: 0.14,
+            color: '#ffcf9e',
+            alphaLow: 0.10,
+            alphaHigh: 0.82,
+            alphaPow: 1.5,
+            oceanSuppress: 0.55,
+            deepOceanSuppress: 0.35,
+            shade: 0.5,
+          },
+          starSphereOpacity: 0.10,
           sunDirection: { x: -10, y: 0, z: 0 }, // western light: sun from -x (left side lit)
         },
         evening: {
