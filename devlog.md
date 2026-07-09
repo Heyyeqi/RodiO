@@ -776,6 +776,7 @@
 - D5z_a 截图待 D5z_b 失败时按需执行
 - Conditional Pass 允许最多 2 项 Partial（仅限极地亮度/Indian Ocean 深海）；保护区 / Sahara 变色 / 硬边界 / UI 可读性 均不允许 Partial
 
+<<<<<<< HEAD
 ## 2026-06-10 B-6.1 Asset Audit
 
 ### 做了什么
@@ -5129,3 +5130,30 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - `.gitignore` 里仍把部分现已运行时使用的云图标注为 ignored，本次为避免扩大范围未重构 ignore 规则，而是直接将必需文件纳入本次提交
 - 其余未跟踪文件（如截图、生成脚本、预览图、备份文件、workspace 输出）本次保持不动，待后续按需清理
+
+## 2026-07-10 HZ补齐 Railway 缺失的 NOON_AIR_V2_ISLANDS 主 tiles
+
+### 做了什么
+- 复核线上“海洋不精细”的根因：不是 `earth_day_8k` / `normal` / `ocean_mask` / `ocean_specular` 缺失，而是默认白天地球已切到 `NOON_AIR_V2_ISLANDS` tile stream，但 Railway 上对应 `/assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/...` 返回 `404`
+- 确认本地高精细主 tiles 仍完整存在于 `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/`
+- 审计其余遗漏资源：`tiles_rdl_regions/` 同样未部署，但体量约 `2.8G`、972 文件，不适合与本次主视图修复一起硬塞进仓库
+- 采用最小发布策略：本次只补当前默认主视图运行必需的 `NOON_AIR_V2_ISLANDS` 4k / 8k / 16k tiles，保住线上精细度，不扩大到全部 RDL 区域素材
+
+### 改动文件
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/4k/tile_0_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/4k/tile_1_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_0_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_0_1.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_1_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_1_1.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_2_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_2_1.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_3_0.jpg`
+- `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/16k/tile_3_1.jpg`
+- `devlog.md`
+
+### 遗留问题
+- `tiles_rdl_regions/` 仍未部署到 Railway；当前代码会预加载这批区域资源，但默认主视图并不依赖它们才能恢复精细地球底图
+- `tiles/`、`tiles_noon_air/`、`tiles_v2_enhanced/`、`tiles_noon_air_v2/` 等历史/切换模式资源也仍未进仓库；如果后续要恢复多模式切换的线上完整性，需要单独规划
