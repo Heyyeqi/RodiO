@@ -4116,12 +4116,14 @@
           // concentrated at the western limb via WebGL glow only.
           rimGlow: {
             outer: {
-              color: '#8FA8B6', colorNear: '#FFE0A8', colorFar: '#06101A',
-              width: 0.24, coreFraction: 0.30, coreStrength: 0.58, haloStrength: 0.24,
-              tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#B8B6A8', colorNear: '#FFD2A2', colorFar: '#33465B',
+              coreStrength: 0.43, haloStrength: 0.19,
+              width: 0.24, coreFraction: 0.28, tailPower: 3.15,
+              corePower: 5.8, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#C8D8DE', width: 0.075, strength: 0.22, falloff: 2.8,
+              color: '#EBC4A0', strength: 0.16,
+              width: 0.10, falloff: 3.2,
             },
             sunLobe: {
               enabled: true,
