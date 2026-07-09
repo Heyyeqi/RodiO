@@ -5042,3 +5042,21 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - 审计中发现的 dawn vs deepNight 净亮度（`ambient × nightExposure`）区分度不足问题尚未处理，本轮只解决海水层次感，未触碰 `ambient`/`nightExposure`
 - 审计中列出的其余 P1/P2 问题（dawn/sunrise 的 DOM horizonGlow 与 WebGL rimGlow 双重叠加架构、8 个模式的 horizonGlow 死配置等）均未处理，见审计报告
+
+## 2026-07-09 R7 ocean-only blackness swap（deepNight 压黑 / dawn 轻抬）
+
+### 做了什么
+- 参数审计确认：dawn 海水比 deepNight 更黑的根因不在 ocean 参数（dawn 的 oceanDarken 1.35、oceanLift 0.014 其实都比 deepNight 更"亮"），而在两个全局乘数：`mapColor 0x8a98a4`（线性空间约 0.3×预乘 day 纹理）+ `lighting.ambient 0.62`（vs deepNight 1.0）。全局参数在禁改清单内，故按约束"转译"为 ocean-only 参数
+- 修正了原方案的两个方向性错误：oceanRawMix 不能降（raw 层是三个海水成分里最黑的一层，降 mix 会变亮）；oceanDarken 不能冻结（它是 oceanTone 的纯乘数，恰是转译全局 ×0.6 的正确旋钮）
+- deepNight：oceanDarken 1.75→1.10，oceanLift 0.010→0.005，oceanRawExposure 0.040→0.026，oceanRawBlueKeep 0.40→0.32；oceanRawMix 0.30、oceanBlendStrength 0.60、saturation/coastProtection/全局 nightExposure/nightSaturation 均不动
+- dawn（ocean-only 轻抬）：oceanDarken 1.35→1.50，oceanLift 0.014→0.018；sky/cloud/rimGlow/lighting 未动
+- normal render 验收（非 oceanGradeOnly）：canvas 同帧 rAF 像素采样五个海区，改后 deepNight 台湾以东 (6,11,18)→(4,4,8)、西太平洋 (6,12,21)→(4,5,13)，dawn 台湾以东 (3,9,15)→(4,10,18)——黑度层级完成对调，deepNight 在全部可比点位均不浅于 dawn；东海陆架保留弱冷蓝层次；两主题陆地/城市灯/天空无变化，console 无报错
+
+### 改动文件
+- `pwa/earth3d.js`（deepNight.nightGrade 四个字段 + dawn.nightGrade 两个字段，均 ocean-only）
+- `devlog.md`
+
+### 遗留问题
+- 未 commit，等用户视觉确认后提交
+- deepNight 深海黑位 (4,4,8) 已接近纯黑，若后续想保留更明显的"黑蓝"倾向而非墨黑，可微升 oceanLift（0.005→0.007）或 oceanRawBlueKeep
+- dawn vs deepNight 的全局净亮度（ambient × nightExposure）区分度问题依旧未动（沿袭上轮遗留）

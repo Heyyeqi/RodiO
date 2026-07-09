@@ -3351,7 +3351,12 @@
             nightGreenBias:   0.003,
             nightRedReduce:   0.022,
             oceanBlendStrength: 0.60,
-            oceanDarken: 1.35,
+            // R7 ocean-only blackness swap: dawn's ocean was reading darker than
+            // deepNight's because the global mapColor/ambient multipliers crush
+            // it ~0.6x. Gentle ocean-only counter-lift (darken 1.35→1.50, lift
+            // floor 0.014→0.018) so the sea starts reading blue ahead of the
+            // land, per the dawn signature above. Global params untouched.
+            oceanDarken: 1.50,
             oceanContrast: 1.01,
             oceanSaturation: 0.58,
             oceanBlueBias: 0.010,
@@ -3363,7 +3368,7 @@
             aridDarken:          0.58,
             aridWarmReduce:      0.25,
             iceNeutralize:       1.0,
-            oceanLift: 0.014, oceanLiftTint: [0.14, 0.40, 0.74], oceanTeal: 0,
+            oceanLift: 0.018, oceanLiftTint: [0.14, 0.40, 0.74], oceanTeal: 0,
             landLift: 0.030, landGamma: 0.87, landStr: 0, landRedRed: 0.024, landGreenB: 0.050, landGlowStr: 0,
             cityLumLow:  0.013,
             cityLumHigh: 0.088,
@@ -4473,7 +4478,13 @@
             // Blend 0.60 (2026-07-09 R6 B-candidate): lowered from 0.69 to reduce
             // oceanTone grade coverage, letting raw source + nightBase carry more
             // of the final ocean color. Works with oceanRaw to hit deep blue-black.
-            oceanDarken: 1.75,
+            // R7 ocean-only blackness swap: dawn's blacker ocean comes from its
+            // global mapColor (~0.3x) + ambient 0.62 multipliers, which are
+            // off-limits here — translate that ~0.6x into the ocean-only path
+            // instead: oceanDarken 1.75→1.10 (main knob), lift floor halved,
+            // raw source darkened. oceanRawMix stays at 0.30 — the raw layer is
+            // the darkest component, reducing it would brighten the ocean.
+            oceanDarken: 1.10,
             oceanContrast: 1.01,
             oceanSaturation: 0.54,
             oceanBlueBias: 0.005,
@@ -4482,8 +4493,8 @@
             coastProtection: 0.68,
             // R5 deepNight black-ocean raw source — B candidate
             oceanRawMix: 0.30,
-            oceanRawExposure: 0.040,
-            oceanRawBlueKeep: 0.40,
+            oceanRawExposure: 0.026,
+            oceanRawBlueKeep: 0.32,
             // Surface-type suppression: tropical green + arid/highland
             tropicalDarken:      0.62,
             tropicalGreenReduce: 0.0,
@@ -4497,7 +4508,7 @@
             // oceanLiftTint overrides the default warm ratio (0.35/0.50/1.0)
             // with a cold one so deep basins land in the #010713–#031426
             // blue-black band instead of drifting toward slate grey.
-            oceanLift: 0.010, oceanLiftTint: [0.13, 0.39, 0.72], oceanTeal: 0,
+            oceanLift: 0.005, oceanLiftTint: [0.13, 0.39, 0.72], oceanTeal: 0,
             // Land minor assist: very light lift only
             landLift: 0.035, landGamma: 0.85, landStr: 0, landRedRed: 0.025, landGreenB: 0.045, landGlowStr: 0,
             // Wider city mask than the old 0.020/0.082: mid-size cities join
