@@ -3969,13 +3969,14 @@
           },
           rimGlow: {
             outer: {
-              color: '#7F9FB2', colorNear: '#D8DDCE',
-              coreStrength: 0.50, haloStrength: 0.22,
-              width: 0.27, coreFraction: 0.24, tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#B7C6D2', colorNear: '#EED9B8', colorFar: '#4E647A',
+              coreStrength: 0.37, haloStrength: 0.17,
+              width: 0.24, coreFraction: 0.28, tailPower: 3.0,
+              corePower: 5.4, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#C8D5CE', strength: 0.12,
-              width: 0.060, falloff: 3.0,
+              color: '#E8D2B2', strength: 0.14,
+              width: 0.10, falloff: 3.15,
             },
             sunLobe: {
               enabled: true,
