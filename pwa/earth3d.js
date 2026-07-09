@@ -3290,7 +3290,7 @@
             outer: {
               color: '#8FA9C0', colorNear: '#cfe0ec', colorFar: '#04101f',
               width: 0.10, coreFraction: 0.34, coreStrength: 0.70, haloStrength: 0.20,
-              tailPower: 2.8,
+              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#a9d2f0', width: 0.09, strength: 0.34, falloff: 2.4,
@@ -3416,7 +3416,7 @@
             outer: {
               color: '#8AA8C0', colorNear: '#FFECC8', colorFar: '#040C16',
               width: 0.24, coreFraction: 0.30, coreStrength: 0.49, haloStrength: 0.20,
-              tailPower: 3.2,
+              tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#D0E0E8', width: 0.075, strength: 0.19, falloff: 2.8,
@@ -3659,7 +3659,7 @@
             outer: {
               color: '#a4dbff', colorNear: '#f4fbff', colorFar: '#5d8fc0',
               coreStrength: 0.78, haloStrength: 0.38,
-              width: 0.28, coreFraction: 0.42, tailPower: 1.6,
+              width: 0.28, coreFraction: 0.42, tailPower: 1.6, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#dbf1ff', strength: 0.32,
@@ -3854,7 +3854,7 @@
             outer: {
               color: '#9ecbe8', colorNear: '#f2f4ea', colorFar: '#567fa6',
               coreStrength: 0.48, haloStrength: 0.21,
-              width: 0.26, coreFraction: 0.40, tailPower: 1.8,
+              width: 0.26, coreFraction: 0.40, tailPower: 1.8, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#d8e7ec', strength: 0.24,
@@ -3954,7 +3954,7 @@
             outer: {
               color: '#7F9FB2', colorNear: '#D8DDCE',
               coreStrength: 0.50, haloStrength: 0.22,
-              width: 0.27, coreFraction: 0.24, tailPower: 3.2,
+              width: 0.27, coreFraction: 0.24, tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#C8D5CE', strength: 0.12,
@@ -4100,7 +4100,7 @@
             outer: {
               color: '#8FA8B6', colorNear: '#FFE0A8', colorFar: '#06101A',
               width: 0.24, coreFraction: 0.30, coreStrength: 0.58, haloStrength: 0.24,
-              tailPower: 3.2,
+              tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#C8D8DE', width: 0.075, strength: 0.22, falloff: 2.8,
@@ -4228,7 +4228,7 @@
             outer: {
               color: '#6FA6D6', colorNear: '#D4ECFF', colorFar: '#04101f',
               width: 0.10, coreFraction: 0.34, coreStrength: 0.66, haloStrength: 0.24,
-              tailPower: 2.8,
+              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#8ABCE8', width: 0.09, strength: 0.28, falloff: 2.4,
@@ -4300,7 +4300,7 @@
             outer: {
               color: '#7198B5', colorNear: '#D0E4EE', colorFar: '#04101f',
               width: 0.10, coreFraction: 0.34, coreStrength: 0.74, haloStrength: 0.20,
-              tailPower: 2.8,
+              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#9BBED4', width: 0.09, strength: 0.32, falloff: 2.4,
@@ -4384,7 +4384,7 @@
             outer: {
               color: '#7F9DB4', colorNear: '#d8e4ec', colorFar: '#04101f',
               width: 0.10, coreFraction: 0.34, coreStrength: 0.82, haloStrength: 0.18,
-              tailPower: 2.8,
+              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
             },
             inner: {
               color: '#9fd0ff', width: 0.09, strength: 0.40, falloff: 2.4,
