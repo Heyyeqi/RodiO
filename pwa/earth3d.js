@@ -3755,13 +3755,14 @@
           // atmospheric structure as earlyMorning, not an outline.
           rimGlow: {
             outer: {
-              color: '#aadeff', colorNear: '#f7fcff', colorFar: '#6293c2',
-              coreStrength: 0.58, haloStrength: 0.26,
-              width: 0.22, coreFraction: 0.40, tailPower: 1.7,
+              color: '#C7DCE8', colorNear: '#D9E8F1', colorFar: '#708BA3',
+              coreStrength: 0.35, haloStrength: 0.16,
+              width: 0.24, coreFraction: 0.28, tailPower: 2.5,
+              corePower: 4.5, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#def2ff', strength: 0.27,
-              width: 0.14, falloff: 2.0,
+              color: '#D8EEF8', strength: 0.14,
+              width: 0.12, falloff: 3.0,
             },
           },
           lighting: {
