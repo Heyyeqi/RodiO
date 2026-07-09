@@ -3854,13 +3854,14 @@
           // light fading off its noon peak, still clearly daytime (not dusk).
           rimGlow: {
             outer: {
-              color: '#9ecbe8', colorNear: '#f2f4ea', colorFar: '#567fa6',
-              coreStrength: 0.48, haloStrength: 0.21,
-              width: 0.26, coreFraction: 0.40, tailPower: 1.8, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#C9DCE7', colorNear: '#DCE9F0', colorFar: '#7A91A6',
+              coreStrength: 0.34, haloStrength: 0.15,
+              width: 0.24, coreFraction: 0.29, tailPower: 2.45,
+              corePower: 5.0, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#d8e7ec', strength: 0.24,
-              width: 0.14, falloff: 2.0,
+              color: '#D9EDF6', strength: 0.13,
+              width: 0.12, falloff: 3.0,
             },
           },
           lighting: {
