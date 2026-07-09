@@ -3626,6 +3626,18 @@
             // opacity is high enough to actually see the clouds clearly.
             shade: 0.5,
           },
+          rimGlow: {
+            outer: {
+              color: '#BBD8E8', colorNear: '#E2F1F8', colorFar: '#6C88A2',
+              coreStrength: 0.40, haloStrength: 0.20,
+              width: 0.24, coreFraction: 0.31, tailPower: 2.9,
+              corePower: 4.7, softComposite: true, rimOffsetY: 0.0,
+            },
+            inner: {
+              color: '#D8EEF8', strength: 0.17,
+              width: 0.11, falloff: 3.15,
+            },
+          },
           starSphereOpacity: 0,
           sunDirection: { x: 2, y: 3, z: 6 },
         },
