@@ -3272,8 +3272,8 @@
             // Warm amber filament, dimmer than deepNight's gold — cities fading
             // as the sky brightens, but still a recognizable network.
             emissiveColor: 0xffb066,
-            emissiveIntensity: 0.58,
-            nightBaseIntensity: 0.30,
+            emissiveIntensity: 0.18,
+            nightBaseIntensity: 0.16,
           },
           material: {
             specular: 0x000102,
@@ -3310,8 +3310,8 @@
             ambient: 0.62,
             sun: 0.10,
             stars: 0.46,
-            cityLightsOpacity: 0.40, // dead param — logging only
-            cityLightClamp: 0.70,
+            cityLightsOpacity: 0.08, // dead param — logging only
+            cityLightClamp: 0.72,
           },
           // First pre-dawn horizon micro-glow: a thin cool band at the limb,
           // warm-tinted core — the earliest sign of the coming sun. Directional
@@ -3402,10 +3402,10 @@
             map: 'day',
             emissiveMap: 'night',
             mapColor: 0x96a6ae,
-            // City lights fading out: dawn 0.58 → sunrise 0.20 → earlyMorning 0(off).
+            // City lights fading out: dawn 0.18 → sunrise 0.06 → earlyMorning 0(off).
             emissiveColor: 0xffe3b0,
-            emissiveIntensity: 0.20,
-            nightBaseIntensity: 0.20,
+            emissiveIntensity: 0.06,
+            nightBaseIntensity: 0.05,
           },
           material: {
             specular: 0x000102,
@@ -3476,8 +3476,8 @@
             sun: 0.66,
             sunColor: 0xffd9aa,
             stars: 0.06,
-            cityLightsOpacity: 0.14,
-            cityLightClamp: 0.72,
+            cityLightsOpacity: 0.05,
+            cityLightClamp: 0.66,
           },
           // DOM horizonGlow — weak auxiliary only; primary sun via WebGL sunLobe
           horizonGlow: {
