@@ -1917,6 +1917,7 @@
           uCoreStrength:       { value: 0.82 },
           uTailPower:          { value: 1.5 },
           uHaloStrength:       { value: 0.42 },
+          uSoftComposite:      { value: 0.0 },
           uOpacity:            { value: 1.0 },
           // ─── directional sun lobe ────────────────────────────────────────
           uSunLobeEnabled:     { value: 0.0 },
@@ -1963,6 +1964,7 @@
           uniform float uCoreStrength;
           uniform float uTailPower;
           uniform float uHaloStrength;
+          uniform float uSoftComposite;
           uniform float uOpacity;
           // ─── directional sun lobe ────────────────────────────────────────
           uniform float uSunLobeEnabled;
@@ -2006,7 +2008,14 @@
 
               float core_part = pow(clamp(1.0 - t / uCoreFraction, 0.0, 1.0), uCorePower);
               float tail_part = pow(clamp(1.0 - t,                  0.0, 1.0), uTailPower);
-              float skyIntensity = max(core_part * uCoreStrength, tail_part * uHaloStrength);
+              float ci = core_part * uCoreStrength;
+              float ti = tail_part * uHaloStrength;
+              float skyIntensity;
+              if (uSoftComposite > 0.5) {
+                skyIntensity = 1.0 - (1.0 - ci) * (1.0 - ti);
+              } else {
+                skyIntensity = max(ci, ti);
+              }
 
               float tC = clamp(t, 0.0, 1.0);
               vec3 skyColor = tC < 0.5
@@ -2238,6 +2247,8 @@
         ro.uCoreStrength.value    = outer?.coreStrength  ?? 0.82
         ro.uTailPower.value       = outer?.tailPower     ?? 1.5
         ro.uHaloStrength.value    = outer?.haloStrength  ?? 0.42
+        ro.uSoftComposite.value   = outer?.softComposite ? 1.0 : 0.0
+        ro.uRimOffsetY.value        = outer?.rimOffsetY   ?? 0.004
         const rv = _emInnerVeilMat.uniforms
         rv.uInnerVeilColor.value.set(inner?.color ?? '#d9f0ff')
         rv.uInnerVeilWidth.value    = inner?.width    ?? 0.16
