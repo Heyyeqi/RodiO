@@ -5060,3 +5060,42 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 - 未 commit，等用户视觉确认后提交
 - deepNight 深海黑位 (4,4,8) 已接近纯黑，若后续想保留更明显的"黑蓝"倾向而非墨黑，可微升 oceanLift（0.005→0.007）或 oceanRawBlueKeep
 - dawn vs deepNight 的全局净亮度（ambient × nightExposure）区分度问题依旧未动（沿袭上轮遗留）
+
+## 2026-07-09 evening 城市灯光完全不可见——根因定位与修复
+
+### 做了什么
+- 接手交接报告：evening 主题城市灯光完全不可见，此前多轮排查（审计光守卫、dimHue 修正、emissiveIntensity/cityLumLow/cityLumHigh/cityHighlightClamp 多次上调）均未解决，且所有 JS 侧诊断（uniform 值、texture 是否存在、shader define 是否编译）都显示"纸面正确"
+- 放弃继续调参，转向直接在浏览器里取证：用 preview 工具起本地服务，hook `useProgram`/`getUniform` 直接从 GPU 读取当前编译的 fragment shader 源码和实际生效的 uniform 值——确认 shader 里 `USE_EMISSIVEMAP`、`_cityColor`、`uCityLumLow` 等全部存在且数值合理，排除"shader 未按新 emissiveMap 重新编译"和"uniform 未写入"两个此前怀疑的方向
+- 用 `gl.readPixels` 在同步渲染后直接读回帧缓冲，证实整个画面找不到任何暖色（琥珀色）像素，最亮点也只是天空/大气的冷色调——证实城市灯光在 GPU 输出层面就是空的，不是被后续步骤盖掉
+- 用 `window.earth3d.patchTheme()` 做 iceNeutralize 0/1 A-B 对照（怀疑雪地保护 veto 误伤广大陆地），结果完全无差异——排除此方向，避免了在错误参数上继续耗时间
+- 对照测试：deepNight（用未损坏的 `earth_night_8k.jpg`）在同一 debug 视图下城市灯光正常（暖色像素 4万+），evening（用 `earth_night_night_8k.jpg`）则完全没有——把范围收窄到纹理文件本身
+- 直接用 `gl.texImage2D` 复现 three.js 内部的纹理上传路径（而非之前测试用的 canvas 2D 解码路径），发现 `earth_night_night_8k.jpg` 上传时报 `GL_INVALID_VALUE`，导致 GPU 侧纹理数据无效（采样恒为黑），但整个过程 three.js 不检查 `gl.getError()`，JS 侧完全无感知、无报错——这就是为什么之前所有静态代码审计和 JS 诊断都测不出问题：bug 不在 JS 状态，而在一次静默失败的 GPU 纹理上传
+- 确认文件本体确实被截断（尾部缺少标准 JPEG EOI 结束符 `FFD9`，替换成了一长串 `00` 字节），用 `PIL.ImageFile.LOAD_TRUNCATED_IMAGES` 容错解码后重新编码保存，验证新文件 `gl.texImage2D` 上传无报错、PIL 严格模式也能完整解码
+- 浏览器内重新验证：evening 主题城市灯光正常显示，长三角/珠三角等城市群清晰可见，暖色像素从 0 变为 8万+
+- 根因排除后，把此前为了"点亮看不见的灯"而被上调的 4 个补偿性参数（emissiveIntensity 1.20→0.68、cityLightClamp 0.88→0.74、cityLumLow 0.006→0.014、cityLumHigh 0.100→0.095）还原为 `V4-2A-R3_baseline.md` 记录的、已通过视觉验收的原始数值——还原后城市灯光依然清晰可见，说明这些参数本来就是够用的，之前的上调只是在补偿一个和参数无关的 bug
+- 顺手抽查了同批生成的 `earth_night_mid_8k.jpg`/`earth_night_late_8k.jpg`，`gl.texImage2D` 上传均无报错，没有同样的潜在损坏
+- 移除了排查过程中插入的 `[DIAG] evening applyTheme end` 诊断 console.log
+
+### 改动文件
+- `pwa/assets/earth_night_night_8k.jpg`（修复截断，重新编码为完整有效的 JPEG）
+- `pwa/earth3d.js`（`THEME_VISUAL_CONFIG.evening`：emissiveIntensity/cityLightClamp/cityLumLow/cityLumHigh 还原为验收基线值；移除临时诊断 log）
+- `devlog.md`
+
+### 遗留问题
+- 根因是文件生成/写入过程中被截断（很可能是生成 `earth_night_night_8k.jpg`/`earth_night_mid_8k.jpg`/`earth_night_late_8k.jpg` 那一批操作里进程被中断或写入未完整落盘），生成这三个文件的脚本/流程未在仓库中找到对应记录，如果之后要重新生成同类纹理，建议生成后立即跑一遍 `gl.texImage2D` 级别的验证（PIL 能解码不代表 WebGL 能上传，两者容错程度不同），而不只是检查文件能否被图片查看器打开
+- `pwa/earth3d.js.bak`、`pwa/lil-gui.umd.min.js`、`tmp_stage7_grammar_preview.png`、`tmp_stage7_visual_check.png` 等未跟踪文件是本轮之前遗留的调试产物，本次未处理，如不再需要可以清理
+- 未 commit，等用户确认后提交
+
+## 2026-07-10 HZ创建 visual tuning PR
+
+### 做了什么
+- 为分支 `finalize-visual-20260710` 向 `main` 创建 GitHub Pull Request
+- 使用指定标题 `Finalize visual tuning for 20260710` 与提供的描述内容
+- 确认远端分支 `origin/finalize-visual-20260710` 已存在后直接创建，无额外代码改动
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- PR 已创建为普通 open 状态：`https://github.com/Heyyeqi/RodiO/pull/3`
+- 当前工作区仍有既有未提交与未跟踪文件，本次未整理也未提交
