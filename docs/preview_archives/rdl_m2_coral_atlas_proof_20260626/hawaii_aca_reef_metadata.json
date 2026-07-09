@@ -1,0 +1,41 @@
+{
+  "region": {
+    "region_id": "hawaii",
+    "lon_w": -161.5,
+    "lon_e": -154.0,
+    "lat_s": 18.0,
+    "lat_n": 23.0,
+    "description": "Hawaiian island chain"
+  },
+  "package": "Hawaiian-Islands-20230309235255.zip",
+  "gpkg_path": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/_gpkg_cache/hawaii/reefextent.gpkg",
+  "gpkg_table": "Hawaiian Islands",
+  "gpkg_geometry_column": "geom",
+  "gpkg_bounds": [
+    -178.3800334409999,
+    -154.8705027919999,
+    16.669277738,
+    28.46136348399999
+  ],
+  "base_tile": "d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/hawaii/tile_noon_air_mapbox.jpg",
+  "base_size": [
+    4096,
+    2731
+  ],
+  "oversample": 2,
+  "outputs": {
+    "mask": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/hawaii_aca_reef_mask.png",
+    "preview": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/hawaii_aca_reef_overlay_preview.jpg",
+    "contact_sheet": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/hawaii_aca_reef_contact_sheet.jpg"
+  },
+  "stats": {
+    "features_in_bbox": 1153,
+    "polygons_rasterized": 1153,
+    "holes_rasterized": 720,
+    "parse_errors": 0,
+    "reef_pixels_gt16": 27753,
+    "reef_pixel_ratio_gt16": 0.002481008702169535,
+    "nonzero": true
+  },
+  "method": "sqlite3 + GeoPackageBinary/WKB parser + Pillow rasterization"
+}

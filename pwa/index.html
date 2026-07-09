@@ -42,7 +42,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: var(--bg);
+    background: #060608;
   }
 
   body {
@@ -222,6 +222,169 @@
     color: var(--accent);
     border-color: rgba(201, 169, 110, 0.45);
     background: rgba(201, 169, 110, 0.08);
+  }
+
+  .earth-audit-control {
+    position: absolute;
+    top: 288px;
+    right: 22px;
+    z-index: 6;
+    width: 168px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    pointer-events: auto;
+  }
+
+  .earth-audit-btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text-sub);
+    padding: 6px 8px;
+    min-width: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .earth-audit-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .earth-audit-row.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .earth-audit-btn[data-audit-move] {
+    min-height: 30px;
+    font-size: 10px;
+  }
+
+  .earth-audit-btn.active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .earth-audit-label {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.10);
+    color: var(--text-dim);
+    padding: 5px 7px;
+    min-height: 28px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    line-height: 1.35;
+    letter-spacing: 0.03em;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .rdl-zoom-control {
+    position: absolute;
+    top: 288px;
+    left: 22px;
+    z-index: 6;
+    width: 172px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    pointer-events: auto;
+  }
+
+  .rdl-zoom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  .rdl-zoom-row.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .rdl-zoom-btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text-sub);
+    padding: 8px 9px;
+    min-height: 34px;
+    min-width: 0;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+
+  .rdl-zoom-btn:active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .rdl-zoom-btn.active {
+    color: var(--accent);
+    border-color: rgba(201, 169, 110, 0.45);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  .rdl-zoom-label {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.10);
+    color: var(--text-dim);
+    padding: 5px 7px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 7.5px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .rdl-tile-preview {
+    position: absolute;
+    left: 22px;
+    right: 22px;
+    top: 78px;
+    bottom: 190px;
+    z-index: 5;
+    display: none;
+    border: 1px solid rgba(201, 169, 110, 0.38);
+    background: rgba(3, 8, 18, 0.88);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .rdl-tile-preview.active {
+    display: block;
+  }
+
+  .rdl-tile-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: auto;
+  }
+
+  .rdl-tile-caption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.46);
+    color: var(--text-sub);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 8px;
+    letter-spacing: 0.05em;
+    text-align: center;
   }
 
   .hero-center {
@@ -737,6 +900,7 @@
 
   .overlay.visible {
     display: flex;
+    pointer-events: none;
   }
 
   .overlay-button {
@@ -754,6 +918,7 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: color 200ms ease, border-color 200ms ease;
+    pointer-events: auto;
   }
 
   .overlay-button:hover {
@@ -828,6 +993,44 @@
           </div>
 
           <div class="theme-preview" id="theme-preview"></div>
+          <div class="rdl-zoom-control" id="rdl-zoom-control">
+            <div class="rdl-zoom-row">
+              <button class="rdl-zoom-btn" id="rdl-zoom-out" type="button">FAR</button>
+              <button class="rdl-zoom-btn" id="rdl-zoom-in" type="button">NEAR</button>
+            </div>
+            <div class="rdl-zoom-row three" aria-label="Earth audit angle">
+              <button class="rdl-zoom-btn active" type="button" data-audit-angle="top">TOP</button>
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="oblique">45°</button>
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="low">LOW</button>
+            </div>
+            <div class="rdl-zoom-row two" aria-label="Earth preset angles">
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="asiaTilt">ASIA 1</button>
+              <button class="rdl-zoom-btn" type="button" data-audit-angle="asiaWide">ASIA 2</button>
+            </div>
+            <div class="rdl-zoom-label" id="rdl-zoom-label">DIST · 0.00 · TOP</div>
+          </div>
+
+          <div class="earth-audit-control" id="earth-audit-control" aria-label="Earth color audit region">
+            <div class="earth-audit-row compact">
+              <button class="earth-audit-btn" id="earth-audit-prev" type="button">PREV</button>
+              <button class="earth-audit-btn" id="earth-audit-next" type="button">NEXT</button>
+              <button class="earth-audit-btn" id="earth-audit-lighting-toggle" type="button" hidden>AUDIT LIGHT OFF</button>
+            </div>
+            <div class="earth-audit-row">
+              <span></span>
+              <button class="earth-audit-btn" type="button" data-audit-move="up">UP</button>
+              <span></span>
+              <button class="earth-audit-btn" type="button" data-audit-move="left">LEFT</button>
+              <button class="earth-audit-btn" type="button" data-audit-move="down">DOWN</button>
+              <button class="earth-audit-btn" type="button" data-audit-move="right">RIGHT</button>
+            </div>
+            <div class="earth-audit-label" id="earth-audit-label">READY · 01 中国华东 / 长三角</div>
+          </div>
+
+          <div class="rdl-tile-preview" id="rdl-tile-preview" aria-hidden="true">
+            <img id="rdl-tile-preview-img" alt="">
+            <div class="rdl-tile-caption" id="rdl-tile-preview-caption"></div>
+          </div>
 
           <div class="hero-center">
             <h1 class="hero-title" id="hero-title">Waiting</h1>
@@ -930,8 +1133,9 @@
 
 <div class="error-overlay" id="error-overlay"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="/earth3d.js"></script>
+<script src="/three.min.js"></script>
+<script src="/earth_modes.js?v=rdl-overlay-gate-v17"></script>
+<script src="/earth3d.js?v=rdl-overlay-gate-v17"></script>
 <script>
 (() => {
   const errorOverlay = document.getElementById('error-overlay')
@@ -1313,6 +1517,106 @@
   const dislikeButton = document.getElementById('btn-dislike')
   const heartButton = document.getElementById('btn-heart')
   const themePreview = document.getElementById('theme-preview')
+  const earthAuditPrev = document.getElementById('earth-audit-prev')
+  const earthAuditNext = document.getElementById('earth-audit-next')
+  const earthAuditLightingToggle = document.getElementById('earth-audit-lighting-toggle')
+  const earthAuditLabel = document.getElementById('earth-audit-label')
+  const rdlZoomIn = document.getElementById('rdl-zoom-in')
+  const rdlZoomOut = document.getElementById('rdl-zoom-out')
+  const rdlZoomLabel = document.getElementById('rdl-zoom-label')
+  const auditMoveButtons = Array.from(document.querySelectorAll('[data-audit-move]'))
+  const auditAngleButtons = Array.from(document.querySelectorAll('[data-audit-angle]'))
+  let currentAuditAngle = 'top'
+
+  function getAuditLightingStatus() {
+    return Boolean(window.earth3d?.getAuditLightingMode?.())
+  }
+
+  function syncAuditLightingUI() {
+    const enabled = getAuditLightingStatus()
+    if (earthAuditLightingToggle) {
+      const isLocal = isLocalDevHost()
+      earthAuditLightingToggle.hidden = !isLocal
+      if (isLocal) {
+        earthAuditLightingToggle.textContent = enabled ? 'AUDIT LIGHT ON' : 'AUDIT LIGHT OFF'
+        earthAuditLightingToggle.classList.toggle('active', enabled)
+        earthAuditLightingToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false')
+      }
+    }
+    return enabled
+  }
+
+  function updateRDLZoomLabel(level) {
+    const pct = Math.round(level * 100)
+    let tier = 'BASE'
+    if (level >= 0.60) tier = 'RDL FULL'
+    else if (level >= 0.28) tier = 'RDL FADE'
+    const auditSuffix = getAuditLightingStatus() ? ' · AUDIT LIGHT' : ''
+    rdlZoomLabel.textContent = `DIST · ${level.toFixed(2)} · ${currentAuditAngle.toUpperCase()} · ${tier}${auditSuffix}`
+  }
+
+  function setAuditDistance(level) {
+    const next = window.earth3d?.setRDLZoomLevel?.(level) ?? level
+    updateRDLZoomLabel(next)
+    return next
+  }
+
+  rdlZoomIn.addEventListener('click', () => setAuditDistance(1))
+  rdlZoomOut.addEventListener('click', () => setAuditDistance(0.35))
+
+  function setAuditAngle(angle) {
+    currentAuditAngle = angle
+    window.earth3d?.setAuditViewAngle?.(angle)
+    auditAngleButtons.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.auditAngle === angle)
+    })
+    updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+  }
+
+  auditAngleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setAuditAngle(btn.dataset.auditAngle || 'top'))
+  })
+
+  if (earthAuditLightingToggle) {
+    earthAuditLightingToggle.addEventListener('click', () => {
+      const nextEnabled = !getAuditLightingStatus()
+      const actual = window.earth3d?.setAuditLightingMode?.(nextEnabled)
+      syncAuditLightingUI()
+      updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+      renderEarthAuditControl()
+      console.log('[earth-audit] audit lighting override:', {
+        enabled: Boolean(actual),
+        reason: 'manual_toggle',
+      })
+    })
+  }
+
+  function bindHoldButton(button, action) {
+    let repeatTimer = null
+    let delayTimer = null
+    const stop = () => {
+      if (delayTimer) clearTimeout(delayTimer)
+      if (repeatTimer) clearInterval(repeatTimer)
+      delayTimer = null
+      repeatTimer = null
+    }
+    const start = (event) => {
+      event.preventDefault()
+      stop()
+      action()
+      delayTimer = setTimeout(() => {
+        repeatTimer = setInterval(action, 90)
+      }, 240)
+    }
+    button.addEventListener('pointerdown', start)
+    button.addEventListener('pointerup', stop)
+    button.addEventListener('pointerleave', stop)
+    button.addEventListener('pointercancel', stop)
+  }
+
+  function getActiveAuditRegion() {
+    return EARTH_AUDIT_REGIONS[currentEarthAuditIndex] || null
+  }
 
   let localQueue = []
   let commentaryAudio = null
@@ -1320,6 +1624,8 @@
   let playedHistory = []
   let hasUnlockedAudio = false
   let pendingTuneInAutoplay = false
+  let currentEarthAuditIndex = -1
+  let auditGlobeImageRefreshTimer = null
   let pendingTuneInSpeech = false
   let waitingForServerTrack = false
   let stationPayload = null
@@ -1352,6 +1658,18 @@
       day.src = `/api/globe-image?phase=day&lat=${lat}&lon=${lon}`
     }
   }
+
+  function scheduleAuditGlobeImageRefresh(lat, lon, delayMs = 180) {
+    if (auditGlobeImageRefreshTimer) clearTimeout(auditGlobeImageRefreshTimer)
+    auditGlobeImageRefreshTimer = setTimeout(() => {
+      auditGlobeImageRefreshTimer = null
+      loadGlobeImages(lat, lon)
+    }, delayMs)
+  }
+
+  function ensureAuditLightingEnabled() {
+    return getAuditLightingStatus()
+  }
   let weatherParticles = []
   const autoExplainedTracks = new Set()
   let forcedThemeKey = null
@@ -1360,6 +1678,13 @@
   let inThemeTransition = false
   let lastRenderedForceKey = null
   let lastSentEarth3DThemeKey = null
+
+  function hasVisibleEarth3DCanvas() {
+    const canvas3d = document.querySelector('#earth3d-layer #earth3d-canvas')
+    if (!canvas3d) return false
+    const style = getComputedStyle(canvas3d)
+    return style.display !== 'none' && style.opacity !== '0' && canvas3d.width > 0 && canvas3d.height > 0
+  }
 
   const VISUAL_PHASES = {
     dawn: {
@@ -1498,6 +1823,29 @@
         { pos: 1,    color: 'rgba(20,90,190,1)' },
       ],
     },
+    goldenApproach: {
+      name: '暮前',
+      accent: '#D4905A',
+      textMain: '#F0E8D8',
+      textSub: 'rgba(240,232,216,0.72)',
+      textDim: 'rgba(240,232,216,0.38)',
+      line: 'rgba(240,232,216,0.18)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(212,144,90,0.12)',
+      control: '#B88060',
+      bg: '#120C06',
+      bgGradient: 'linear-gradient(to bottom, #0E0906 0%, #1C1008 30%, #281408 55%, #1A0C06 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(14,9,6,1)' },
+        { pos: 0.25, color: 'rgba(28,16,8,1)' },
+        { pos: 0.55, color: 'rgba(48,24,10,1)' },
+        { pos: 0.80, color: 'rgba(38,18,8,1)' },
+        { pos: 1,    color: 'rgba(20,10,4,1)' },
+      ],
+    },
     sunset: {
       name: '落日',
       accent: '#D4845A',
@@ -1541,6 +1889,28 @@
         { pos: 0.40, color: 'rgba(6,11,20,1)' },
         { pos: 0.75, color: 'rgba(5,10,18,1)' },
         { pos: 1,    color: 'rgba(3,6,11,1)' },
+      ],
+    },
+    lateEvening: {
+      name: '入夜',
+      accent: '#8EA8C8',
+      textMain: '#E8EEF4',
+      textSub: 'rgba(232,238,244,0.65)',
+      textDim: 'rgba(232,238,244,0.35)',
+      line: 'rgba(232,238,244,0.14)',
+      surface: 'rgba(255,255,255,0.04)',
+      surface2: 'rgba(255,255,255,0.07)',
+      bubbleDj: 'rgba(255,255,255,0.05)',
+      bubbleCommentary: 'rgba(255,255,255,0.03)',
+      bubbleYou: 'rgba(142,168,200,0.10)',
+      control: '#707A8A',
+      bg: '#04070D',
+      bgGradient: 'linear-gradient(to bottom, #030608 0%, #040810 40%, #030709 75%, #020405 100%)',
+      gradient: [
+        { pos: 0,    color: 'rgba(3,6,8,1)' },
+        { pos: 0.40, color: 'rgba(4,8,16,1)' },
+        { pos: 0.75, color: 'rgba(3,7,9,1)' },
+        { pos: 1,    color: 'rgba(2,4,5,1)' },
       ],
     },
     deepNight: {
@@ -1620,15 +1990,36 @@
     ],
   }
   const TIME_OF_DAY_OPTIONS = [
-    { key: 'dawn', label: '黎明' },
-    { key: 'sunrise', label: '日出' },
-    { key: 'earlyMorning', label: '清晨' },
-    { key: 'morning', label: '上午' },
-    { key: 'noon', label: '正午' },
-    { key: 'afternoon', label: '下午' },
-    { key: 'sunset', label: '落日' },
-    { key: 'evening', label: '夜晚' },
-    { key: 'deepNight', label: '深夜' },
+    { key: 'dawn',          label: '黎明' },
+    { key: 'sunrise',       label: '日出' },
+    { key: 'earlyMorning',  label: '清晨' },
+    { key: 'morning',       label: '上午' },
+    { key: 'noon',          label: '正午' },
+    { key: 'afternoon',     label: '下午' },
+    { key: 'goldenApproach',label: '暮前' },
+    { key: 'sunset',        label: '落日' },
+    { key: 'evening',       label: '夜晚' },
+    { key: 'lateEvening',   label: '入夜' },
+    { key: 'deepNight',     label: '深夜' },
+  ]
+  const EARTH_AUDIT_REGIONS = [
+    { label: '中国华东 / 长三角', lat: 31.2, lon: 121.5 },
+    { label: '台湾', lat: 23.7, lon: 121.0 },
+    { label: '日本本州', lat: 36.2, lon: 138.3 },
+    { label: '冲绳 / 琉球', lat: 26.5, lon: 127.9, rdlId: 'ryukyu' },
+    { label: '菲律宾', lat: 12.9, lon: 122.0, rdlId: 'philippines_central' },
+    { label: '印度尼西亚东部', lat: -4.5, lon: 127.5, rdlId: 'indonesia_east' },
+    { label: '南海', lat: 14.0, lon: 114.0, rdlId: 'south_china_sea' },
+    { label: '喜马拉雅', lat: 28.0, lon: 86.9 },
+    { label: '青藏高原', lat: 32.0, lon: 89.0 },
+    { label: '马尔代夫', lat: 3.2, lon: 73.2, rdlId: 'maldives' },
+    { label: '撒哈拉', lat: 23.5, lon: 13.0 },
+    { label: '大堡礁', lat: -18.3, lon: 147.5, rdlId: 'great_barrier_reef' },
+    { label: '夏威夷', lat: 20.5, lon: -157.8, rdlId: 'hawaii' },
+    { label: '大溪地', lat: -17.5, lon: -149.4 },
+    { label: '加勒比 / 巴哈马', lat: 24.2, lon: -76.5, rdlId: 'caribbean_bahamas' },
+    { label: '亚马逊', lat: -3.5, lon: -62.0 },
+    { label: '格陵兰', lat: 72.0, lon: -40.0 },
   ]
   window.__rodioVisualState = state
 
@@ -1735,19 +2126,22 @@
     return `rgba(${Math.round(mix(c1.r, c2.r))}, ${Math.round(mix(c1.g, c2.g))}, ${Math.round(mix(c1.b, c2.b))}, ${mix(c1.a, c2.a).toFixed(4)})`
   }
 
-  function getPhaseWindows(nowMs, sunriseTs, sunsetTs) {
-    // Use local-timezone 6am/7pm as fallback — the UTC-midnight+6h formula produces
-    // 14:00 CST in Shanghai, which puts evening hours into the "sunset" window.
-    const defaultSunrise = new Date(nowMs).setHours(6, 0, 0, 0) / 1000
-    const defaultSunset = new Date(nowMs).setHours(19, 0, 0, 0) / 1000
-    const sunrise = (sunriseTs || defaultSunrise) * 1000
-    const sunset = (sunsetTs || defaultSunset) * 1000
-
+  function getPhaseWindows(nowMs) {
+    const d = new Date(nowMs)
+    const h = (hr, mn) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), hr, mn, 0, 0).getTime()
+    const nextMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0).getTime()
     return [
-      { key: 'sunrise', start: sunrise - 40 * 60000, end: sunrise + 70 * 60000 },
-      { key: 'morning', start: sunrise + 70 * 60000, end: new Date(nowMs).setHours(11, 30, 0, 0) },
-      { key: 'noon', start: new Date(nowMs).setHours(11, 30, 0, 0), end: new Date(nowMs).setHours(14, 30, 0, 0) },
-      { key: 'sunset', start: new Date(nowMs).setHours(14, 30, 0, 0), end: sunset + 40 * 60000 },
+      { key: 'deepNight',     start: h(0, 0),  end: h(4, 30) },
+      { key: 'dawn',          start: h(4, 30), end: h(5, 50) },
+      { key: 'sunrise',       start: h(5, 50), end: h(7, 0) },
+      { key: 'earlyMorning',  start: h(7, 0),  end: h(9, 0) },
+      { key: 'morning',       start: h(9, 0),  end: h(11, 0) },
+      { key: 'noon',          start: h(11, 0), end: h(14, 0) },
+      { key: 'afternoon',     start: h(14, 0), end: h(16, 0) },
+      { key: 'goldenApproach',start: h(16, 0), end: h(17, 20) },
+      { key: 'sunset',        start: h(17, 20),end: h(18, 30) },
+      { key: 'evening',       start: h(18, 30),end: h(20, 30) },
+      { key: 'lateEvening',   start: h(20, 30),end: nextMidnight },
     ]
   }
 
@@ -1756,7 +2150,7 @@
     const nowMs = now.getTime()
     const windows = getPhaseWindows(nowMs, sunriseTs, sunsetTs)
     const dayPhase = windows.find(window => nowMs >= window.start && nowMs < window.end)
-    return dayPhase ? dayPhase.key : 'night'
+    return dayPhase ? dayPhase.key : 'deepNight'
   }
 
   function getPhaseProgress(phaseKey, nowMs, sunriseTs, sunsetTs) {
@@ -1793,9 +2187,9 @@
   }
 
   function getAdjacentThemeKeys(themeKey) {
-    const order = ['night', 'sunrise', 'morning', 'noon', 'sunset', 'night']
+    const order = ['deepNight', 'dawn', 'sunrise', 'earlyMorning', 'morning', 'noon', 'afternoon', 'goldenApproach', 'sunset', 'evening', 'lateEvening', 'deepNight']
     const index = order.indexOf(themeKey)
-    if (index === -1) return { prev: 'night', next: 'night' }
+    if (index === -1) return { prev: 'deepNight', next: 'deepNight' }
     return {
       prev: order[Math.max(0, index - 1)],
       next: order[Math.min(order.length - 1, index + 1)],
@@ -1846,8 +2240,7 @@
     root.style.setProperty('--bubble-you', theme.bubbleYou)
     root.style.setProperty('--control', theme.control)
     root.style.setProperty('--control-hover', theme.accent)
-    document.body.style.background = theme.bg
-    app.style.background = theme.bgGradient || theme.bg
+    // body and app backgrounds are frozen — do not override with per-theme values
     const fillEl = document.getElementById('progress-fill')
     if (fillEl) {
       const gradients = {
@@ -1921,12 +2314,112 @@
     })
   }
 
+  function renderEarthAuditControl() {
+    if (!earthAuditLabel || !earthAuditNext || !earthAuditPrev) return
+    const auditLightingEnabled = syncAuditLightingUI()
+    const activeRegion = EARTH_AUDIT_REGIONS[currentEarthAuditIndex]
+    const nextIndex = (currentEarthAuditIndex + 1 + EARTH_AUDIT_REGIONS.length) % EARTH_AUDIT_REGIONS.length
+    const nextRegion = EARTH_AUDIT_REGIONS[nextIndex]
+    earthAuditNext.classList.toggle('active', Boolean(activeRegion))
+    earthAuditPrev.classList.toggle('active', Boolean(activeRegion))
+    earthAuditNext.textContent = activeRegion ? 'NEXT' : 'START'
+    earthAuditPrev.textContent = 'PREV'
+    if (activeRegion) {
+      const lat = Number.isFinite(state.lat) ? state.lat : activeRegion.lat
+      const lon = Number.isFinite(state.lon) ? state.lon : activeRegion.lon
+      earthAuditLabel.textContent = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${activeRegion.label} · ${lat.toFixed(2)}, ${lon.toFixed(2)}${auditLightingEnabled ? ' · AUDIT LIGHT' : ''}`
+    } else {
+      earthAuditLabel.textContent = `READY · 01 ${nextRegion.label}${auditLightingEnabled ? ' · AUDIT LIGHT' : ''}`
+    }
+  }
+
+  // Theme keys ordered by UTC+8 hour for sun-positioning
+  const _AUDIT_THEME_HOURS = {
+    dawn: 5.4, sunrise: 6.3, earlyMorning: 7.4, morning: 9.5,
+    noon: 13, afternoon: 15.4, goldenApproach: 16.5, sunset: 18.2,
+  }
+
+  function getBestThemeForLon(lon) {
+    // UTC+8 hour when sun is overhead this longitude
+    let h = (20 - lon / 15) % 24
+    if (h < 0) h += 24
+    // Clamp to daytime range so we always get a lit view
+    const hDay = Math.max(5.4, Math.min(18.2, h))
+    return Object.entries(_AUDIT_THEME_HOURS).reduce((best, [key, hour]) =>
+      Math.abs(hour - hDay) < Math.abs(_AUDIT_THEME_HOURS[best] - hDay) ? key : best, 'noon')
+  }
+
+  function setEarthAuditRegion(index) {
+    const count = EARTH_AUDIT_REGIONS.length
+    if (!count) return
+    currentEarthAuditIndex = ((index % count) + count) % count
+    const region = EARTH_AUDIT_REGIONS[currentEarthAuditIndex]
+    state.lat = region.lat
+    state.lon = region.lon
+    window.__rodioVisualState = {
+      ...(window.__rodioVisualState || {}),
+      lat: region.lat,
+      lon: region.lon,
+    }
+    loadGlobeImages(region.lat, region.lon)
+    if (window.earth3d?.setDebugLocation) {
+      window.earth3d.setDebugLocation(region.lon, region.lat, { center: true })
+    }
+    if (window.earth3d?.setRDLInspectRegion) {
+      const activeRDL = window.earth3d.setRDLInspectRegion(region.rdlId || null)
+      updateRDLZoomLabel(window.earth3d.getRDLZoomLevel?.() ?? 0)
+    }
+    console.log('[earth-audit] region:', {
+      index: currentEarthAuditIndex + 1,
+      label: region.label,
+      lat: region.lat,
+      lon: region.lon,
+    })
+    renderEarthAuditControl()
+  }
+
+  let _lastRDLInspectId = undefined
+
+  function applyAuditLocation(label, lat, lon, rdlId = null) {
+    state.lat = Math.max(-80, Math.min(80, lat))
+    state.lon = ((lon + 540) % 360) - 180
+    window.__rodioVisualState = {
+      ...(window.__rodioVisualState || {}),
+      lat: state.lat,
+      lon: state.lon,
+    }
+    scheduleAuditGlobeImageRefresh(state.lat, state.lon)
+    window.earth3d?.setDebugLocation?.(state.lon, state.lat, { center: true })
+    if (window.earth3d?.setRDLInspectRegion && rdlId !== _lastRDLInspectId) {
+      _lastRDLInspectId = rdlId
+      window.earth3d.setRDLInspectRegion(rdlId)
+    }
+    updateRDLZoomLabel(window.earth3d?.getRDLZoomLevel?.() ?? 0)
+    earthAuditLabel.textContent = `${label} · ${state.lat.toFixed(2)}, ${state.lon.toFixed(2)}${getAuditLightingStatus() ? ' · AUDIT LIGHT' : ''}`
+  }
+
+  function nudgeAuditView(direction) {
+    const zoom = window.earth3d?.getRDLZoomLevel?.() ?? 0
+    const step = zoom >= 0.75 ? 0.5 : zoom >= 0.45 ? 1.0 : 2.0
+    const region = EARTH_AUDIT_REGIONS[currentEarthAuditIndex] || {}
+    const label = `${String(currentEarthAuditIndex + 1).padStart(2, '0')}/${EARTH_AUDIT_REGIONS.length} ${region.label || 'CUSTOM'}`
+    const lat = Number.isFinite(state.lat) ? state.lat : region.lat || 31.2
+    const lon = Number.isFinite(state.lon) ? state.lon : region.lon || 121.5
+    const next = {
+      up: [lat + step, lon],
+      down: [lat - step, lon],
+      left: [lat, lon - step],
+      right: [lat, lon + step],
+    }[direction]
+    if (!next) return
+    applyAuditLocation(label, next[0], next[1], region.rdlId || null)
+  }
+
   function applyForcedTheme(nextTheme) {
     forcedThemeKey = forcedThemeKey === nextTheme ? null : nextTheme
     const visualTheme = getInterpolatedThemeState(Date.now())
     state.themeKey = visualTheme.themeKey
     setTheme(visualTheme.themeState, visualTheme.themeKey)
-    if (state.weather) initCloudSystem(state.weather, state.astronomy)
     renderThemePreview()
   }
 
@@ -2018,6 +2511,7 @@
     renderControls()
     renderOverlay()
     renderThemePreview()
+    renderEarthAuditControl()
   }
 
   function setLocalQueue(items) {
@@ -2812,7 +3306,6 @@
     dpr: 1,
     phaseSeeds: {},
     starField: null,
-    cloudSystem: [],
     currentWeatherProfile: null,
     previousWeatherProfile: null,
     weatherTransitionStart: 0,
@@ -3220,77 +3713,11 @@
     return profile
   }
 
-  function initCloudSystem(weather, astronomy) {
-    const width = visualState.width
-    const height = visualState.height
-    const main = weather?.main || 'Clear'
-    const cloudiness = weather?.cloudiness ?? 0
-    const themeKey = state.themeKey
-    let cloudColor
-    let cloudCount
-    let cloudAlphaRange
-    let cloudHeightRange
-
-    if (main === 'Rain' || main === 'Drizzle' || main === 'Thunderstorm') {
-      cloudColor = themeKey === 'night' || themeKey === 'sunset'
-        ? { r: 40, g: 40, b: 50 }
-        : { r: 120, g: 118, b: 125 }
-      cloudCount = 5
-      cloudAlphaRange = [0.18, 0.28]
-      cloudHeightRange = [0.05, 0.45]
-    } else if (main === 'Clouds') {
-      if (cloudiness > 70) {
-        cloudColor = themeKey === 'night'
-          ? { r: 30, g: 30, b: 45 }
-          : themeKey === 'sunset'
-            ? { r: 80, g: 55, b: 45 }
-            : { r: 180, g: 178, b: 182 }
-        cloudCount = 4
-        cloudAlphaRange = [0.12, 0.2]
-        cloudHeightRange = [0.04, 0.5]
-      } else {
-        cloudColor = themeKey === 'night'
-          ? { r: 35, g: 38, b: 55 }
-          : themeKey === 'sunset'
-            ? { r: 200, g: 120, b: 70 }
-            : themeKey === 'sunrise'
-              ? { r: 220, g: 160, b: 120 }
-              : { r: 240, g: 238, b: 242 }
-        cloudCount = 2
-        cloudAlphaRange = [0.08, 0.14]
-        cloudHeightRange = [0.08, 0.38]
-      }
-    } else {
-      cloudCount = 0
-      cloudColor = { r: 255, g: 255, b: 255 }
-      cloudAlphaRange = [0, 0]
-      cloudHeightRange = [0, 0]
-    }
-
-    visualState.cloudSystem = Array.from({ length: cloudCount }, () => ({
-      x: rand(-width * 0.15, width * 1.05),
-      y: height * rand(cloudHeightRange[0], cloudHeightRange[1]),
-      w: rand(width * 0.28, width * 0.52),
-      h: rand(height * 0.06, height * 0.12),
-      speed: rand(0.08, 0.18) * (main === 'Thunderstorm' ? 2.2 : 1),
-      alpha: rand(cloudAlphaRange[0], cloudAlphaRange[1]),
-      color: cloudColor,
-      blobSeeds: Array.from({ length: 5 }, () => ({
-        offsetX: rand(-0.3, 0.3),
-        offsetY: rand(-0.15, 0.15),
-        rx: rand(0.22, 0.35),
-        ry: rand(0.55, 0.85),
-      })),
-      seed: rand(0, Math.PI * 2),
-    }))
-  }
-
   function startWeatherSystem(weather, astronomy, immediate = false) {
     const signature = getWeatherSignature(weather)
     if (!immediate && signature === visualState.weatherSignature) return
     visualState.previousWeatherProfile = immediate ? null : visualState.currentWeatherProfile
     visualState.currentWeatherProfile = createWeatherProfile(weather, astronomy)
-    initCloudSystem(weather, astronomy)
     visualState.weatherTransitionStart = performance.now()
     visualState.weatherSignature = signature
     canvas.style.filter = visualState.currentWeatherProfile?.hazeFilter || 'none'
@@ -3922,42 +4349,6 @@
     })
   }
 
-  function drawCloudSystem(nowMs, alphaScale) {
-    const clouds = visualState.cloudSystem
-    if (!clouds || !clouds.length) return
-
-    const width = visualState.width
-    const height = visualState.height
-
-    clouds.forEach((cloud) => {
-      cloud.x += cloud.speed
-      if (cloud.x - cloud.w * 0.5 > width * 1.1) {
-        cloud.x = -cloud.w * 0.6
-        cloud.y = height * rand(0.04, 0.48)
-      }
-
-      const { r, g, b } = cloud.color
-      const alpha = cloud.alpha * alphaScale
-      cloud.blobSeeds.forEach((blob) => {
-        const bx = cloud.x + blob.offsetX * cloud.w
-        const by = cloud.y + blob.offsetY * cloud.h + Math.sin(nowMs / 9000 + cloud.seed) * 2
-        const grad = ctx.createRadialGradient(bx, by, 0, bx, by, blob.rx * cloud.w)
-        grad.addColorStop(0, `rgba(${r},${g},${b},${alpha.toFixed(4)})`)
-        grad.addColorStop(0.6, `rgba(${r},${g},${b},${(alpha * 0.6).toFixed(4)})`)
-        grad.addColorStop(1, `rgba(${r},${g},${b},0)`)
-
-        ctx.save()
-        ctx.translate(bx, by)
-        ctx.scale(1, blob.ry / blob.rx)
-        ctx.beginPath()
-        ctx.arc(0, 0, blob.rx * cloud.w, 0, Math.PI * 2)
-        ctx.fillStyle = grad
-        ctx.fill()
-        ctx.restore()
-      })
-    })
-  }
-
   function getSunMoonTransitionAlpha(themeKey, nowMs, sunriseTs, sunsetTs) {
     // 日出模式：月亮淡出，太阳淡入（日出前30分钟到日出后30分钟）
     if (themeKey === 'sunrise') {
@@ -4162,7 +4553,6 @@
       }
     }
 
-    // 大风：云层移动速度在initCloudSystem里处理，这里只加轻微动感
     if (profile.windSpeed > 8) {
       const windAlpha = Math.min(0.06, (profile.windSpeed - 8) / 100)
       ctx.fillStyle = `rgba(200,205,215,${windAlpha.toFixed(3)})`
@@ -4510,14 +4900,13 @@
     }
     if (themeKeyChanged || forceKeyChanged) {
       renderThemePreview()
-      if (state.weather) initCloudSystem(state.weather, state.astronomy)
       lastRenderedForceKey = forcedThemeKey
     }
     if (!inThemeTransition) {
       lastAppliedThemeKey = themed.themeKey
     }
 
-    const useEarth3D = Boolean(window.earth3d?.isReady)
+    const useEarth3D = Boolean(window.earth3d?.isReady || hasVisibleEarth3DCanvas())
     ctx.clearRect(0, 0, visualState.width, visualState.height)
 
     if (window.earth3d?.setTimeOfDay) {
@@ -4543,7 +4932,6 @@
     ctx.clip()
 
     drawStarField(nowMs, state.astronomy, 1)
-    drawCloudSystem(nowMs, 1)
     if (state.astronomy) {
       const { sunAlpha, moonAlpha } = getSunMoonTransitionAlpha(
         state.themeKey, nowMs, state.sunriseTs, state.sunsetTs
@@ -4617,6 +5005,15 @@
     }
   })
   startButton.addEventListener('click', startListening)
+  earthAuditPrev?.addEventListener('click', () => {
+    setEarthAuditRegion(currentEarthAuditIndex - 1)
+  })
+  earthAuditNext?.addEventListener('click', () => {
+    setEarthAuditRegion(currentEarthAuditIndex + 1)
+  })
+  auditMoveButtons.forEach((button) => {
+    bindHoldButton(button, () => nudgeAuditView(button.dataset.auditMove))
+  })
   progressLine.addEventListener('click', seekTo)
   queueList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-queue-index]')
@@ -4650,14 +5047,15 @@
     advanceToNext()
   })
 
-  const DEV_CACHE_NAME = 'claudio-v1'
-  const STATIC_CACHE_NAME = 'claudio-static-v1'
+  const DEV_CACHE_NAME = 'claudio-v2'
+  const STATIC_CACHE_NAME = 'claudio-static-v3'
   const STATIC_CACHE_PATHS = new Set([
     '/',
     '/index.html',
     '/app.js',
     '/style.css',
     '/earth3d.js',
+    '/earth_modes.js',
     '/manifest.json',
     '/sw.js',
   ])
@@ -4671,7 +5069,8 @@
     if (!('caches' in window)) return
 
     try {
-      await caches.delete(STATIC_CACHE_NAME)
+      const keys = await caches.keys()
+      await Promise.all(keys.filter((key) => key.startsWith('claudio-static-')).map((key) => caches.delete(key)))
     } catch {}
 
     try {
@@ -4766,6 +5165,251 @@
   // Spotify：如果 SDK 已经加载完毕（onSpotifyWebPlaybackSDKReady 已触发），手动初始化
   // 如果 SDK 还没好，onSpotifyWebPlaybackSDKReady 会在就绪时自动调用 initSpotifyPlayer
   if (window.Spotify) initSpotifyPlayer()
+})()
+</script>
+
+<!-- ── Dev-only Theme Tuner (localhost only) ──────────────────────────────
+     Loads lil-gui and builds a real-time parameter panel for globe theming.
+     Uses earth3d.patchTheme() to update live without page reload.
+     Only active on localhost — stripped out in production by the Railway env.
+──────────────────────────────────────────────────────────────────────────-->
+<script>
+;(function () {
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return
+
+  function buildTuner() {
+    const GUI  = window.lil.GUI
+    const e3d  = window.earth3d
+    if (!GUI || !e3d) return
+
+    const gui = new GUI({ title: 'Theme Tuner', width: 300 })
+
+    // ── Theme switcher ────────────────────────────────────────────────────
+    const THEMES = [
+      'deepNight','night','evening','lateEvening',
+      'dawn','sunrise','earlyMorning','morning',
+      'noon','afternoon','goldenApproach','sunset',
+    ]
+    const currentThemeFromState = e3d.getDebugState?.()?.currentTheme || 'deepNight'
+    const ctrl = { theme: currentThemeFromState }
+    gui.add(ctrl, 'theme', THEMES).name('Mode').onChange(function (v) {
+      e3d.setTimeOfDay(v)
+      ctrl.theme = v
+      setTimeout(syncFromState, 80)
+    })
+
+    // ── Live params ───────────────────────────────────────────────────────
+    var p = {
+      mapColor: '#1e3240', emissiveColor: '#ffd07a',
+      emissiveIntensity: 1.35,
+      atmoColor: '#7fd7f6', atmoOpacity: 0.072,
+      ambient: 0.072,
+    }
+
+    function patch() {
+      e3d.patchTheme(ctrl.theme, {
+        texture:    { mapColor: parseInt(p.mapColor.replace('#',''), 16),
+                      emissiveColor: parseInt(p.emissiveColor.replace('#',''), 16),
+                      emissiveIntensity: p.emissiveIntensity },
+        atmosphere: { color: p.atmoColor, opacity: p.atmoOpacity },
+        lighting:   { ambient: p.ambient },
+      })
+    }
+
+    var fTex = gui.addFolder('Texture')
+    fTex.addColor(p, 'mapColor').name('mapColor').onChange(patch)
+    fTex.addColor(p, 'emissiveColor').name('emissiveColor').onChange(patch)
+    fTex.add(p, 'emissiveIntensity', 0, 5, 0.05).name('emissiveIntensity').onChange(patch)
+
+    var fAtmo = gui.addFolder('Atmosphere')
+    fAtmo.addColor(p, 'atmoColor').name('color').onChange(patch)
+    fAtmo.add(p, 'atmoOpacity', 0, 0.5, 0.005).name('opacity').onChange(patch)
+
+    var fLight = gui.addFolder('Lighting')
+    fLight.add(p, 'ambient', 0, 1.0, 0.01).name('ambient').onChange(patch)
+
+    // ── Night grade ───────────────────────────────────────────────────────
+    var g = {
+      // v17.1 Night Base Grade (daybase darkened — darker)
+      nightExposure: 0.155, nightSaturation: 0.72, nightGamma: 0.88,
+      nightBlueBias: 0.07, nightGreenBias: 0.015, nightRedReduce: 0.045,
+      // Ocean tone grade: deepNight ocean stays on raw day texture
+      oceanBlendStrength: 0.45,
+      oceanDarken: 0.92,
+      oceanContrast: 1.08,
+      oceanSaturation: 1.08,
+      oceanBlueBias: 0.035,
+      oceanRedReduce: 0.045,
+      oceanGreenReduce: 0.015,
+      coastProtection: 0.75,
+      iceNeutralize: 1.0,
+      landLift: 0.035, landGamma: 0.85, landStr: 0,
+      landRedRed: 0.025, landGreenB: 0.045,
+      landGlowStr: 0,
+      // DeepNight city mask defaults
+      cityLumLow: 0.012, cityLumHigh: 0.074,
+    }
+    function patchGrade() {
+      e3d.patchTheme(ctrl.theme, { nightGrade: {
+        nightExposure:   g.nightExposure,
+        nightSaturation: g.nightSaturation,
+        nightGamma:      g.nightGamma,
+        nightBlueBias:   g.nightBlueBias,
+        nightGreenBias:  g.nightGreenBias,
+        nightRedReduce:  g.nightRedReduce,
+        oceanBlendStrength: g.oceanBlendStrength,
+        oceanDarken:        g.oceanDarken,
+        oceanContrast:      g.oceanContrast,
+        oceanSaturation:    g.oceanSaturation,
+        oceanBlueBias:      g.oceanBlueBias,
+        oceanRedReduce:     g.oceanRedReduce,
+        oceanGreenReduce:   g.oceanGreenReduce,
+        coastProtection:    g.coastProtection,
+        iceNeutralize:      g.iceNeutralize,
+        landLift:     g.landLift,
+        landGamma:    g.landGamma,
+        landStr:      g.landStr,
+        landRedRed:   g.landRedRed,
+        landGreenB:   g.landGreenB,
+        landGlowStr:  g.landGlowStr,
+        cityLumLow:   g.cityLumLow,
+        cityLumHigh:  g.cityLumHigh,
+      }})
+    }
+    var fGrade = gui.addFolder('Night Grade')
+    fGrade.close()
+    var fNightBase = fGrade.addFolder('Night Base Grade (v17)')
+    fNightBase.add(g, 'nightExposure',   0.05, 1.0,  0.01).name('exposure').onChange(patchGrade)
+    fNightBase.add(g, 'nightSaturation', 0.0,  1.0,  0.01).name('saturation').onChange(patchGrade)
+    fNightBase.add(g, 'nightGamma',      0.5,  1.5,  0.01).name('gamma').onChange(patchGrade)
+    fNightBase.add(g, 'nightBlueBias',  -0.1,  0.2,  0.005).name('+blue bias').onChange(patchGrade)
+    fNightBase.add(g, 'nightGreenBias', -0.1,  0.2,  0.005).name('+green bias').onChange(patchGrade)
+    fNightBase.add(g, 'nightRedReduce', -0.1,  0.2,  0.005).name('-red reduce').onChange(patchGrade)
+    fNightBase.add(g, 'iceNeutralize',   0,    1.5,  0.01 ).name('ice neutralize').onChange(patchGrade)
+    var fOcean = fGrade.addFolder('Ocean Tone Grade')
+    fOcean.add(g, 'oceanBlendStrength', 0,    1.0,  0.01 ).name('blend strength').onChange(patchGrade)
+    fOcean.add(g, 'oceanDarken',        0.5,  1.1,  0.005).name('darken').onChange(patchGrade)
+    fOcean.add(g, 'oceanContrast',      0.8,  1.4,  0.01 ).name('contrast').onChange(patchGrade)
+    fOcean.add(g, 'oceanSaturation',    0.6,  1.4,  0.01 ).name('saturation').onChange(patchGrade)
+    fOcean.add(g, 'oceanBlueBias',      -0.1, 0.12, 0.002).name('+blue bias').onChange(patchGrade)
+    fOcean.add(g, 'oceanRedReduce',     0,    0.12, 0.002).name('-red reduce').onChange(patchGrade)
+    fOcean.add(g, 'oceanGreenReduce',   0,    0.12, 0.002).name('-green reduce').onChange(patchGrade)
+    fOcean.add(g, 'coastProtection',    0,    1.0,  0.01 ).name('coast protection').onChange(patchGrade)
+    var fLand = fGrade.addFolder('Land Minor Assist')
+    fLand.add(g, 'landLift',    0,    0.15, 0.002).name('land lift').onChange(patchGrade)
+    fLand.add(g, 'landGamma',   0.65, 1.30, 0.01 ).name('land γ').onChange(patchGrade)
+    fLand.add(g, 'landStr',     0,    1.0,  0.02 ).name('land str').onChange(patchGrade)
+    fLand.add(g, 'landRedRed',  0,    0.15, 0.005).name('land -red').onChange(patchGrade)
+    fLand.add(g, 'landGreenB',  0,    0.20, 0.005).name('land +green').onChange(patchGrade)
+    fLand.add(g, 'landGlowStr', 0,    0.40, 0.005).name('land glow').onChange(patchGrade)
+    var fCity = fGrade.addFolder('City Lights')
+    fCity.add(g, 'cityLumLow',  0,    0.05, 0.001).name('city lum low').onChange(patchGrade)
+    fCity.add(g, 'cityLumHigh', 0.01, 0.15, 0.002).name('city lum high').onChange(patchGrade)
+
+    // ── Sync sliders from theme config (reads THEME_VISUAL_CONFIG directly) ──
+    function syncFromState() {
+      var cfg = e3d.getThemeConfig ? e3d.getThemeConfig(ctrl.theme) : null
+      if (!cfg) return
+      function toHex(n) { return '#' + (n >>> 0).toString(16).padStart(6, '0') }
+      if (typeof cfg.mapColor          === 'number') p.mapColor          = toHex(cfg.mapColor)
+      if (typeof cfg.emissiveColor     === 'number') p.emissiveColor     = toHex(cfg.emissiveColor)
+      if (typeof cfg.emissiveIntensity === 'number') p.emissiveIntensity = cfg.emissiveIntensity
+      if (typeof cfg.atmosphereOpacity === 'number') p.atmoOpacity       = cfg.atmosphereOpacity
+      if (cfg.atmosphereColor)                       p.atmoColor         = cfg.atmosphereColor
+      if (typeof cfg.ambient           === 'number') p.ambient           = cfg.ambient
+      var ng = cfg.nightGrade || {}
+      if (typeof ng.nightExposure   === 'number') g.nightExposure   = ng.nightExposure
+      if (typeof ng.nightSaturation === 'number') g.nightSaturation = ng.nightSaturation
+      if (typeof ng.nightGamma      === 'number') g.nightGamma      = ng.nightGamma
+      if (typeof ng.nightBlueBias   === 'number') g.nightBlueBias   = ng.nightBlueBias
+      if (typeof ng.nightGreenBias  === 'number') g.nightGreenBias  = ng.nightGreenBias
+      if (typeof ng.nightRedReduce  === 'number') g.nightRedReduce  = ng.nightRedReduce
+      if (typeof ng.oceanBlendStrength === 'number') g.oceanBlendStrength = ng.oceanBlendStrength
+      if (typeof ng.oceanDarken        === 'number') g.oceanDarken = ng.oceanDarken
+      if (typeof ng.oceanContrast      === 'number') g.oceanContrast = ng.oceanContrast
+      if (typeof ng.oceanSaturation    === 'number') g.oceanSaturation = ng.oceanSaturation
+      if (typeof ng.oceanBlueBias      === 'number') g.oceanBlueBias = ng.oceanBlueBias
+      if (typeof ng.oceanRedReduce     === 'number') g.oceanRedReduce = ng.oceanRedReduce
+      if (typeof ng.oceanGreenReduce   === 'number') g.oceanGreenReduce = ng.oceanGreenReduce
+      if (typeof ng.coastProtection    === 'number') g.coastProtection = ng.coastProtection
+      if (typeof ng.iceNeutralize      === 'number') g.iceNeutralize = ng.iceNeutralize
+      if (typeof ng.landLift     === 'number') g.landLift     = ng.landLift
+      if (typeof ng.landGamma    === 'number') g.landGamma    = ng.landGamma
+      if (typeof ng.landStr      === 'number') g.landStr      = ng.landStr
+      if (typeof ng.landRedRed   === 'number') g.landRedRed   = ng.landRedRed
+      if (typeof ng.landGreenB   === 'number') g.landGreenB   = ng.landGreenB
+      if (typeof ng.landGlowStr  === 'number') g.landGlowStr  = ng.landGlowStr
+      if (typeof ng.cityLumLow   === 'number') g.cityLumLow   = ng.cityLumLow
+      if (typeof ng.cityLumHigh  === 'number') g.cityLumHigh  = ng.cityLumHigh
+      gui.controllersRecursive().forEach(function (c) { c.updateDisplay() })
+    }
+
+    // ── Layer isolation (diagnostic) ──────────────────────────────────────
+    var fDbg = gui.addFolder('Diagnose')
+    fDbg.close()
+    var dbgBtns = {
+      daybaseOnly:    function () { e3d.setDebugLayer('daybaseOnly') },
+      cityMaskOnly:   function () { e3d.setDebugLayer('cityMaskOnly') },
+      cityColorOnly:  function () { e3d.setDebugLayer('cityColorOnly') },
+      final:          function () { e3d.setDebugLayer('final') },
+      baseOnly:       function () { e3d.setDebugLayer('baseOnly') },
+      emissiveOnly:   function () { e3d.setDebugLayer('emissiveOnly') },
+      atmosphereOnly: function () { e3d.setDebugLayer('atmosphereOnly') },
+      landOnly:       function () { e3d.setDebugLayer('landOnly') },
+      landGlowOnly:   function () { e3d.setDebugLayer('landGlowOnly') },
+      shadowOnly:     function () { e3d.setDebugLayer('shadowOnly') },
+      oceanMaskOnly:  function () { e3d.setDebugLayer('oceanMaskOnly') },
+      oceanGradeOnly: function () { e3d.setDebugLayer('oceanGradeOnly') },
+    }
+    fDbg.add(dbgBtns, 'daybaseOnly').name('▶ v17 Daybase darkened only')
+    fDbg.add(dbgBtns, 'cityMaskOnly').name('▶ v17 City luma mask')
+    fDbg.add(dbgBtns, 'cityColorOnly').name('▶ v17 City color / legacy lights only')
+    fDbg.add(dbgBtns, 'final').name('▶ Restore final')
+    fDbg.add(dbgBtns, 'baseOnly').name('① Base (no emissive)')
+    fDbg.add(dbgBtns, 'emissiveOnly').name('② Emissive raw (before recolor)')
+    fDbg.add(dbgBtns, 'atmosphereOnly').name('③ Atmosphere only')
+    fDbg.add(dbgBtns, 'landOnly').name('⑤ Land grade+glow (no city lights)')
+    fDbg.add(dbgBtns, 'landGlowOnly').name('⑥ Land glow only')
+    fDbg.add(dbgBtns, 'shadowOnly').name('⑦ Shadow weight map')
+    fDbg.add(dbgBtns, 'oceanMaskOnly').name('⑧ Ocean mask confidence')
+    fDbg.add(dbgBtns, 'oceanGradeOnly').name('⑨ Ocean tone grade only')
+
+    // ── Copy config snippet ───────────────────────────────────────────────
+    gui.add({
+      copy: function () {
+        function h(s) { return '0x' + parseInt(s.replace('#',''), 16).toString(16).padStart(6,'0').toUpperCase() }
+        var s = [
+          'mapColor: '          + h(p.mapColor)          + ',',
+          'emissiveColor: '     + h(p.emissiveColor)     + ',',
+          'emissiveIntensity: ' + p.emissiveIntensity    + ',',
+          "atmosphere: { color: '" + p.atmoColor + "', opacity: " + p.atmoOpacity + ' },',
+          'ambient: '           + p.ambient              + ',',
+        ].join('\n')
+        console.log('[ThemeTuner]\n' + s)
+        navigator.clipboard && navigator.clipboard.writeText(s)
+      }
+    }, 'copy').name('Copy config →')
+
+    window._earthTuner = { gui: gui, sync: syncFromState }
+    setTimeout(syncFromState, 120)
+    console.log('[ThemeTuner] ready. Switch modes with the dropdown, drag sliders, hit "Copy config →"')
+  }
+
+  // Wait for both earth3d and lil-gui to be ready
+  function tryBuild() {
+    if (window.earth3d && window.earth3d.isReady && window.lil) {
+      buildTuner()
+    } else {
+      setTimeout(tryBuild, 200)
+    }
+  }
+
+  // Load lil-gui UMD from CDN, then build
+  var s = document.createElement('script')
+  s.src = 'https://cdn.jsdelivr.net/npm/lil-gui@0.19/dist/lil-gui.umd.min.js'
+  s.onload  = tryBuild
+  s.onerror = function () { console.warn('[ThemeTuner] lil-gui CDN blocked — panel unavailable') }
+  document.head.appendChild(s)
 })()
 </script>
 </body>

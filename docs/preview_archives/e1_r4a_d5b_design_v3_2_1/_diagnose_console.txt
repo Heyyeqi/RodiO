@@ -1,0 +1,17 @@
+[log] [hero] heroCommentary element: hero-commentary
+[log] [hero] heroCommentary element: hero-commentary
+[log] [RodiO] dayTexture variant: d5b_design_v3_2_1
+[log] [RodiO] dayTexture path: /assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg
+[log] [earth3d theme audit] [object Object]
+[log] [hero] heroCommentary element: hero-commentary
+[log] [hero] heroCommentary element: hero-commentary
+[log] [earth3d theme audit] [object Object]
+[log] [earth3d] night texture loaded: /assets/earth_night_8k.jpg
+[log] [earth3d theme audit] [object Object]
+[log] [earth3d] day texture loaded: /assets/earth/candidates/d5b_design_v3_2_1_8192x4096.jpg
+[log] [earth3d theme audit] [object Object]
+[log] [spotify] SDK ready
+[warn] [spotify] access token unavailable
+[log] [spotify] 未授权，使用 NCM 播放
+[warn] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+[error] Failed to load resource: the server responded with a status of 404 (Not Found)

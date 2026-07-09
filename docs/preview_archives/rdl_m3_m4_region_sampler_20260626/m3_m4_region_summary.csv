@@ -1,0 +1,85 @@
+region,label,lon_w,lon_e,lat_s,lat_n,worldcover_top_land_code,worldcover_top_land_label,worldcover_family,worldcover_water_pct,worldcover_vegetated_pct,worldcover_bare_pct,worldcover_built_pct,worldcover_ice_pct,koppen_top_code,koppen_top_label,koppen_family,koppen_land_climate_pct,koppen_tropical_pct,koppen_arid_pct,koppen_temperate_pct,koppen_cold_pct,koppen_polar_pct
+abc_venezuela,ABC群岛 / 委内瑞拉加勒比,-73.0,-59.5,10.0,14.0,10,Tree cover,vegetated,28.0639,18.1512,0.5874,0.3096,0,3,Aw - Tropical savannah,tropical,19.72,15.5128,3.7217,0.4714,0,0.0141
+adriatic_sea,亚得里亚海,12.0,20.5,38.0,46.0,10,Tree cover,vegetated,25.8267,49.3634,0.0366,0.5464,0,14,Cfa,temperate,50.6112,0,0.3774,41.2342,8.9967,0.0028
+alaska,阿拉斯加,-168.0,-141.0,54.0,62.0,30,Grassland,vegetated,16.7409,24.9678,0.4514,0.008,4.2996,27,Dfc,cold,31.2542,0,0,0.3669,24.2667,6.6205
+andaman_sea,安达曼海,91.5,100.5,5.0,14.5,10,Tree cover,vegetated,24.9208,13.8968,0.0045,0.1641,0,2,Am - Tropical monsoon,tropical,14.7128,14.6723,0,0.0404,0,0
+arabian_sea,阿拉伯海 / 印度西岸,60.0,78.0,8.0,25.0,40,Cropland,vegetated,4.6461,25.6753,0.5678,0.2048,0,3,Aw - Tropical savannah,tropical,27.123,13.9554,11.3752,1.7923,0,0
+azores,亚速尔群岛,-31.5,-24.5,36.5,40.0,10,Tree cover,vegetated,16.6435,0.7716,0,0.0077,0,15,Cfb,temperate,0.9491,0,0,0.9491,0,0
+baltic_sea,波罗的海,9.0,30.0,54.0,66.0,10,Tree cover,vegetated,21.9207,66.5728,0.0396,0.1981,0.0251,26,Dfb,cold,70.7983,0,0,4.199,66.2115,0.3878
+bashi_channel,巴士海峡,118.0,123.0,18.0,22.5,10,Tree cover,vegetated,21.3252,4.4541,0,0.017,0,2,Am - Tropical monsoon,tropical,4.8288,4.5308,0,0.298,0,0
+bay_of_bengal,孟加拉湾,80.0,100.0,5.0,23.0,10,Tree cover,vegetated,10.0947,28.9975,0.0251,0.0955,0,3,Aw - Tropical savannah,tropical,29.6479,24.316,0.1451,5.1869,0,0
+bay_of_biscay,比斯开湾 / 伊比利亚,-10.0,2.0,42.0,48.5,10,Tree cover,vegetated,8.7812,45.9462,0.0686,0.436,0,15,Cfb,temperate,46.8402,0,0.147,44.9812,1.619,0.0931
+bermuda,百慕大,-65.5,-64.5,32.0,33.0,,,,41.6667,0,0,0,0,14,Cfa,temperate,0.7246,0,0,0.7246,0,0
+black_sea,黑海,27.5,42.0,40.5,47.0,40,Cropland,vegetated,18.7595,43.7215,0.1054,0.5454,0.0162,25,Dfa,cold,45.5524,0,0.4907,17.6849,27.1681,0.2088
+bohai_sea,渤海,117.0,122.5,37.0,41.0,40,Cropland,vegetated,30.9265,46.5753,0.3709,3.6059,0,21,Dwa,cold,53.5973,0,3.9855,0.0776,49.5341,0
+borneo,婆罗洲 / 马来西亚,108.0,119.5,-2.0,8.0,10,Tree cover,vegetated,17.3444,44.1562,0.0249,0.0432,0,1,Af - Tropical rainforest,tropical,44.6062,44.3954,0,0.2092,0,0.0017
+brazil_coast,巴西 / 亚马孙河口,-50.0,-34.0,-5.0,6.0,10,Tree cover,vegetated,4.4327,20.5065,0.036,0.0382,0,3,Aw - Tropical savannah,tropical,21.3589,21.1275,0.2314,0,0,0
+british_isles,不列颠群岛,-11.0,3.0,49.5,61.5,30,Grassland,vegetated,20.4722,26.0276,0,0.7356,0,15,Cfb,temperate,27.4167,0,0,27.3368,0.0604,0.0194
+california_coast,加州海岸 / 下加利福尼亚,-121.0,-109.0,22.0,38.0,20,Shrubland,vegetated,10.375,33.1118,14.2876,0.8279,0,4,BWh - Arid desert hot,arid,48.4632,0,40.4259,5.7724,2.2519,0.013
+canary_madeira,加那利 / 马德拉,-18.5,-13.0,27.0,33.5,60,Bare / sparse vegetation,bare,19.6335,1.2784,1.321,0.0746,0,4,BWh - Arid desert hot,arid,2.8337,0,2.0826,0.751,0,0
+cape_verde,佛得角,-26.0,-21.5,14.5,17.5,30,Grassland,vegetated,29.9168,1.2899,1.068,0.0139,0,4,BWh - Arid desert hot,arid,2.4827,0,2.4826,0,0,0
+caribbean_bahamas,加勒比 / 巴哈马,-85.0,-70.0,17.0,27.5,10,Tree cover,vegetated,29.1922,12.2096,0.017,0.2672,0,3,Aw - Tropical savannah,tropical,13.3564,12.0007,0.0656,1.29,0,0
+caspian_sea,里海,49.0,55.0,36.5,47.5,60,Bare / sparse vegetation,bare,54.823,24.4745,20.4409,0.2617,0,5,BWk - Arid desert cold,arid,100.0,0,86.364,12.4786,1.1545,0.0029
+central_america_pacific,中美洲太平洋海岸,-92.0,-77.0,7.0,18.0,10,Tree cover,vegetated,15.5017,27.1616,0.0035,0.0769,0,2,Am - Tropical monsoon,tropical,28.0853,25.5189,0,2.5361,0,0.0303
+christmas_island,圣诞节岛,105.0,106.5,-11.0,-9.5,10,Tree cover,vegetated,21.1429,0.5714,0,0,0,2,Am - Tropical monsoon,tropical,0.4082,0.4082,0,0,0,0
+dongsha_pratas,东沙群岛 / 普拉塔斯岛,115.5,117.5,19.5,21.5,,,,9.2507,0,0,0,0,,,,0.0,0,0,0,0,0
+east_africa_coast,东非海岸 / 桑给巴尔,38.0,46.0,-12.0,4.0,20,Shrubland,vegetated,6.9067,41.96,0.0582,0.0478,0,6,BSh - Arid steppe hot,arid,42.0929,14.4197,27.5494,0.1239,0,0
+east_china_sea,东海,119.0,131.0,23.0,34.0,10,Tree cover,vegetated,21.5038,14.9388,0.016,1.7143,0,14,Cfa,temperate,17.4455,0.0974,0,17.3307,0.0102,0.0073
+easter_island,复活节岛 / 拉帕努伊,-110.5,-108.5,-28.0,-26.0,30,Grassland,vegetated,9.3255,0.3622,0,0,0,1,Af - Tropical rainforest,tropical,0.3622,0.2264,0,0.1358,0,0
+eastern_caribbean,东加勒比 / 小安的列斯,-63.0,-59.0,11.0,19.0,10,Tree cover,vegetated,24.0081,1.5087,0.0059,0.0416,0,1,Af - Tropical rainforest,tropical,1.6809,1.6809,0,0,0,0
+falkland_islands,福克兰群岛 / 马尔维纳斯,-62.0,-57.0,-53.0,-50.0,30,Grassland,vegetated,32.4436,10.1754,0,0,0,16,Cfc,temperate,10.5013,0,0.1253,7.5689,0,2.807
+faroe_islands,法罗群岛,-8.0,-5.5,61.5,62.5,30,Grassland,vegetated,52.3707,8.1178,0,0,0,16,Cfc,temperate,8.908,0,0,4.5977,0,4.3103
+fiji_vanuatu,斐济 / 瓦努阿图,165.0,180.0,-22.0,-12.0,10,Tree cover,vegetated,13.2772,2.2842,0,0.0013,0,1,Af - Tropical rainforest,tropical,2.3661,2.1763,0,0.1898,0,0
+french_guiana,法属圭亚那,-54.0,-50.0,2.0,6.0,10,Tree cover,vegetated,13.8941,56.1673,0,0,0,2,Am - Tropical monsoon,tropical,56.6163,56.6162,0,0,0,0
+french_polynesia,法属波利尼西亚 / 大溪地,-151.0,-148.0,-18.5,-15.5,10,Tree cover,vegetated,25.1967,1.1594,0,0,0,1,Af - Tropical rainforest,tropical,1.2008,1.2008,0,0,0,0
+galapagos,加拉帕戈斯,-92.5,-88.5,-2.5,2.0,20,Shrubland,vegetated,27.5855,2.0789,1.298,0,0,3,Aw - Tropical savannah,tropical,3.6408,3.4087,0.1794,0.0528,0,0
+great_barrier_reef,大堡礁,142.5,153.5,-25.0,-10.0,10,Tree cover,vegetated,15.2536,37.5737,0.1771,0.0175,0,6,BSh - Arid steppe hot,arid,37.8847,10.3854,23.0388,4.4606,0,0
+guam_marianas,关岛 / 马里亚纳群岛,143.5,146.5,12.0,16.0,10,Tree cover,vegetated,15.753,0.5199,0,0,0,1,Af - Tropical rainforest,tropical,0.5829,0.5829,0,0,0,0
+gulf_mexico_yucatan,墨西哥湾 / 尤卡坦,-98.0,-83.0,17.0,31.0,10,Tree cover,vegetated,11.5233,24.9563,0.0219,0.2196,0,14,Cfa,temperate,25.8856,12.2621,0.4173,13.1961,0,0.01
+gulf_of_thailand,泰国湾 / 越南南海岸,99.0,108.0,5.0,17.0,10,Tree cover,vegetated,15.6102,53.7985,0.0106,0.5882,0,3,Aw - Tropical savannah,tropical,55.7951,54.9714,0,0.8237,0,0
+hainan_island,海南岛,108.0,111.5,18.0,20.5,10,Tree cover,vegetated,34.2486,32.8864,0,0.3193,0,2,Am - Tropical monsoon,tropical,33.9719,26.2239,0,7.7479,0,0
+hawaii,夏威夷,-161.5,-154.0,18.0,23.0,10,Tree cover,vegetated,14.3023,2.8918,0.6016,0.0556,0,15,Cfb,temperate,3.7765,2.0374,0.0354,1.5571,0,0.1466
+iceland,冰岛,-27.0,-10.0,62.5,67.0,30,Grassland,vegetated,17.2856,15.7467,6.068,0.0075,2.9627,29,ET - Polar tundra,polar,25.1476,0,0,1.9417,4.5991,18.6067
+indonesia_east,印度尼西亚东部,120.0,135.0,-10.0,1.0,10,Tree cover,vegetated,38.572,16.7586,0.0023,0.007,0,1,Af - Tropical rainforest,tropical,17.2689,16.5408,0,0.7269,0,0.0012
+indonesia_west,印尼西部 / 爪哇 / 苏门答腊,99.0,118.0,-9.0,6.0,10,Tree cover,vegetated,22.9667,38.1573,0.0162,0.2931,0,1,Af - Tropical rainforest,tropical,38.992,38.5602,0,0.4305,0,0.0013
+japan,日本列岛,129.5,145.5,30.5,45.5,10,Tree cover,vegetated,16.1179,21.5076,0.004,0.9597,0,14,Cfa,temperate,22.9953,0,0,8.2929,14.7024,0
+kiribati_gilbert,基里巴斯 / 吉尔伯特群岛,171.0,177.5,-3.5,4.0,,,,11.7528,0,0,0,0,1,Af - Tropical rainforest,tropical,0.0468,0.0468,0,0,0,0
+korea_yellow_sea,朝鲜半岛 / 黄海,122.0,132.0,31.0,38.5,10,Tree cover,vegetated,25.8236,20.3489,0.0255,0.9384,0,21,Dwa,cold,21.7207,0,0,9.9041,11.8166,0
+kuril_southern,北方四岛 / 库页岛南端,141.5,150.5,43.0,48.0,10,Tree cover,vegetated,21.9206,16.8764,0,0.0802,0,26,Dfb,cold,17.214,0,0,0,17.1718,0.0422
+madagascar,马达加斯加,43.0,51.0,-27.0,-11.0,30,Grassland,vegetated,12.8947,39.3084,0.0389,0.021,0,3,Aw - Tropical savannah,tropical,39.6377,22.0181,4.4464,13.1731,0,0
+maldives,马尔代夫,71.5,74.5,-1.5,8.5,,,,30.7449,0,0,0,0,1,Af - Tropical rainforest,tropical,0.0759,0.0759,0,0,0,0
+marshall_islands,马绍尔群岛,160.0,172.0,4.0,12.0,10,Tree cover,vegetated,16.7046,0.01,0,0,0,1,Af - Tropical rainforest,tropical,0.0439,0.0439,0,0,0,0
+mediterranean_east,东地中海,22.0,37.0,34.0,41.5,10,Tree cover,vegetated,27.4208,53.1127,0.5797,0.5712,0,8,Csa,temperate,55.3618,0,5.2649,36.5294,13.5676,0
+mediterranean_west,西地中海,7.0,22.0,35.5,47.0,10,Tree cover,vegetated,19.7941,47.6608,0.368,0.5959,0.2023,14,Cfa,temperate,49.4586,0,1.5731,36.5742,10.2128,1.0984
+micronesia,密克罗尼西亚联邦,138.0,165.0,3.5,10.5,10,Tree cover,vegetated,2.0081,0.0213,0,0,0,1,Af - Tropical rainforest,tropical,0.0315,0.0315,0,0,0,0
+mozambique_channel,莫桑比克海峡,33.0,42.0,-25.0,-10.0,10,Tree cover,vegetated,7.4434,52.6345,0.0071,0.0568,0,3,Aw - Tropical savannah,tropical,54.5733,40.8335,5.4065,8.3334,0,0
+nansha_spratly,南沙群岛 / 斯普拉特利群岛,108.0,118.0,3.5,12.0,10,Tree cover,vegetated,16.4215,12.3614,0.0022,0.0202,0,1,Af - Tropical rainforest,tropical,12.5204,12.2674,0,0.2508,0,0.0022
+new_caledonia,新喀里多尼亚,162.5,168.5,-23.0,-18.5,10,Tree cover,vegetated,26.2472,5.6578,0,0.007,0,3,Aw - Tropical savannah,tropical,5.9295,4.5987,0,1.3308,0,0
+new_zealand,新西兰,165.5,178.5,-48.0,-33.5,30,Grassland,vegetated,10.8955,14.6393,0.2654,0.0541,0.0725,15,Cfb,temperate,15.3895,0,0,13.6645,0.4297,1.2952
+norway_fjords,挪威峡湾,4.0,18.0,57.5,71.0,10,Tree cover,vegetated,15.5407,44.1803,0.2941,0.056,0.8051,27,Dfc,cold,48.4886,0,0,1.9694,43.2388,3.2803
+ogasawara,小笠原群岛,140.5,143.5,23.5,28.0,,,,0,0,0,0,0,2,Am - Tropical monsoon,tropical,0.0279,0.0139,0,0.0139,0,0
+palau,帕劳,132.5,135.5,5.0,9.0,10,Tree cover,vegetated,10.9011,0.1576,0,0,0,1,Af - Tropical rainforest,tropical,0.3308,0.3308,0,0,0,0
+papua_new_guinea,巴布亚新几内亚,140.0,152.0,-8.0,0.5,10,Tree cover,vegetated,20.5896,32.6633,0.0019,0,0,1,Af - Tropical rainforest,tropical,32.9103,27.4584,0,5.2386,0,0.2134
+patagonia,巴塔哥尼亚 / 麦哲伦,-76.0,-64.0,-56.0,-40.0,30,Grassland,vegetated,18.3772,43.8676,8.2792,0.018,2.1208,7,BSk - Arid steppe cold,arid,56.2804,0,28.2511,13.2167,1.5198,13.2927
+persian_gulf,波斯湾,50.0,60.0,22.0,27.5,60,Bare / sparse vegetation,bare,23.4006,0.3535,58.2554,0.4991,0,4,BWh - Arid desert hot,arid,59.1876,0,59.1877,0,0,0
+peru_chile_coast,秘鲁 / 厄瓜多尔太平洋海岸,-82.0,-70.0,-18.0,-4.0,10,Tree cover,vegetated,4.5672,54.2102,6.9217,0.0698,0.0561,1,Af - Tropical rainforest,tropical,61.4145,34.1452,9.2728,6.893,0,11.1034
+philippines_central,菲律宾中部,117.0,127.0,6.0,18.0,10,Tree cover,vegetated,31.8367,19.0533,0.0048,0.1281,0,1,Af - Tropical rainforest,tropical,19.8681,19.4311,0,0.437,0,0
+puerto_rico_vi,波多黎各 / 美属维京群岛,-68.5,-64.0,17.0,19.0,10,Tree cover,vegetated,45.1766,7.9323,0,0.2892,0,1,Af - Tropical rainforest,tropical,9.1923,9.1717,0,0.0207,0,0
+red_sea,红海,32.0,44.0,12.0,30.0,60,Bare / sparse vegetation,bare,11.3744,15.5973,65.3053,0.0988,0,4,BWh - Arid desert hot,arid,81.4038,2.9286,77.5032,0.9676,0,0.0045
+rio_de_la_plata,拉普拉塔河 / 布宜诺斯艾利斯,-60.0,-52.0,-37.0,-30.0,30,Grassland,vegetated,8.5553,71.2705,0.0546,0.4986,0,14,Cfa,temperate,73.3504,0,0,73.3504,0,0
+rio_southeast_brazil,里约 / 东南巴西,-46.0,-34.0,-25.0,-14.0,30,Grassland,vegetated,4.5759,41.8631,0.0015,0.2559,0,3,Aw - Tropical savannah,tropical,42.2936,31.7605,2.469,8.0641,0,0
+ryukyu,琉球 / 冲绳,122.5,132.5,23.5,30.0,10,Tree cover,vegetated,14.7973,0.3576,0,0.041,0,14,Cfa,temperate,0.5275,0.1084,0,0.4191,0,0
+samoa,萨摩亚,-174.0,-168.0,-15.0,-11.0,10,Tree cover,vegetated,10.9798,1.0003,0,0,0,1,Af - Tropical rainforest,tropical,1.1027,1.0713,0,0.0315,0,0
+sea_of_japan,日本海,128.0,142.0,33.0,52.0,10,Tree cover,vegetated,14.951,49.0619,0.0065,0.913,0,22,Dwb,cold,50.8309,0,0,7.1206,43.7097,0.0007
+seychelles,塞舌尔,54.5,57.5,-7.5,-3.5,10,Tree cover,vegetated,16.005,0.1418,0,0,0,1,Af - Tropical rainforest,tropical,0.189,0.189,0,0,0,0
+singapore_malacca,新加坡 / 马六甲,98.0,106.0,0.5,7.0,10,Tree cover,vegetated,26.9263,40.0043,0.011,0.5501,0,1,Af - Tropical rainforest,tropical,41.4164,40.991,0,0.4254,0,0
+solomon_islands,所罗门群岛,155.0,163.0,-12.0,-4.0,10,Tree cover,vegetated,25.3934,4.1954,0,0,0,1,Af - Tropical rainforest,tropical,4.3626,4.3358,0,0.0269,0,0
+south_africa,南非开普,16.0,33.0,-35.0,-21.0,30,Grassland,vegetated,3.9034,73.1984,7.9966,0.3254,0,6,BSh - Arid steppe hot,arid,81.6319,0.5362,66.4889,14.5421,0.0524,0.0121
+south_china_sea,南海,108.0,120.0,8.0,22.0,10,Tree cover,vegetated,13.9624,7.2146,0.0057,0.103,0,3,Aw - Tropical savannah,tropical,7.5063,5.0706,0,2.4358,0,0
+south_georgia,南乔治亚岛,-40.0,-34.0,-56.0,-52.0,70,Snow and ice,ice,11.3973,0.0236,0.3938,0,1.402,29,ET - Polar tundra,polar,2.1424,0,0,0,0,2.1424
+sri_lanka,斯里兰卡,78.5,82.5,5.5,11.0,10,Tree cover,vegetated,23.43,30.3571,0.0345,0.138,0,3,Aw - Tropical savannah,tropical,31.4614,31.0989,0,0.3623,0,0
+svalbard,斯瓦尔巴群岛,10.0,30.0,76.0,82.0,70,Snow and ice,ice,25.3474,1.6695,5.8362,0,12.5944,29,ET - Polar tundra,polar,20.3995,0,0.0016,0,0,20.3979
+taiwan,台湾 / 东海,118.5,124.0,21.5,26.0,10,Tree cover,vegetated,30.0431,15.2257,0.0308,1.5025,0,14,Cfa,temperate,17.3447,1.6028,0,15.7035,0,0.0385
+taiwan_strait,台湾海峡,117.0,121.5,22.5,26.5,10,Tree cover,vegetated,28.5247,40.6817,0.0844,2.7438,0,14,Cfa,temperate,44.5019,1.4246,0,43.0245,0,0.0528
+tonga,汤加群岛,-177.0,-173.0,-24.0,-15.0,10,Tree cover,vegetated,14.4312,0.1161,0,0.0053,0,1,Af - Tropical rainforest,tropical,0.1688,0.1688,0,0,0,0
+xisha_paracel,西沙群岛 / 帕拉塞尔群岛,109.5,114.5,14.5,18.0,,,,9.4579,0,0,0,0,3,Aw - Tropical savannah,tropical,0.0107,0.0107,0,0,0,0

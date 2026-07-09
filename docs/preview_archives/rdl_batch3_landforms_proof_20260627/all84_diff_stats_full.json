@@ -1,0 +1,590 @@
+[
+  {
+    "region": "south_africa",
+    "label": "南非开普",
+    "mean_abs_diff_rgb": 4.4089,
+    "p95_abs_diff_rgb": 13.0,
+    "max_abs_diff_rgb": 40.0
+  },
+  {
+    "region": "caspian_sea",
+    "label": "里海",
+    "mean_abs_diff_rgb": 4.3913,
+    "p95_abs_diff_rgb": 12.0,
+    "max_abs_diff_rgb": 45.0
+  },
+  {
+    "region": "red_sea",
+    "label": "红海",
+    "mean_abs_diff_rgb": 4.2226,
+    "p95_abs_diff_rgb": 12.0,
+    "max_abs_diff_rgb": 40.0
+  },
+  {
+    "region": "rio_de_la_plata",
+    "label": "拉普拉塔河 / 布宜诺斯艾利斯",
+    "mean_abs_diff_rgb": 3.7321,
+    "p95_abs_diff_rgb": 12.0,
+    "max_abs_diff_rgb": 37.0
+  },
+  {
+    "region": "black_sea",
+    "label": "黑海",
+    "mean_abs_diff_rgb": 3.5703,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "baltic_sea",
+    "label": "波罗的海",
+    "mean_abs_diff_rgb": 3.0877,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "gulf_of_thailand",
+    "label": "泰国湾 / 越南南海岸",
+    "mean_abs_diff_rgb": 3.0792,
+    "p95_abs_diff_rgb": 11.0,
+    "max_abs_diff_rgb": 38.0
+  },
+  {
+    "region": "bohai_sea",
+    "label": "渤海",
+    "mean_abs_diff_rgb": 2.8153,
+    "p95_abs_diff_rgb": 11.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "mozambique_channel",
+    "label": "莫桑比克海峡",
+    "mean_abs_diff_rgb": 2.7532,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "east_africa_coast",
+    "label": "东非海岸 / 桑给巴尔",
+    "mean_abs_diff_rgb": 2.6542,
+    "p95_abs_diff_rgb": 12.0,
+    "max_abs_diff_rgb": 45.0
+  },
+  {
+    "region": "persian_gulf",
+    "label": "波斯湾",
+    "mean_abs_diff_rgb": 2.6406,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 39.0
+  },
+  {
+    "region": "patagonia",
+    "label": "巴塔哥尼亚 / 麦哲伦",
+    "mean_abs_diff_rgb": 2.6396,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 41.0
+  },
+  {
+    "region": "mediterranean_east",
+    "label": "东地中海",
+    "mean_abs_diff_rgb": 2.5237,
+    "p95_abs_diff_rgb": 9.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "peru_chile_coast",
+    "label": "秘鲁 / 厄瓜多尔太平洋海岸",
+    "mean_abs_diff_rgb": 2.4857,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 40.0
+  },
+  {
+    "region": "california_coast",
+    "label": "加州海岸 / 下加利福尼亚",
+    "mean_abs_diff_rgb": 2.4594,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 37.0
+  },
+  {
+    "region": "sea_of_japan",
+    "label": "日本海",
+    "mean_abs_diff_rgb": 2.3557,
+    "p95_abs_diff_rgb": 9.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "great_barrier_reef",
+    "label": "大堡礁",
+    "mean_abs_diff_rgb": 2.3221,
+    "p95_abs_diff_rgb": 11.0,
+    "max_abs_diff_rgb": 37.0
+  },
+  {
+    "region": "mediterranean_west",
+    "label": "西地中海",
+    "mean_abs_diff_rgb": 2.2482,
+    "p95_abs_diff_rgb": 9.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "adriatic_sea",
+    "label": "亚得里亚海",
+    "mean_abs_diff_rgb": 2.2374,
+    "p95_abs_diff_rgb": 9.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "french_guiana",
+    "label": "法属圭亚那",
+    "mean_abs_diff_rgb": 2.1214,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 48.0
+  },
+  {
+    "region": "norway_fjords",
+    "label": "挪威峡湾",
+    "mean_abs_diff_rgb": 2.0526,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "bay_of_biscay",
+    "label": "比斯开湾 / 伊比利亚",
+    "mean_abs_diff_rgb": 2.0145,
+    "p95_abs_diff_rgb": 9.0,
+    "max_abs_diff_rgb": 36.0
+  },
+  {
+    "region": "indonesia_west",
+    "label": "印尼西部 / 爪哇 / 苏门答腊",
+    "mean_abs_diff_rgb": 1.9855,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 36.0
+  },
+  {
+    "region": "hainan_island",
+    "label": "海南岛",
+    "mean_abs_diff_rgb": 1.8393,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "sri_lanka",
+    "label": "斯里兰卡",
+    "mean_abs_diff_rgb": 1.8279,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 37.0
+  },
+  {
+    "region": "taiwan_strait",
+    "label": "台湾海峡",
+    "mean_abs_diff_rgb": 1.8126,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 40.0
+  },
+  {
+    "region": "singapore_malacca",
+    "label": "新加坡 / 马六甲",
+    "mean_abs_diff_rgb": 1.8092,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 36.0
+  },
+  {
+    "region": "madagascar",
+    "label": "马达加斯加",
+    "mean_abs_diff_rgb": 1.7747,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "borneo",
+    "label": "婆罗洲 / 马来西亚",
+    "mean_abs_diff_rgb": 1.7727,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "rio_southeast_brazil",
+    "label": "里约 / 东南巴西",
+    "mean_abs_diff_rgb": 1.6746,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "arabian_sea",
+    "label": "阿拉伯海 / 印度西岸",
+    "mean_abs_diff_rgb": 1.6161,
+    "p95_abs_diff_rgb": 10.0,
+    "max_abs_diff_rgb": 38.0
+  },
+  {
+    "region": "papua_new_guinea",
+    "label": "巴布亚新几内亚",
+    "mean_abs_diff_rgb": 1.5833,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "bay_of_bengal",
+    "label": "孟加拉湾",
+    "mean_abs_diff_rgb": 1.5726,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "british_isles",
+    "label": "不列颠群岛",
+    "mean_abs_diff_rgb": 1.3848,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "gulf_mexico_yucatan",
+    "label": "墨西哥湾 / 尤卡坦",
+    "mean_abs_diff_rgb": 1.3725,
+    "p95_abs_diff_rgb": 8.0,
+    "max_abs_diff_rgb": 36.0
+  },
+  {
+    "region": "abc_venezuela",
+    "label": "ABC群岛 / 委内瑞拉加勒比",
+    "mean_abs_diff_rgb": 1.2976,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "alaska",
+    "label": "阿拉斯加",
+    "mean_abs_diff_rgb": 1.2555,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "central_america_pacific",
+    "label": "中美洲太平洋海岸",
+    "mean_abs_diff_rgb": 1.2257,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "indonesia_east",
+    "label": "印度尼西亚东部",
+    "mean_abs_diff_rgb": 1.1745,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 32.0
+  },
+  {
+    "region": "philippines_central",
+    "label": "菲律宾中部",
+    "mean_abs_diff_rgb": 1.1233,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 34.0
+  },
+  {
+    "region": "korea_yellow_sea",
+    "label": "朝鲜半岛 / 黄海",
+    "mean_abs_diff_rgb": 1.0735,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "japan",
+    "label": "日本列岛",
+    "mean_abs_diff_rgb": 1.0546,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "brazil_coast",
+    "label": "巴西 / 亚马孙河口",
+    "mean_abs_diff_rgb": 1.0207,
+    "p95_abs_diff_rgb": 7.0,
+    "max_abs_diff_rgb": 38.0
+  },
+  {
+    "region": "east_china_sea",
+    "label": "东海",
+    "mean_abs_diff_rgb": 0.9335,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 30.0
+  },
+  {
+    "region": "caribbean_bahamas",
+    "label": "加勒比 / 巴哈马",
+    "mean_abs_diff_rgb": 0.8351,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 35.0
+  },
+  {
+    "region": "iceland",
+    "label": "冰岛",
+    "mean_abs_diff_rgb": 0.8218,
+    "p95_abs_diff_rgb": 5.0,
+    "max_abs_diff_rgb": 24.0
+  },
+  {
+    "region": "taiwan",
+    "label": "台湾 / 东海",
+    "mean_abs_diff_rgb": 0.7984,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 36.0
+  },
+  {
+    "region": "andaman_sea",
+    "label": "安达曼海",
+    "mean_abs_diff_rgb": 0.7808,
+    "p95_abs_diff_rgb": 6.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "kuril_southern",
+    "label": "北方四岛 / 库页岛南端",
+    "mean_abs_diff_rgb": 0.7385,
+    "p95_abs_diff_rgb": 5.0,
+    "max_abs_diff_rgb": 31.0
+  },
+  {
+    "region": "new_zealand",
+    "label": "新西兰",
+    "mean_abs_diff_rgb": 0.6315,
+    "p95_abs_diff_rgb": 5.0,
+    "max_abs_diff_rgb": 38.0
+  },
+  {
+    "region": "puerto_rico_vi",
+    "label": "波多黎各 / 美属维京群岛",
+    "mean_abs_diff_rgb": 0.6189,
+    "p95_abs_diff_rgb": 4.0,
+    "max_abs_diff_rgb": 31.0
+  },
+  {
+    "region": "falkland_islands",
+    "label": "福克兰群岛 / 马尔维纳斯",
+    "mean_abs_diff_rgb": 0.6094,
+    "p95_abs_diff_rgb": 5.0,
+    "max_abs_diff_rgb": 30.0
+  },
+  {
+    "region": "nansha_spratly",
+    "label": "南沙群岛 / 斯普拉特利群岛",
+    "mean_abs_diff_rgb": 0.5274,
+    "p95_abs_diff_rgb": 4.0,
+    "max_abs_diff_rgb": 38.0
+  },
+  {
+    "region": "faroe_islands",
+    "label": "法罗群岛",
+    "mean_abs_diff_rgb": 0.4703,
+    "p95_abs_diff_rgb": 4.0,
+    "max_abs_diff_rgb": 23.0
+  },
+  {
+    "region": "bashi_channel",
+    "label": "巴士海峡",
+    "mean_abs_diff_rgb": 0.4617,
+    "p95_abs_diff_rgb": 2.0,
+    "max_abs_diff_rgb": 32.0
+  },
+  {
+    "region": "south_china_sea",
+    "label": "南海",
+    "mean_abs_diff_rgb": 0.3707,
+    "p95_abs_diff_rgb": 3.0,
+    "max_abs_diff_rgb": 39.0
+  },
+  {
+    "region": "new_caledonia",
+    "label": "新喀里多尼亚",
+    "mean_abs_diff_rgb": 0.3178,
+    "p95_abs_diff_rgb": 2.0,
+    "max_abs_diff_rgb": 31.0
+  },
+  {
+    "region": "solomon_islands",
+    "label": "所罗门群岛",
+    "mean_abs_diff_rgb": 0.2493,
+    "p95_abs_diff_rgb": 2.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "galapagos",
+    "label": "加拉帕戈斯",
+    "mean_abs_diff_rgb": 0.2274,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 33.0
+  },
+  {
+    "region": "canary_madeira",
+    "label": "加那利 / 马德拉",
+    "mean_abs_diff_rgb": 0.1945,
+    "p95_abs_diff_rgb": 1.0,
+    "max_abs_diff_rgb": 32.0
+  },
+  {
+    "region": "hawaii",
+    "label": "夏威夷",
+    "mean_abs_diff_rgb": 0.1726,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 29.0
+  },
+  {
+    "region": "fiji_vanuatu",
+    "label": "斐济 / 瓦努阿图",
+    "mean_abs_diff_rgb": 0.1386,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 27.0
+  },
+  {
+    "region": "eastern_caribbean",
+    "label": "东加勒比 / 小安的列斯",
+    "mean_abs_diff_rgb": 0.1222,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 30.0
+  },
+  {
+    "region": "cape_verde",
+    "label": "佛得角",
+    "mean_abs_diff_rgb": 0.1071,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 28.0
+  },
+  {
+    "region": "south_georgia",
+    "label": "南乔治亚岛",
+    "mean_abs_diff_rgb": 0.0722,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 30.0
+  },
+  {
+    "region": "french_polynesia",
+    "label": "法属波利尼西亚 / 大溪地",
+    "mean_abs_diff_rgb": 0.0685,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 31.0
+  },
+  {
+    "region": "samoa",
+    "label": "萨摩亚",
+    "mean_abs_diff_rgb": 0.0593,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 27.0
+  },
+  {
+    "region": "azores",
+    "label": "亚速尔群岛",
+    "mean_abs_diff_rgb": 0.054,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 37.0
+  },
+  {
+    "region": "ryukyu",
+    "label": "琉球 / 冲绳",
+    "mean_abs_diff_rgb": 0.0516,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 26.0
+  },
+  {
+    "region": "guam_marianas",
+    "label": "关岛 / 马里亚纳群岛",
+    "mean_abs_diff_rgb": 0.049,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 24.0
+  },
+  {
+    "region": "christmas_island",
+    "label": "圣诞节岛",
+    "mean_abs_diff_rgb": 0.0465,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 18.0
+  },
+  {
+    "region": "palau",
+    "label": "帕劳",
+    "mean_abs_diff_rgb": 0.0359,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 31.0
+  },
+  {
+    "region": "marshall_islands",
+    "label": "马绍尔群岛",
+    "mean_abs_diff_rgb": 0.0331,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 23.0
+  },
+  {
+    "region": "tonga",
+    "label": "汤加群岛",
+    "mean_abs_diff_rgb": 0.0322,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 27.0
+  },
+  {
+    "region": "maldives",
+    "label": "马尔代夫",
+    "mean_abs_diff_rgb": 0.0313,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 18.0
+  },
+  {
+    "region": "easter_island",
+    "label": "复活节岛 / 拉帕努伊",
+    "mean_abs_diff_rgb": 0.0254,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 26.0
+  },
+  {
+    "region": "seychelles",
+    "label": "塞舌尔",
+    "mean_abs_diff_rgb": 0.0247,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 24.0
+  },
+  {
+    "region": "kiribati_gilbert",
+    "label": "基里巴斯 / 吉尔伯特群岛",
+    "mean_abs_diff_rgb": 0.0234,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 21.0
+  },
+  {
+    "region": "ogasawara",
+    "label": "小笠原群岛",
+    "mean_abs_diff_rgb": 0.0162,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 23.0
+  },
+  {
+    "region": "micronesia",
+    "label": "密克罗尼西亚联邦",
+    "mean_abs_diff_rgb": 0.0144,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 23.0
+  },
+  {
+    "region": "xisha_paracel",
+    "label": "西沙群岛 / 帕拉塞尔群岛",
+    "mean_abs_diff_rgb": 0.0087,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 15.0
+  },
+  {
+    "region": "dongsha_pratas",
+    "label": "东沙群岛 / 普拉塔斯岛",
+    "mean_abs_diff_rgb": 0.0,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 0.0
+  },
+  {
+    "region": "bermuda",
+    "label": "百慕大",
+    "mean_abs_diff_rgb": 0.0,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 0.0
+  },
+  {
+    "region": "svalbard",
+    "label": "斯瓦尔巴群岛",
+    "mean_abs_diff_rgb": 0.0,
+    "p95_abs_diff_rgb": 0.0,
+    "max_abs_diff_rgb": 0.0
+  }
+]

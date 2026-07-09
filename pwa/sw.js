@@ -1,5 +1,5 @@
-const CACHE = 'claudio-v1'
-const STATIC = ['/', '/index.html', '/app.js', '/style.css']
+const CACHE = 'claudio-v3'
+const STATIC = ['/', '/index.html', '/app.js', '/style.css', '/earth3d.js', '/earth_modes.js']
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)))
@@ -31,10 +31,16 @@ self.addEventListener('fetch', e => {
     return
   }
 
-  // 静态文件 → cache-first
+  // 静态文件 → network-first，避免旧前端壳长期压住新的 Earth mode contract。
   if (STATIC.includes(url.pathname)) {
     e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request))
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone()
+          caches.open(CACHE).then(c => c.put(e.request, clone))
+          return res
+        })
+        .catch(() => caches.match(e.request))
     )
   }
 })

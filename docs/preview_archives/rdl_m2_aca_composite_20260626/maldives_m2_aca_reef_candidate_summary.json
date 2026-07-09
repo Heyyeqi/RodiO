@@ -1,0 +1,25 @@
+{
+  "region": "maldives",
+  "candidate_tile": "d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/maldives/tile_noon_air_mapbox_aca_reef.jpg",
+  "mask": "d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/maldives/aca_reef_mask.png",
+  "contact_sheet": "docs/preview_archives/rdl_m2_aca_composite_20260626/maldives_m2_aca_reef_candidate_contact_sheet.jpg",
+  "stats": {
+    "enabled": true,
+    "package": "Central-Indian-Ocean-20230310001123.zip",
+    "gpkg": "d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/maldives/_aca_cache/reefextent.gpkg",
+    "features_in_bbox": 6541,
+    "polygons_rasterized": 6541,
+    "holes_rasterized": 5081,
+    "parse_errors": 0,
+    "reef_pixels_gt16": 105080,
+    "reef_pixel_ratio_gt16": 0.02087412276240846
+  },
+  "dependency_boundary": "No geopandas/rasterio/fiona/pyproj/shapely/GDAL. Generated with .venv Python + sqlite3/WKB/Pillow.",
+  "depth_gate_note": "GEBCO depth gating was not applied in this run because the active minimal .venv has no tifffile; treatment is feathered reef-mask blend only.",
+  "visual_treatment": {
+    "depth_gate": "not applied; GEBCO elevation unavailable in current runtime",
+    "feather": "Gaussian blur radius 2.2px",
+    "max_alpha": 0.34,
+    "intent": "subtle shallow-water reef/atoll detail, not debug cyan overlay"
+  }
+}

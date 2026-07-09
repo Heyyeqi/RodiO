@@ -1,0 +1,41 @@
+{
+  "region": {
+    "region_id": "maldives",
+    "lon_w": 71.5,
+    "lon_e": 74.5,
+    "lat_s": -1.5,
+    "lat_n": 8.5,
+    "description": "Maldives atoll chain + approach waters"
+  },
+  "package": "Central-Indian-Ocean-20230310001123.zip",
+  "gpkg_path": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/_gpkg_cache/maldives/reefextent.gpkg",
+  "gpkg_table": "Central Indian Ocean",
+  "gpkg_geometry_column": "geom",
+  "gpkg_bounds": [
+    70.77974803499998,
+    73.77445253999998,
+    -7.684139445999999,
+    12.404426938
+  ],
+  "base_tile": "d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_rdl_regions/maldives/tile_noon_air_mapbox.jpg",
+  "base_size": [
+    1229,
+    4096
+  ],
+  "oversample": 2,
+  "outputs": {
+    "mask": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/maldives_aca_reef_mask.png",
+    "preview": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/maldives_aca_reef_overlay_preview.jpg",
+    "contact_sheet": "docs/preview_archives/rdl_m2_coral_atlas_proof_20260626/maldives_aca_reef_contact_sheet.jpg"
+  },
+  "stats": {
+    "features_in_bbox": 6541,
+    "polygons_rasterized": 6541,
+    "holes_rasterized": 5081,
+    "parse_errors": 0,
+    "reef_pixels_gt16": 105080,
+    "reef_pixel_ratio_gt16": 0.02087412276240846,
+    "nonzero": true
+  },
+  "method": "sqlite3 + GeoPackageBinary/WKB parser + Pillow rasterization"
+}

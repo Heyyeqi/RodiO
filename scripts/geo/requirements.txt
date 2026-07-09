@@ -1,0 +1,13 @@
+# Dependencies for scripts/geo/ geo-processing pipelines
+# Requires python3.11 (NOT system python3 which may be 3.14+)
+#
+# Install:
+#   python3.11 -m pip install -r scripts/geo/requirements.txt --break-system-packages
+#
+# Verified working versions (2026-06-25):
+pyshp>=3.1.2
+scipy>=1.17.1
+tifffile>=2026.3.3
+netCDF4>=1.7.4
+numpy
+Pillow
