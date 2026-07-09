@@ -3414,12 +3414,14 @@
           // Sky stays deep cold blue, warmth concentrated at eastern limb.
           rimGlow: {
             outer: {
-              color: '#8AA8C0', colorNear: '#FFECC8', colorFar: '#040C16',
-              width: 0.24, coreFraction: 0.30, coreStrength: 0.49, haloStrength: 0.20,
-              tailPower: 3.2, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#9FB6C8', colorNear: '#FFE5BE', colorFar: '#263F58',
+              coreStrength: 0.36, haloStrength: 0.16,
+              width: 0.23, coreFraction: 0.30, tailPower: 3.0,
+              corePower: 5.6, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#D0E0E8', width: 0.075, strength: 0.19, falloff: 2.8,
+              color: '#F1D7B6', strength: 0.13,
+              width: 0.09, falloff: 3.1,
             },
             sunLobe: {
               enabled: true,
