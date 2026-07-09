@@ -3657,13 +3657,14 @@
           // share one visual language.
           rimGlow: {
             outer: {
-              color: '#a4dbff', colorNear: '#f4fbff', colorFar: '#5d8fc0',
-              coreStrength: 0.78, haloStrength: 0.38,
-              width: 0.28, coreFraction: 0.42, tailPower: 1.6, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#C7DCE8', colorNear: '#DCEBF3', colorFar: '#7894AA',
+              coreStrength: 0.32, haloStrength: 0.14,
+              width: 0.24, coreFraction: 0.30, tailPower: 2.45,
+              corePower: 5.0, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#dbf1ff', strength: 0.32,
-              width: 0.15, falloff: 1.9,
+              color: '#D8EEF8', strength: 0.12,
+              width: 0.12, falloff: 3.0,
             },
           },
           lighting: {
