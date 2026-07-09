@@ -5099,3 +5099,33 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - PR 已创建为普通 open 状态：`https://github.com/Heyyeqi/RodiO/pull/3`
 - 当前工作区仍有既有未提交与未跟踪文件，本次未整理也未提交
+
+## 2026-07-10 HZ部署前资源依赖审计并补齐必需视觉资产
+
+### 做了什么
+- 按部署前审计要求检查当前分支未跟踪文件、代码引用关系与 Railway 运行依赖
+- 确认当前 `pwa/earth3d.js` 会在运行时直接请求以下未入库资源：主题云图集合、`starmap_2020_8k.jpg`、以及 `earth_night_mid_8k.jpg` / `earth_night_night_8k.jpg` / `earth_night_late_8k.jpg`
+- 确认 `pwa/assets/sky/earlyMorning_sky_gradient*.png`、截图、`.bak`、本地脚本与调试目录不在当前运行链路中，本次不纳入部署提交
+- 将部署必需资源加入 git，供当前 PR 与后续 Railway 部署使用
+
+### 改动文件
+- `pwa/assets/textures/clouds/fair_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/fair_clouds_soft_8k.jpg`
+- `pwa/assets/textures/clouds/africa_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/n_amer_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/se_asia_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/australia_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/storm_clouds_crisp_8k.jpg`
+- `pwa/assets/textures/clouds/europe_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/s_amer_clouds_8k.jpg`
+- `pwa/assets/textures/clouds/africa_clouds_wispy_8k.jpg`
+- `pwa/assets/textures/clouds/clouds_live_8k.jpg`
+- `pwa/assets/textures/stars/starmap_2020_8k.jpg`
+- `pwa/assets/earth_night_mid_8k.jpg`
+- `pwa/assets/earth_night_night_8k.jpg`
+- `pwa/assets/earth_night_late_8k.jpg`
+- `devlog.md`
+
+### 遗留问题
+- `.gitignore` 里仍把部分现已运行时使用的云图标注为 ignored，本次为避免扩大范围未重构 ignore 规则，而是直接将必需文件纳入本次提交
+- 其余未跟踪文件（如截图、生成脚本、预览图、备份文件、workspace 输出）本次保持不动，待后续按需清理
