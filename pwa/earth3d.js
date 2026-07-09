@@ -1059,6 +1059,9 @@
               earthShaderUniforms.uOceanRedReduce.value     = _gradeCfg.oceanRedReduce ?? 0
               earthShaderUniforms.uOceanGreenReduce.value   = _gradeCfg.oceanGreenReduce ?? 0
               earthShaderUniforms.uCoastProtection.value    = _gradeCfg.coastProtection ?? 0.75
+              if (earthShaderUniforms.uOceanRawMix)      earthShaderUniforms.uOceanRawMix.value      = _gradeCfg.oceanRawMix ?? 0
+              if (earthShaderUniforms.uOceanRawExposure) earthShaderUniforms.uOceanRawExposure.value = _gradeCfg.oceanRawExposure ?? 0.025
+              if (earthShaderUniforms.uOceanRawBlueKeep) earthShaderUniforms.uOceanRawBlueKeep.value = _gradeCfg.oceanRawBlueKeep ?? 0.2
               earthShaderUniforms.uLandLift.value     = _gradeCfg.landLift    ?? 0.04
               earthShaderUniforms.uLandGamma.value    = _gradeCfg.landGamma   ?? 0.85
               earthShaderUniforms.uLandStr.value      = _gradeCfg.landStr     ?? 0.75
@@ -1160,6 +1163,10 @@
         shader.uniforms.uCityLumHigh    = { value: _pv('uCityLumHigh', 0.040) }
         // Debug mode always starts at 0 on recompile (preserving would be confusing).
         shader.uniforms.uLandDebugMode  = { value: 0.0 }
+        // R5 deepNight black-ocean raw source uniforms
+        shader.uniforms.uOceanRawMix      = { value: _pv('uOceanRawMix', 0) }
+        shader.uniforms.uOceanRawExposure = { value: _pv('uOceanRawExposure', 0.025) }
+        shader.uniforms.uOceanRawBlueKeep = { value: _pv('uOceanRawBlueKeep', 0.2) }
         // v17 daybase-darkened uniforms
         shader.uniforms.uDaybaseMode     = { value: _pv('uDaybaseMode', 0) }
         shader.uniforms.uNightExposure   = { value: _pv('uNightExposure', 0.30) }
@@ -1216,6 +1223,9 @@
           uniform float uAridDarken;
           uniform float uAridWarmReduce;
           uniform float uIceNeutralize;
+          uniform float uOceanRawMix;
+          uniform float uOceanRawExposure;
+          uniform float uOceanRawBlueKeep;
 
           vec3 rodioAdjustSaturation(vec3 color, float saturation) {
             float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -1241,30 +1251,18 @@
             return clamp(mix(openOcean, deepOcean, 0.65) * coastGuard * shallowProtection, 0.0, 1.0);
           }
 
-          vec3 rodioNightBaseFromRaw(vec3 rawDay) {
+          vec3 rodioNightBaseFromRawEx(vec3 rawDay, float exposure, float saturation) {
             float _rawLuma = dot(rawDay, vec3(0.2126, 0.7152, 0.0722));
             float _rawChroma = length(rawDay - vec3(_rawLuma));
             float _rawWarmBias = rawDay.r - rawDay.b;
-            vec3 desat = rodioAdjustSaturation(rawDay, uNightSaturation);
-            vec3 exposed = desat * uNightExposure;
+            vec3 desat = rodioAdjustSaturation(rawDay, saturation);
+            vec3 exposed = desat * exposure;
             vec3 gammaCol = pow(max(exposed, vec3(0.001)), vec3(uNightGamma));
-            // Luma-scaled bias: bright pixels (ice/snow/white rock) get near-zero color shift
-            // to prevent blue-purple cast; dark pixels retain full night color tone.
             float _outLuma = dot(gammaCol, vec3(0.2126, 0.7152, 0.0722));
-            // Calibrated for nightExposure≈0.046: normal land outLuma≈0.025-0.035 (unaffected),
-            // ice/snow outLuma≈0.068-0.075 (bias → near-zero, preventing purple cast).
             float _biasScale = 1.0 - smoothstep(0.042, 0.073, _outLuma) * 0.97;
-            // Some glacier / snow / pale rock pixels land below the post-exposure luma gate
-            // after deepNight darkening. Use the raw day texture to suppress residual bias.
-            // White-pixel mask: high rawLuma + low rawChroma = snow/ice/pale rock.
-            // No warmBias filter — chroma alone is sufficient to exclude colored terrain.
             float _whiteMask = smoothstep(0.35, 0.82, _rawLuma)
                              * smoothstep(0.18, 0.03, _rawChroma);
-            // Suppress color bias for white pixels — prevents bias chain from adding pink.
             _biasScale *= (1.0 - 0.90 * clamp(_whiteMask, 0.0, 1.0));
-            // Warm-adaptive correction: warm pixels bypass the luma gate so the correction
-            // isn't suppressed for bright-warm terrain (hot soil, arid highlands, tropics).
-            // _warmOnlyScale: neutral pixels stay at _biasScale; warm pixels approach 1.0.
             float _warmFactor = clamp(_rawWarmBias * 6.0, 0.0, 1.0);
             float _warmOnlyScale = _biasScale + (1.0 - _biasScale) * _warmFactor;
             float _effectiveRedReduce = uNightRedReduce * (1.0 + _warmFactor * 4.5);
@@ -1272,14 +1270,16 @@
             gammaCol.r *= (1.0 - _effectiveRedReduce  * _warmOnlyScale);
             gammaCol.g *= (1.0 + uNightGreenBias      * _biasScale);
             gammaCol.b *= (1.0 + _effectiveBlueBias   * _warmOnlyScale);
-            // Targeted neutralization for white pixels only: blend toward cool neutral gray.
-            // Dark land and colored terrain are completely unaffected (_whiteMask = 0).
             if (uIceNeutralize > 0.001 && _whiteMask > 0.01) {
               float _wLuma = dot(gammaCol, vec3(0.2126, 0.7152, 0.0722));
               vec3 _whiteOut = vec3(_wLuma * 0.91, _wLuma * 0.96, _wLuma * 1.04);
               gammaCol = mix(gammaCol, _whiteOut, clamp(_whiteMask * uIceNeutralize, 0.0, 1.0));
             }
             return clamp(gammaCol, vec3(0.002), vec3(0.40));
+          }
+
+          vec3 rodioNightBaseFromRaw(vec3 rawDay) {
+            return rodioNightBaseFromRawEx(rawDay, uNightExposure, uNightSaturation);
           }
 
           vec3 rodioOceanToneGrade(vec3 rawDay) {
@@ -1417,6 +1417,14 @@
                 _oceanTone,
                 clamp(_oceanWeight * uOceanBlendStrength * _shallowBlendReduce, 0.0, 1.0)
               );
+              // R5 deepNight black-ocean raw source — inject near-black cold-tinted ocean
+              // after the ocean blend, bypassing nightGrade's exposure+saturation crush.
+              // Derived from rawDay (same source as nightBase) but with independent
+              // exposure + blue-keep, so the ocean can reach deep blue-black without
+              // needing to fight the global nightExposure/nightSaturation settings.
+              vec3 _oceanRaw = rodioNightBaseFromRawEx(_rawDay, uOceanRawExposure, uNightSaturation);
+              _oceanRaw = _oceanRaw * uOceanRawBlueKeep;
+              diffuseColor.rgb = mix(diffuseColor.rgb, _oceanRaw, _oceanWeight * uOceanRawMix * _shallowBlendReduce);
               if (uLandDebugMode > 3.5 && uLandDebugMode < 4.5) {
                 diffuseColor.rgb = _oceanTone * clamp(_oceanWeight * 2.2, 0.0, 1.0);
               }
@@ -4461,11 +4469,10 @@
             // and the ocean read as one flat black mass. Letting the graded
             // tone dominate reveals the day-texture bathymetry (continental
             // shelves, deep basins) as natural depth variation.
-            oceanBlendStrength: 0.69,
-            // 去蒙版感海洋 (2026-07-08 r5.2): r5.1 色相锁定后，浅海仍有灰蓝蒙版感。
-            // OCEAN_TINT_BY_THEME strength 0.04→0.022 削弱统一铺色 + blendStrength
-            // 0.73→0.69 让 day texture bathymetry 更多透出 → 浅海轮廓有纹理深度、
-            // 黄海/东海/台湾海峡/南海北部不再平整。不触动 liftTint/saturation/blueBias。
+            oceanBlendStrength: 0.60,
+            // Blend 0.60 (2026-07-09 R6 B-candidate): lowered from 0.69 to reduce
+            // oceanTone grade coverage, letting raw source + nightBase carry more
+            // of the final ocean color. Works with oceanRaw to hit deep blue-black.
             oceanDarken: 1.75,
             oceanContrast: 1.01,
             oceanSaturation: 0.54,
@@ -4473,6 +4480,10 @@
             oceanRedReduce: 0.05,
             oceanGreenReduce: 0.0,
             coastProtection: 0.68,
+            // R5 deepNight black-ocean raw source — B candidate
+            oceanRawMix: 0.30,
+            oceanRawExposure: 0.040,
+            oceanRawBlueKeep: 0.40,
             // Surface-type suppression: tropical green + arid/highland
             tropicalDarken:      0.62,
             tropicalGreenReduce: 0.0,
@@ -4785,6 +4796,12 @@
         if (!earthShaderUniforms) return
         earthShaderUniforms.uLandDebugMode.value = 0
         earthShaderUniforms.uDaybaseMode.value   = 0
+        earthShaderUniforms.uNightExposure.value   = 0.30
+        earthShaderUniforms.uNightSaturation.value = 0.62
+        earthShaderUniforms.uNightGamma.value      = 0.90
+        earthShaderUniforms.uNightBlueBias.value   = 0.06
+        earthShaderUniforms.uNightGreenBias.value  = 0.02
+        earthShaderUniforms.uNightRedReduce.value  = 0.04
         earthShaderUniforms.uOceanLift.value = 0
         earthShaderUniforms.uOceanTeal.value = 0
         earthShaderUniforms.uOceanBlendStrength.value = 0
@@ -4804,11 +4821,16 @@
         earthShaderUniforms.uLandGlowStr.value = 0
         earthShaderUniforms.uCityLumLow.value = 0
         earthShaderUniforms.uCityLumHigh.value = 1
+        earthShaderUniforms.uCityHighlightClamp.value = 0.88
         earthShaderUniforms.uTropicalDarken.value = 0
         earthShaderUniforms.uTropicalGreenReduce.value = 0
         earthShaderUniforms.uAridDarken.value = 0
         earthShaderUniforms.uAridWarmReduce.value = 0
         earthShaderUniforms.uIceNeutralize.value = 0
+        if (earthShaderUniforms.uOceanRawMix)      earthShaderUniforms.uOceanRawMix.value      = 0
+        if (earthShaderUniforms.uOceanRawExposure) earthShaderUniforms.uOceanRawExposure.value = 0.025
+        if (earthShaderUniforms.uOceanRawBlueKeep) earthShaderUniforms.uOceanRawBlueKeep.value = 0.2
+        if (earthShaderUniforms.uOceanLiftTint)    earthShaderUniforms.uOceanLiftTint.value.set(0.35, 0.50, 1.0)
       }
 
       function clearEmissiveMapForDayModes() {

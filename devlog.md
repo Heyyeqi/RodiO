@@ -4998,3 +4998,47 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 - 浅海区域仍略偏地图蓝，可微调
 - 四档 rimGlow 是离散切换，暂无过渡动画
 - afternoon 暖化使用 landRedRed 负值实现，后续可正式化为独立的 landWarmBias 参数
+
+## 2026-07-08 V4-2C 方向性太阳光：dawn / sunrise / goldenApproach / sunset
+
+### 做了什么
+- **审计发现（核心，同 R2 dayOceanGrade 模式）**：
+  - `RIM_OVERLAY_THEMES` 集合此前不含 sunrise/goldenApproach/sunset —— 三者完全没有 WebGL rim overlay 限光系统，只靠 3D fresnel atmosphere shell（opacity 0.07-0.11，无方向偏置）。
+  - `getSkyThemePreset()` 的 switch 语句没有 sunrise/goldenApproach/sunset 分支 —— 三者落入 `default`（近黑 #000205、opacity 0.98），天空球背景完全没有时段区分，无论白天/黄昏。
+  - sunrise/goldenApproach/sunset 原配置是 v16 遗留 stub：无 rimGlow、无 horizonGlow、无 nightGrade —— 仅靠 mapColor 平面着色 + 真实 Phong 光照。goldenApproach `texture.emissiveMap: null`，城市灯完全关闭，破坏"暮前应开始出现城市灯"的要求。
+  - `horizonGlow`（DOM CSS 径向渐变覆层）已内置方向偏置机制 `lightDirX/lightDirY`（渐变热点在地球视觉圆盘内的位置百分比），且在渲染循环中无条件每帧调用，与 RIM_OVERLAY_THEMES 集合无关——这是真正可用的左右方向性载体，此前 4 个模式均未启用或偏置极弱（48/44，接近居中）。
+  - WebGL Rim Overlay 本身按到地球边缘的**距离**渐变（colorNear→color→colorFar），无左右方向感知能力——方向性只能靠 horizonGlow 实现，rim overlay 只补全"此前完全缺失的限光结构"。
+- **踩坑并修正**：第一版把 sunrise/sunset 套进 `daybaseMode:true` 夜基压暗管线（仿照 dawn/evening），结果陆地被压到几乎全黑只剩城市灯——`daybaseMode:true` 是为近乎零日光的场景设计的，sunrise/sunset 原本是真实 Phong 光照下的明亮曝光。改回 `daybaseMode:false + dayOceanGrade:true`（R2 建立的白天安全路径），陆地重新可见。
+- 新增 3 个 `getSkyThemePreset` 分支（sunrise/goldenApproach/sunset），天空球从"近黑默认值"改为真实的蓝→暖金/橙渐变。
+- `RIM_OVERLAY_THEMES` 加入 sunrise/goldenApproach/sunset。
+- dawn：`horizonGlow.lightDirX` 48→66，opacity 0.030→0.045（保持冷色为主，只做轻微右侧预热提示）。
+- sunrise 重建：`daybaseMode:false + dayOceanGrade:true`，ambient 0.072→0.24，sun 0.48→0.78，rimGlow 新增（暖金，弱方向性由 horizonGlow 承担），horizonGlow 新增并强方向偏右（lightDirX 82），emissiveIntensity 0.46→0.20（城市灯淡出）。
+- goldenApproach 重建：`emissiveMap: null→'night'`（城市灯从零改为初现,intensity 0.08），ambient 0.052→0.42，sun 0.88→1.02（"整体仍有白天余光"要求原 ambient 过暗），rimGlow/horizonGlow 新增，horizonGlow 强方向偏左（lightDirX 18），dayOceanGrade 海洋变深（oceanDarken 0.66）、陆地暖化（landStr 0.42, landRedRed -0.055）。
+- sunset 重建：`daybaseMode:false + dayOceanGrade:true`（同样避开夜基压暗坑），ambient 0.058→0.30, sun 0.40→0.62（保持陆地可见，比 goldenApproach 暗），emissiveIntensity 0.16→0.30（城市灯继续增强），rimGlow/horizonGlow 新增，horizonGlow 最强左偏（lightDirX 14）、最深暖色。
+- 浏览器实机验收（AUDIT LIGHT OFF，通过 UI 强制主题按钮而非直接调 setTimeOfDay——发现后者会被每帧实时时钟驱动的自动主题覆盖，验证需用 `forcedThemeKey` 机制）：dawn/sunrise/goldenApproach/sunset 四张截图，递进清晰：dawn 冷暗最少城市灯可见 → sunrise 转亮转暖、城市灯明显淡出 → goldenApproach 四者最亮最暖、城市灯初现 → sunset 比 goldenApproach 更暗更沉、城市灯继续增强。console 全程无 shader/runtime error。
+- 回归确认：deepNight / noon 截图与既有基线一致，未受影响。
+
+### 改动文件
+- `pwa/earth3d.js`（getSkyThemePreset 新增 3 分支；RIM_OVERLAY_THEMES 扩容；dawn horizonGlow 微调；sunrise/goldenApproach/sunset 全量重建）
+- `devlog.md`
+
+### 遗留问题
+- WebGL Rim Overlay 本身仍是纯距离径向渐变，无左右方向感知——四个模式的"方向性"完全由 horizonGlow（DOM 覆层）承担。如果以后要在 rim overlay 层本身做真正的左右色相分裂，需要新增基于屏幕角度（而非仅距离）的 uniform，是更大的 shader 改动。
+- sunrise/goldenApproach/sunset 的 nightGrade 未设置 cityLumLow/cityLumHigh（沿用默认 0.008/0.040），城市灯亮度目前主要靠 emissiveIntensity + cityLightClamp 控制，未做精细化调校。
+- dawn 的 rimGlow 本身未改（仍是旧版参数），本轮只调了 horizonGlow；如果验收后觉得 dawn 的限光结构也需要方向强化，需要额外一轮。
+
+## 2026-07-09 黎明(dawn)海水层次感修复
+
+### 做了什么
+- 前置一轮 11 主题视觉审计（仅输出报告，未改代码）发现：dawn 的海洋渲染参数比预期更激进（`oceanDarken`/`oceanBlendStrength` 均高于 deepNight 自身），导致海水色调过深，浅滩与深海盆之间几乎没有可辨识的层次感
+- 用户确认问题后，通过 `window.earth3d.patchTheme()` 在浏览器内实时试验两组候选参数（温和版 / 更强版），截图对比，用户选定"温和版"
+- 将选定数值写入 `THEME_VISUAL_CONFIG.dawn.nightGrade`：`oceanBlendStrength` 0.60→0.48，`oceanDarken` 1.35→1.10，`oceanSaturation` 0.58→0.62，`coastProtection` 0.72→0.80（`oceanBlueBias`/`oceanRedReduce`/`oceanLift` 等其余字段未改动）
+- 页面刷新后重新验收：`getDebugState().uniforms` 确认新值已从文件正确加载（非残留的内存态 patch），AUDIT LIGHT 全程 OFF；黄海/台湾海峡一带浅滩色块与深海区域的色调差异清晰可辨，陆地/城市灯未受影响
+
+### 改动文件
+- `pwa/earth3d.js`（`THEME_VISUAL_CONFIG.dawn.nightGrade` 四个海洋字段）
+- `devlog.md`
+
+### 遗留问题
+- 审计中发现的 dawn vs deepNight 净亮度（`ambient × nightExposure`）区分度不足问题尚未处理，本轮只解决海水层次感，未触碰 `ambient`/`nightExposure`
+- 审计中列出的其余 P1/P2 问题（dawn/sunrise 的 DOM horizonGlow 与 WebGL rimGlow 双重叠加架构、8 个模式的 horizonGlow 死配置等）均未处理，见审计报告
