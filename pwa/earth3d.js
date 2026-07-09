@@ -162,6 +162,7 @@
     let tileManager = null
     let dayTexture = null
     let nightTexture = null
+    const nightTextureOverrides = {}
     let oceanSpecularTexture = null
     let oceanSpecularTextureLoadState = 'idle'
     let oceanSpecularTextureWarned = false
@@ -1525,7 +1526,7 @@
               //   mid (base)         → warm light yellow  (emissive as-is — dominant color)
               //   bright (megacities)→ warm white         (lift all channels toward white)
               float _cb = clamp(_normCity, 0.0, 2.0);
-              vec3 _dimHue    = emissive * vec3(0.88, 0.42, 0.16); // amber: less green/blue
+              vec3 _dimHue    = emissive * vec3(0.70, 0.45, 0.25); // amber: less green/blue
               vec3 _brightHue = vec3(0.92, 0.74, 0.42);            // warm gold endpoint (not white)
               vec3 _cityHue = mix(
                 mix(_dimHue, emissive, smoothstep(0.0, 0.9, _cb)),
@@ -3112,11 +3113,29 @@
           // 0 = flat color (old behavior); >0 darkens thin/wispy cloud areas
           // toward gray for internal light/shadow volume. See fragment shader.
           uCloudShade:          { value: 0.0 },
+          // Directional sunlight on the cloud sphere — creates lit/shadow
+          // hemispheres for true volume. (0,1,0) as neutral default → uniform
+          // lighting; per-theme sunDirection overrides this via _syncAtmSunDir.
+          uSunDir:              { value: new THREE.Vector3(0, 1, 0) },
+          // Ambient floor for the dark hemisphere (0=black, 1=full lit).
+          uCloudAmbient:        { value: 0.0 },
+          // Rim/backlight glow strength on the dark hemisphere (0=off).
+          uCloudRim:            { value: 0.0 },
+          // Alpha softening: blends edge-alpha with a mip-biased secondary
+          // sample (0=off).  Non-zero only when a theme opts in.
+          uCloudAlphaSoftness:  { value: 0.0 },
+          uCloudMipBias:        { value: 0.0 },
         },
         vertexShader: `
           varying vec2 vUv;
+          varying vec3 vWorldNormal;
+          varying vec3 vWorldPos;
           void main() {
             vUv = uv;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldPos = worldPos.xyz;
+            // Sphere: local position direction IS the normal (unit sphere).
+            vWorldNormal = normalize(mat3(modelMatrix) * normalize(position));
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `,
@@ -3127,16 +3146,35 @@
           uniform float uCloudAlphaLow;
           uniform float uCloudAlphaHigh;
           uniform float uCloudAlphaPow;
+          uniform float uCloudAlphaSoftness;
+          uniform float uCloudMipBias;
           uniform sampler2D uOceanMask;
           uniform float uOceanSuppress;
           uniform float uDeepOceanSuppress;
           uniform float uCloudShade;
+          uniform vec3  uSunDir;
+          uniform float uCloudAmbient;
+          uniform float uCloudRim;
           varying vec2 vUv;
+          varying vec3 vWorldNormal;
+          varying vec3 vWorldPos;
           void main() {
             vec4 tex = texture2D(uCloudMap, vUv);
             float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
             float alpha = smoothstep(uCloudAlphaLow, uCloudAlphaHigh, lum);
             alpha = pow(alpha, uCloudAlphaPow);
+
+            // Alpha softening: blend edge-alpha with a mip-biased secondary
+            // texture sample.  Default-off (uCloudAlphaSoftness == 0); a theme
+            // like dawn can opt in to a tiny value (0.15–0.30) to dissolve the
+            // hard smoothstep boundary into a natural wispy edge.
+            if (uCloudAlphaSoftness > 0.001) {
+              vec4 texBias = texture2D(uCloudMap, vUv, uCloudMipBias);
+              float lumBias = dot(texBias.rgb, vec3(0.299, 0.587, 0.114));
+              float alphaBias = smoothstep(uCloudAlphaLow, uCloudAlphaHigh, lumBias);
+              alphaBias = pow(alphaBias, uCloudAlphaPow);
+              alpha = mix(alpha, alphaBias, uCloudAlphaSoftness);
+            }
 
             // Ocean / deep-ocean suppression — land (oceanMaskValue low) is
             // unaffected; open ocean fades toward uOceanSuppress; deep ocean
@@ -3150,17 +3188,25 @@
 
             alpha *= uCloudOpacity;
 
-            // Internal shading: without this, cloudColor is flat/uniform and
-            // any opacity high enough to actually see clouds reads as a solid
-            // sticker cutout with no volume. Darkening the thin/wispy (low-lum)
-            // parts of the cloud texture toward gray — while keeping thick,
-            // bright formations at full uCloudColor — restores the soft
-            // light/shadow gradient a real cloud mass has. uCloudShade=0 keeps
-            // the exact old flat-color behavior (other themes are untouched).
+            // Internal texture-based shading — darkens thin/wispy areas.
             float shade = mix(1.0 - uCloudShade, 1.0, smoothstep(uCloudAlphaLow, 0.95, lum));
             vec3 shadedColor = uCloudColor * shade;
 
-            gl_FragColor = vec4(shadedColor, alpha);
+            // Directional lighting on the cloud sphere.
+            // vWorldNormal points outward from the sphere centre;
+            // N·L > 0 → sunlit hemisphere; N·L < 0 → shadow hemisphere.
+            float NdotL = dot(normalize(vWorldNormal), normalize(uSunDir));
+            float diffuse = smoothstep(-0.35, 0.65, NdotL);
+            float dirLight = mix(uCloudAmbient, 1.0, diffuse);
+
+            // Rim / backlight glow — strongest where NdotL is near zero
+            // (terminator edge) and the cloud is thin. Simulates the silver-
+            // lining effect of sunlight catching wispy cloud edges.
+            float rim = (1.0 - abs(NdotL)) * uCloudRim;
+
+            vec3 litColor = shadedColor * dirLight + shadedColor * rim;
+
+            gl_FragColor = vec4(litColor, alpha);
           }
         `,
         transparent: true,
@@ -3187,9 +3233,19 @@
         u.uCloudAlphaLow.value     = isObj && cloudsCfg.alphaLow          != null ? cloudsCfg.alphaLow          : 0.18
         u.uCloudAlphaHigh.value    = isObj && cloudsCfg.alphaHigh         != null ? cloudsCfg.alphaHigh         : 0.75
         u.uCloudAlphaPow.value     = isObj && cloudsCfg.alphaPow          != null ? cloudsCfg.alphaPow          : 1.35
+        u.uCloudAlphaSoftness.value= isObj && cloudsCfg.alphaSoftness     != null ? cloudsCfg.alphaSoftness     : 0.0
+        u.uCloudMipBias.value      = isObj && cloudsCfg.mipBias           != null ? cloudsCfg.mipBias           : 0.0
         u.uOceanSuppress.value     = isObj && cloudsCfg.oceanSuppress     != null ? cloudsCfg.oceanSuppress     : 1.0
         u.uDeepOceanSuppress.value = isObj && cloudsCfg.deepOceanSuppress != null ? cloudsCfg.deepOceanSuppress : 1.0
         u.uCloudShade.value        = isObj && cloudsCfg.shade             != null ? cloudsCfg.shade             : 0.0
+        u.uCloudAmbient.value      = isObj && cloudsCfg.ambient           != null ? cloudsCfg.ambient           : 0.0
+        u.uCloudRim.value          = isObj && cloudsCfg.rim               != null ? cloudsCfg.rim               : 0.0
+        // Cloud-sphere radius scale — lifts the cloud layer slightly above
+        // the surface to reduce the "pasted-on" feel.  Default 1.0 (2.018).
+        if (cloudMesh) {
+          const rs = isObj && cloudsCfg.radiusScale != null ? cloudsCfg.radiusScale : 1.0
+          cloudMesh.scale.setScalar(rs)
+        }
       }
       loader.load('/assets/textures/clouds/fair_clouds_8k.jpg', (tex) => {
         if ('colorSpace' in tex) {
@@ -3374,15 +3430,25 @@
             cityLumHigh: 0.088,
           },
           // Thin, cool, low-opacity clouds — dawn haze just forming.
+          // R10 morphology pass: softer edges (raised alphaLow, lowered
+          // alphaPow), reduced opacity to kill the "pasted-on" feel,
+          // ambient fill on the dark side, subtle rim glow, alpha
+          // softening via mip-bias blend, and a tiny radius bump for
+          // floating-above-the-atmosphere presence.
           clouds: {
-            opacity: 0.30,
+            opacity: 0.13,
             color: '#e8eef3',
-            alphaLow: 0.10,
-            alphaHigh: 0.80,
-            alphaPow: 1.55,
-            oceanSuppress: 0.55,
-            deepOceanSuppress: 0.38,
-            shade: 0.5,
+            alphaLow: 0.20,
+            alphaHigh: 0.84,
+            alphaPow: 1.05,
+            oceanSuppress: 0.48,
+            deepOceanSuppress: 0.35,
+            shade: 0.38,
+            ambient: 0.38,
+            rim: 0.12,
+            alphaSoftness: 0.25,
+            mipBias: 1.5,
+            radiusScale: 1.0035,
           },
           starSphereOpacity: 0.26,
           sunDirection: { x: 4, y: 1, z: 2 }, // pre-dawn eastern light, sun still low
@@ -3963,8 +4029,8 @@
             emissiveMap: 'night',
             mapColor: 0xF4EFE5,
             emissiveColor: 0xFFC477,
-            emissiveIntensity: 0.08,
-            nightBaseIntensity: 0.06,
+            emissiveIntensity: 0.07,
+            nightBaseIntensity: 0.05,
           },
           material: {
             specular: 0x020407,
@@ -4031,8 +4097,8 @@
             sun: 0.84,
             sunColor: 0xffd6a3,
             stars: 0.02,
-            cityLightsOpacity: 0.08,
-            cityLightClamp: 0.74,
+            cityLightsOpacity: 0.07,
+            cityLightClamp: 0.72,
           },
           // DOM horizonGlow disabled — all glow via WebGL sunLobe/arcBand
           horizonGlow: {
@@ -4109,7 +4175,7 @@
             emissiveMap: 'night',
             mapColor: 0xF2E0C8,
             emissiveColor: 0xFFB15C,
-            emissiveIntensity: 0.58,
+            emissiveIntensity: 0.24,
           },
           material: {
             specular: 0x000102,
@@ -4178,8 +4244,8 @@
             sun: 0.52,
             sunColor: 0xffc488,
             stars: 0.18,
-            cityLightsOpacity: 0.42,
-            cityLightClamp: 0.76,
+            cityLightsOpacity: 0.26,
+            cityLightClamp: 0.72,
           },
           // DOM horizonGlow disabled — all sun warmth via WebGL sunLobe/arcBand
           horizonGlow: {
@@ -4234,14 +4300,16 @@
             landGreenB: 0.0,
           },
           clouds: {
-            opacity: 0.14,
+            opacity: 0.18,
             color: '#ffcf9e',
-            alphaLow: 0.10,
-            alphaHigh: 0.82,
-            alphaPow: 1.5,
-            oceanSuppress: 0.55,
-            deepOceanSuppress: 0.35,
-            shade: 0.5,
+            alphaLow: 0.08,
+            alphaHigh: 0.85,
+            alphaPow: 1.6,
+            oceanSuppress: 0.65,
+            deepOceanSuppress: 0.45,
+            shade: 0.55,
+            ambient: 0.28,
+            rim: 0.35,
           },
           starSphereOpacity: 0.10,
           sunDirection: { x: -10, y: 0, z: 0 }, // western light: sun from -x (left side lit)
@@ -4269,7 +4337,7 @@
               width: 0.08, falloff: 3.25,
             },
           },
-          lighting: { ambient: 1.0, sun: 0.0, stars: 0.38, cityLightsOpacity: 0.46, cityLightClamp: 0.74 },
+          lighting: { ambient: 1.0, sun: 0.0, stars: 0.38, cityLightsOpacity: 0.36, cityLightClamp: 0.74 },
           horizonGlow: {
             enabled: false,
             colorCore:  '#cce8f8',
@@ -4327,7 +4395,7 @@
             emissiveMap: 'night',
             mapColor: 0xFFFFFF,
             emissiveColor: 0xFFB85C,
-            emissiveIntensity: 0.86,
+            emissiveIntensity: 0.64,
           },
           material: { specular: 0x000001, shininess: 0.08 },
           atmosphere: { color: '#d8f4ff', opacity: 0.0, power: 14.0 },
@@ -4343,7 +4411,7 @@
               width: 0.07, falloff: 3.45,
             },
           },
-          lighting: { ambient: 1.0, sun: 0.0, stars: 0.66, cityLightsOpacity: 0.46, cityLightClamp: 0.71 },
+          lighting: { ambient: 1.0, sun: 0.0, stars: 0.66, cityLightsOpacity: 0.42, cityLightClamp: 0.70 },
           horizonGlow: {
             enabled: false,
             colorCore:  '#cce8f8',
@@ -4388,8 +4456,8 @@
             iceNeutralize:       1.0,
             oceanLift: 0.011, oceanLiftTint: [0.13, 0.39, 0.70], oceanTeal: 0,
             landLift: 0.035, landGamma: 0.85, landStr: 0, landRedRed: 0.025, landGreenB: 0.045, landGlowStr: 0,
-            cityLumLow:  0.013,
-            cityLumHigh: 0.088,
+            cityLumLow:  0.011,
+            cityLumHigh: 0.086,
           },
           clouds: 0.020,
           starSphereOpacity: 0.34,
@@ -4405,7 +4473,7 @@
             // from the raised cityLightClamp below — a low clamp flattens all
             // cities to one pale beige tone regardless of intensity.
             emissiveColor: 0xFFA22E,
-            emissiveIntensity: 0.92,
+            emissiveIntensity: 0.78,
           },
           material: { specular: 0x000001, shininess: 0.08 },
           // 3D Fresnel limb (AdditiveBlending): light adds directly to canvas at the limb.
@@ -4431,7 +4499,7 @@
           },
           // cityLightClamp 0.92 → 0.75 → 0.68: Reinhard ceiling tightened to reduce metro bloom spread.
           // Lower clamp compresses the brightest cores, keeping city lights point-like rather than haze.
-          lighting: { ambient: 1.0, sun: 0.0, stars: 0.82, cityLightsOpacity: 0.46, cityLightClamp: 0.68 },
+          lighting: { ambient: 1.0, sun: 0.0, stars: 0.82, cityLightsOpacity: 0.45, cityLightClamp: 0.66 },
           horizonGlow: {
             enabled: false,
             // Outer haze: only in space outside Earth's edge (innerStop × scale > 1.0).
@@ -4513,8 +4581,8 @@
             landLift: 0.035, landGamma: 0.85, landStr: 0, landRedRed: 0.025, landGreenB: 0.045, landGlowStr: 0,
             // Wider city mask than the old 0.020/0.082: mid-size cities join
             // the filament network instead of only major metros surviving.
-            cityLumLow:  0.012,
-            cityLumHigh: 0.080,
+            cityLumLow:  0.016,
+            cityLumHigh: 0.092,
           },
           clouds: 0.015,
           starSphereOpacity: 0.45,
@@ -4915,7 +4983,8 @@
         if (!useNightEmissive) clearEmissiveMapForDayModes()
         assignDayTexture(config)
         resetMaterialColor(config, useNightEmissive)
-        earthMaterial.emissiveMap = useNightEmissive ? nightTexture : null
+        const currentNightTex = nightTextureOverrides[resolvedTheme] || nightTexture
+        earthMaterial.emissiveMap = useNightEmissive ? currentNightTex : null
         earthMaterial.emissiveIntensity = useNightEmissive ? config.texture.emissiveIntensity : 0
         applySurfaceDetailTuning(resolvedTheme, config)
         atmosphereMaterial.uniforms.uColor.value.set(config.atmosphere.color)
@@ -5001,9 +5070,10 @@
               earthShaderUniforms.uLandRedRed.value   = ng.landRedRed  ?? 0.025
               earthShaderUniforms.uLandGreenB.value   = ng.landGreenB  ?? 0.045
               earthShaderUniforms.uLandGlowStr.value  = ng.landGlowStr ?? (isDaybase ? 0 : 0.10)
-              earthShaderUniforms.uCityLumLow.value   = ng.cityLumLow  ?? 0.008
-              earthShaderUniforms.uCityLumHigh.value  = ng.cityLumHigh ?? 0.040
             }
+            // City lum thresholds — NOT mask-gated; required for all night themes
+            earthShaderUniforms.uCityLumLow.value   = ng.cityLumLow  ?? 0.008
+            earthShaderUniforms.uCityLumHigh.value  = ng.cityLumHigh ?? 0.040
           } else {
             earthShaderUniforms.uDaybaseMode.value = 0
             earthShaderUniforms.uOceanBlendStrength.value = 0
@@ -5069,11 +5139,26 @@
       loadOceanMaskTexture()
 
       loadTextureWithFallback(
-        '/assets/earth_night_lights_clean_8k.jpg',
-        ['/assets/earth_night_8k.jpg', '/assets/blackmarble.jpg'],
+        '/assets/earth_night_8k.jpg',
+        ['/assets/earth_night_mid_8k.jpg', '/assets/blackmarble.jpg'],
         (texture, usedPath) => {
           nightTexture = texture
           console.log('[earth3d] night texture loaded:', usedPath)
+
+          // Load theme-specific night texture overrides (non-blocking)
+          const OVERRIDE_MAP = {
+            goldenApproach: '/assets/earth_night_mid_8k.jpg',
+            sunset:         '/assets/earth_night_mid_8k.jpg',
+            evening:        '/assets/earth_night_night_8k.jpg',
+            lateEvening:    '/assets/earth_night_late_8k.jpg',
+            deepNight:      '/assets/earth_night_8k.jpg',
+          }
+          Object.entries(OVERRIDE_MAP).forEach(([themeKey, path]) => {
+            loadTextureWithFallback(path, ['/assets/earth_night_8k.jpg'], (tex) => {
+              nightTextureOverrides[themeKey] = tex
+              console.log('[earth3d] night texture override loaded:', themeKey, '->', path)
+            })
+          })
 
           if (typeof applyTheme === 'function') {
             const themeKey = pendingTheme || currentTheme || 'night'
@@ -5088,6 +5173,8 @@
               }
             }
             syncRevealState(themeKey, applied)
+            // Shader compiled after this render; re-apply to wire nightGrade uniforms
+            if (applied) applyTheme(themeKey, { force: true })
           } else {
             earthMaterial.emissiveMap = texture
             earthMaterial.needsUpdate = true
@@ -5145,6 +5232,7 @@
         const dir = sunLight.position.clone().normalize()
         if (atmosphereMaterial?.uniforms?.uSunDir)  atmosphereMaterial.uniforms.uSunDir.value.copy(dir)
         if (atmosphere2Material?.uniforms?.uSunDir) atmosphere2Material.uniforms.uSunDir.value.copy(dir)
+        if (cloudMaterial?.uniforms?.uSunDir)        cloudMaterial.uniforms.uSunDir.value.copy(dir)
       }
 
       function updateSunPosition(_hour) {
@@ -5910,6 +5998,7 @@
             dayTexture.dispose()
           }
           if (nightTexture) nightTexture.dispose()
+          Object.values(nightTextureOverrides).forEach(tex => { if (tex) tex.dispose() })
           if (oceanSpecularTexture) oceanSpecularTexture.dispose()
           if (normalMapTexture) normalMapTexture.dispose()
           if (oceanTintMesh?.parent) oceanTintMesh.parent.remove(oceanTintMesh)
@@ -5991,7 +6080,7 @@
             if (_cfg) {
               earthMaterial.emissive.set(_cfg.emissiveColor ?? 0xFFD07A)
               earthMaterial.emissiveIntensity = _cfg.emissiveIntensity ?? 1.35
-              earthMaterial.emissiveMap = nightTexture
+              earthMaterial.emissiveMap = nightTextureOverrides[theme] || nightTexture
             }
           }
           const _hideAtmo = () => {
