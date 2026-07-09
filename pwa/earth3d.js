@@ -4406,12 +4406,14 @@
           // rich-blue halo bleeding upward into the star field.
           rimGlow: {
             outer: {
-              color: '#7F9DB4', colorNear: '#d8e4ec', colorFar: '#04101f',
-              width: 0.10, coreFraction: 0.34, coreStrength: 0.82, haloStrength: 0.18,
-              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#80B2D2', colorNear: '#D8F0FF', colorFar: '#1D364F',
+              coreStrength: 0.56, haloStrength: 0.13,
+              width: 0.13, coreFraction: 0.30, tailPower: 3.45,
+              corePower: 6.8, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#9fd0ff', width: 0.09, strength: 0.40, falloff: 2.4,
+              color: '#8FAFC4', strength: 0.06,
+              width: 0.06, falloff: 3.6,
             },
           },
           // cityLightClamp 0.92 → 0.75 → 0.68: Reinhard ceiling tightened to reduce metro bloom spread.
