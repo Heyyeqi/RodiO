@@ -3227,6 +3227,9 @@
       function applyCloudThemeConfig(cloudsCfg) {
         if (!cloudMaterial?.uniforms) return
         const isObj = cloudsCfg && typeof cloudsCfg === 'object'
+        // Per-theme cloud texture swap — applied before uniforms so the
+        // alpha parameters are evaluated against the correct texture.
+        if (isObj && cloudsCfg.texture) { _setCloudTexture(cloudsCfg.texture) }
         const u = cloudMaterial.uniforms
         u.uCloudOpacity.value      = (isObj ? cloudsCfg.opacity : cloudsCfg) ?? 0
         u.uCloudColor.value.set(isObj && cloudsCfg.color ? cloudsCfg.color : '#ffffff')
@@ -3247,20 +3250,67 @@
           cloudMesh.scale.setScalar(rs)
         }
       }
-      loader.load('/assets/textures/clouds/fair_clouds_8k.jpg', (tex) => {
+      // ── Per-theme cloud texture system ──────────────────────────
+      // Each theme can specify its own cloud map via `clouds.texture`.
+      // Textures are pre-loaded into a cache; applyCloudThemeConfig
+      // swaps the active texture when the theme changes.
+      const CLOUD_TEXTURE_BASE = '/assets/textures/clouds/'
+      const CLOUD_TEXTURE_DEFAULT = 'fair_clouds_8k.jpg'
+      const cloudTextureCache = {} // name → THREE.Texture
+
+      function _setupCloudTex(tex) {
         if ('colorSpace' in tex) {
           tex.colorSpace = THREE.SRGBColorSpace
         } else {
           tex.encoding = THREE.sRGBEncoding
         }
         tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
-        cloudTexture = tex
-        cloudMaterial.uniforms.uCloudMap.value = tex
-        const cfg = getThemeVisualConfig(currentTheme || pendingTheme)
-        applyCloudThemeConfig(cfg.clouds)
-        requestRenderUpdate()
-        console.log('[earth3d] cloud texture loaded')
-      })
+        return tex
+      }
+
+      function _resolveCloudTextureName(theme) {
+        const cfg = getThemeVisualConfig(theme)
+        return (cfg?.clouds?.texture) || CLOUD_TEXTURE_DEFAULT
+      }
+
+      function _setCloudTexture(name) {
+        const tex = cloudTextureCache[name]
+        if (tex && cloudMaterial) {
+          cloudMaterial.uniforms.uCloudMap.value = tex
+        }
+      }
+
+      // All cloud textures used by the themes — static list to avoid
+      // accessing THEME_VISUAL_CONFIG before its const declaration.
+      const _neededCloudTex = new Set([
+        'fair_clouds_8k.jpg',
+        'fair_clouds_soft_8k.jpg',
+        'africa_clouds_8k.jpg',
+        'n_amer_clouds_8k.jpg',
+        'se_asia_clouds_8k.jpg',
+        'australia_clouds_8k.jpg',
+        'storm_clouds_crisp_8k.jpg',
+        'europe_clouds_8k.jpg',
+        's_amer_clouds_8k.jpg',
+        'africa_clouds_wispy_8k.jpg',
+        'clouds_live_8k.jpg',
+      ])
+      let _cloudTexPending = _neededCloudTex.size
+      for (const name of _neededCloudTex) {
+        loader.load(CLOUD_TEXTURE_BASE + name, (tex) => {
+          cloudTextureCache[name] = _setupCloudTex(tex)
+          _cloudTexPending--
+          if (_cloudTexPending === 0) {
+            // All textures ready — activate the initial theme's texture.
+            const initialName = _resolveCloudTextureName(currentTheme || pendingTheme)
+            cloudTexture = cloudTextureCache[initialName]
+            _setCloudTexture(initialName)
+            applyCloudThemeConfig(getThemeVisualConfig(currentTheme || pendingTheme).clouds)
+            requestRenderUpdate()
+            console.log('[earth3d] cloud textures loaded:', Object.keys(cloudTextureCache).length)
+          }
+        })
+      }
 
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.018)
       scene.add(ambientLight)
@@ -3436,6 +3486,7 @@
           // softening via mip-bias blend, and a tiny radius bump for
           // floating-above-the-atmosphere presence.
           clouds: {
+            texture: 'fair_clouds_soft_8k.jpg',
             opacity: 0.13,
             color: '#e8eef3',
             alphaLow: 0.20,
@@ -3599,6 +3650,7 @@
             landGlowStr: 0,
           },
           clouds: {
+            texture: 'africa_clouds_8k.jpg',
             opacity: 0.22,
             color: '#ffe9d2',
             alphaLow: 0.10,
@@ -3694,6 +3746,7 @@
           // carry a distinct color/alpha-curve/ocean-suppression without
           // touching the shared cloud shader's defaults for any other theme.
           clouds: {
+            texture: 'n_amer_clouds_8k.jpg',
             opacity: 0.38,
             color: '#f4f8fa',
             alphaLow: 0.12,
@@ -3810,6 +3863,7 @@
             },
           },
           clouds: {
+            texture: 'fair_clouds_8k.jpg',
             opacity: 0.30,
             color: '#f4f8fa',
             alphaLow: 0.12,
@@ -3909,6 +3963,7 @@
             },
           },
           clouds: {
+            texture: 'se_asia_clouds_8k.jpg',
             opacity: 0.10,
             color: '#f4f8fa',
             alphaLow: 0.12,
@@ -4007,6 +4062,7 @@
             },
           },
           clouds: {
+            texture: 'australia_clouds_8k.jpg',
             opacity: 0.18,
             color: '#f4f8fa',
             alphaLow: 0.12,
@@ -4147,6 +4203,7 @@
             landGlowStr: 0,
           },
           clouds: {
+            texture: 'storm_clouds_crisp_8k.jpg',
             opacity: 0.16,
             color: '#f0f5f2',
             alphaLow: 0.10,
@@ -4300,6 +4357,7 @@
             landGreenB: 0.0,
           },
           clouds: {
+            texture: 'europe_clouds_8k.jpg',
             opacity: 0.18,
             color: '#ffcf9e',
             alphaLow: 0.08,
@@ -4385,7 +4443,10 @@
             cityLumLow:  0.014,
             cityLumHigh: 0.095,
           },
-          clouds: 0.025,
+          clouds: {
+            opacity: 0.025,
+            texture: 'africa_clouds_wispy_8k.jpg',
+          },
           starSphereOpacity: 0.18,
         },
         lateEvening: {
@@ -4459,7 +4520,10 @@
             cityLumLow:  0.011,
             cityLumHigh: 0.086,
           },
-          clouds: 0.020,
+          clouds: {
+            opacity: 0.020,
+            texture: 'clouds_live_8k.jpg',
+          },
           starSphereOpacity: 0.34,
         },
         deepNight: {
@@ -4584,7 +4648,10 @@
             cityLumLow:  0.016,
             cityLumHigh: 0.092,
           },
-          clouds: 0.015,
+          clouds: {
+            opacity: 0.015,
+            texture: 'clouds_live_8k.jpg',
+          },
           starSphereOpacity: 0.45,
         },
         night: {
