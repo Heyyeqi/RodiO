@@ -4246,12 +4246,14 @@
           atmosphere: { color: '#d8f4ff', opacity: 0.0, power: 14.0 },
           rimGlow: {
             outer: {
-              color: '#6FA6D6', colorNear: '#D4ECFF', colorFar: '#04101f',
-              width: 0.10, coreFraction: 0.34, coreStrength: 0.66, haloStrength: 0.24,
-              tailPower: 2.8, corePower: 9.4, rimOffsetY: 0.004,
+              color: '#93BDD8', colorNear: '#D8EEF8', colorFar: '#2F4B64',
+              coreStrength: 0.48, haloStrength: 0.18,
+              width: 0.18, coreFraction: 0.29, tailPower: 3.2,
+              corePower: 5.9, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#8ABCE8', width: 0.09, strength: 0.28, falloff: 2.4,
+              color: '#B8D2E0', strength: 0.15,
+              width: 0.08, falloff: 3.25,
             },
           },
           lighting: { ambient: 1.0, sun: 0.0, stars: 0.38, cityLightsOpacity: 0.46, cityLightClamp: 0.74 },
