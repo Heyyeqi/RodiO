@@ -2711,7 +2711,7 @@
       // relying solely on the 3D Fresnel atmosphere shell for limb glow.
       // DeepNight uses the same screen-space Rim Overlay + Inner Horizon Veil
       // stack as earlyMorning; see deepNight.rimGlow in THEME_VISUAL_CONFIG.
-      const RIM_OVERLAY_THEMES = new Set(['earlyMorning', 'deepNight', 'evening', 'lateEvening', 'dawn', 'morning', 'noon', 'afternoon', 'sunrise', 'goldenApproach', 'sunset'])
+      const RIM_OVERLAY_THEMES = new Set(['earlyMorning', 'deepNight', 'evening', 'lateEvening', 'night', 'dawn', 'morning', 'noon', 'afternoon', 'sunrise', 'goldenApproach', 'sunset'])
 
       function updateEarlyMorningGlowMode() {
         if (!_emRimOverlayMat || !_emInnerVeilMat || !atmosphere || !atmosphereMaterial) return
@@ -3104,6 +3104,11 @@
           uCloudAlphaLow:       { value: 0.18 },
           uCloudAlphaHigh:      { value: 0.75 },
           uCloudAlphaPow:       { value: 1.35 },
+          // Separates broad cloud coverage from local cloud structure. The
+          // low-frequency sample establishes coverage; the base sample's
+          // deviation from it suppresses broad gray film and keeps formations.
+          uCloudDetailMix:      { value: 0.0 },
+          uCloudDetailContrast: { value: 3.5 },
           // Ocean/deep-ocean suppression — lets a theme dim clouds over water
           // (e.g. earlyMorning) without washing the ocean tone/tint out to a
           // milky white-blue. 1.0 = no suppression (existing behavior).
@@ -3146,6 +3151,8 @@
           uniform float uCloudAlphaLow;
           uniform float uCloudAlphaHigh;
           uniform float uCloudAlphaPow;
+          uniform float uCloudDetailMix;
+          uniform float uCloudDetailContrast;
           uniform float uCloudAlphaSoftness;
           uniform float uCloudMipBias;
           uniform sampler2D uOceanMask;
@@ -3161,7 +3168,16 @@
           void main() {
             vec4 tex = texture2D(uCloudMap, vUv);
             float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
-            float alpha = smoothstep(uCloudAlphaLow, uCloudAlphaHigh, lum);
+            // Cloud coverage is sampled from a blurred mip level while local
+            // structure comes from the full-resolution sample. This prevents
+            // the white/gray background of the global cloud-density map from
+            // becoming a translucent film over the whole globe.
+            vec4 texCoverage = texture2D(uCloudMap, vUv, 2.0);
+            float coverageLum = dot(texCoverage.rgb, vec3(0.299, 0.587, 0.114));
+            float coverage = smoothstep(uCloudAlphaLow, uCloudAlphaHigh, coverageLum);
+            float detailSignal = clamp(abs(lum - coverageLum) * uCloudDetailContrast, 0.0, 1.0);
+            float detailMask = mix(1.0, mix(0.24, 1.0, detailSignal), uCloudDetailMix);
+            float alpha = coverage * detailMask;
             alpha = pow(alpha, uCloudAlphaPow);
 
             // Alpha softening: blend edge-alpha with a mip-biased secondary
@@ -3236,7 +3252,10 @@
         u.uCloudAlphaLow.value     = isObj && cloudsCfg.alphaLow          != null ? cloudsCfg.alphaLow          : 0.18
         u.uCloudAlphaHigh.value    = isObj && cloudsCfg.alphaHigh         != null ? cloudsCfg.alphaHigh         : 0.75
         u.uCloudAlphaPow.value     = isObj && cloudsCfg.alphaPow          != null ? cloudsCfg.alphaPow          : 1.35
+        u.uCloudDetailMix.value    = isObj && cloudsCfg.detailMix         != null ? cloudsCfg.detailMix         : 0.0
+        u.uCloudDetailContrast.value = isObj && cloudsCfg.detailContrast  != null ? cloudsCfg.detailContrast  : 3.5
         u.uCloudAlphaSoftness.value= isObj && cloudsCfg.alphaSoftness     != null ? cloudsCfg.alphaSoftness     : 0.0
+        console.log('[cloud] apply cfg:', JSON.stringify({ texture: isObj ? cloudsCfg.texture : 'none', opacity: u.uCloudOpacity.value, alphaLow: u.uCloudAlphaLow.value, alphaHigh: u.uCloudAlphaHigh.value, detailMix: u.uCloudDetailMix.value }))
         u.uCloudMipBias.value      = isObj && cloudsCfg.mipBias           != null ? cloudsCfg.mipBias           : 0.0
         u.uOceanSuppress.value     = isObj && cloudsCfg.oceanSuppress     != null ? cloudsCfg.oceanSuppress     : 1.0
         u.uDeepOceanSuppress.value = isObj && cloudsCfg.deepOceanSuppress != null ? cloudsCfg.deepOceanSuppress : 1.0
@@ -3277,6 +3296,7 @@
         const tex = cloudTextureCache[name]
         if (tex && cloudMaterial) {
           cloudMaterial.uniforms.uCloudMap.value = tex
+          console.log('[cloud] _setCloudTexture:', name, tex?.image?.src || tex?.source?.data ? 'loaded' : 'no-img')
         }
       }
 
@@ -3290,6 +3310,7 @@
         'se_asia_clouds_8k.jpg',
         'australia_clouds_8k.jpg',
         'storm_clouds_crisp_8k.jpg',
+        'storm_clouds_8k.jpg',
         'europe_clouds_8k.jpg',
         's_amer_clouds_8k.jpg',
         'africa_clouds_wispy_8k.jpg',
@@ -4386,13 +4407,14 @@
           rimGlow: {
             outer: {
               color: '#93BDD8', colorNear: '#D8EEF8', colorFar: '#2F4B64',
-              coreStrength: 0.48, haloStrength: 0.18,
-              width: 0.18, coreFraction: 0.29, tailPower: 3.2,
-              corePower: 5.9, softComposite: true, rimOffsetY: 0.0,
+              // Broad, low-energy air mass instead of a crisp neon ring.
+              coreStrength: 0.18, haloStrength: 0.06,
+              width: 0.16, coreFraction: 0.22, tailPower: 2.6,
+              corePower: 7.0, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#B8D2E0', strength: 0.15,
-              width: 0.08, falloff: 3.25,
+              color: '#9EBBC9', strength: 0.035,
+              width: 0.045, falloff: 3.8,
             },
           },
           lighting: { ambient: 1.0, sun: 0.0, stars: 0.38, cityLightsOpacity: 0.36, cityLightClamp: 0.74 },
@@ -4444,8 +4466,22 @@
             cityLumHigh: 0.095,
           },
           clouds: {
-            opacity: 0.025,
-            texture: 'africa_clouds_wispy_8k.jpg',
+            // High-pass cloud mask: reject the broad gray film and retain
+            // only localized bright formations, closer to real satellite cloud
+            // masses than a translucent global overlay.
+            opacity: 0.18,
+            texture: 'clouds_live_8k.jpg',
+            alphaLow: 0.20,
+            alphaHigh: 0.68,
+            alphaPow: 1.15,
+            detailMix: 0.42,
+            detailContrast: 5.0,
+            color: '#edf5f8',
+            shade: 0.24,
+            // Keep the cloud albedo visible on the night-facing hemisphere.
+            // Without an ambient floor, the directional cloud light reaches 0
+            // there even when alpha is non-zero, producing invisible black clouds.
+            ambient: 0.52,
           },
           starSphereOpacity: 0.18,
         },
@@ -4463,13 +4499,13 @@
           rimGlow: {
             outer: {
               color: '#86B4D0', colorNear: '#D4ECF8', colorFar: '#253F58',
-              coreStrength: 0.52, haloStrength: 0.15,
-              width: 0.14, coreFraction: 0.30, tailPower: 3.3,
-              corePower: 6.5, softComposite: true, rimOffsetY: 0.0,
+              coreStrength: 0.15, haloStrength: 0.05,
+              width: 0.14, coreFraction: 0.21, tailPower: 2.8,
+              corePower: 7.3, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#9EBBCC', strength: 0.09,
-              width: 0.07, falloff: 3.45,
+              color: '#8FAEBD', strength: 0.025,
+              width: 0.040, falloff: 4.0,
             },
           },
           lighting: { ambient: 1.0, sun: 0.0, stars: 0.66, cityLightsOpacity: 0.42, cityLightClamp: 0.70 },
@@ -4521,8 +4557,16 @@
             cityLumHigh: 0.086,
           },
           clouds: {
-            opacity: 0.020,
+            opacity: 0.15,
             texture: 'clouds_live_8k.jpg',
+            alphaLow: 0.23,
+            alphaHigh: 0.70,
+            alphaPow: 1.20,
+            detailMix: 0.45,
+            detailContrast: 5.0,
+            color: '#e7f0f4',
+            shade: 0.28,
+            ambient: 0.48,
           },
           starSphereOpacity: 0.34,
         },
@@ -4552,13 +4596,13 @@
           rimGlow: {
             outer: {
               color: '#80B2D2', colorNear: '#D8F0FF', colorFar: '#1D364F',
-              coreStrength: 0.56, haloStrength: 0.13,
-              width: 0.13, coreFraction: 0.30, tailPower: 3.45,
-              corePower: 6.8, softComposite: true, rimOffsetY: 0.0,
+              coreStrength: 0.13, haloStrength: 0.045,
+              width: 0.13, coreFraction: 0.20, tailPower: 3.0,
+              corePower: 7.6, softComposite: true, rimOffsetY: 0.0,
             },
             inner: {
-              color: '#8FAFC4', strength: 0.06,
-              width: 0.06, falloff: 3.6,
+              color: '#809EAF', strength: 0.018,
+              width: 0.035, falloff: 4.2,
             },
           },
           // cityLightClamp 0.92 → 0.75 → 0.68: Reinhard ceiling tightened to reduce metro bloom spread.
@@ -4649,8 +4693,16 @@
             cityLumHigh: 0.092,
           },
           clouds: {
-            opacity: 0.015,
+            opacity: 0.13,
             texture: 'clouds_live_8k.jpg',
+            alphaLow: 0.26,
+            alphaHigh: 0.72,
+            alphaPow: 1.25,
+            detailMix: 0.48,
+            detailContrast: 5.0,
+            color: '#dfeaf0',
+            shade: 0.32,
+            ambient: 0.44,
           },
           starSphereOpacity: 0.45,
         },
@@ -4669,8 +4721,22 @@
           },
           atmosphere: {
             color: '#0f0d0b',   // near-neutral warm dark
-            opacity: 0.12,
+            // Rim Overlay owns the normal home-view atmosphere for night;
+            // keep the legacy 3D shell only for audit shell fallback.
+            opacity: 0.0,
             power: 6.0,
+          },
+          rimGlow: {
+            outer: {
+              color: '#6D8796', colorNear: '#B9CBD2', colorFar: '#182A35',
+              coreStrength: 0.10, haloStrength: 0.035,
+              width: 0.12, coreFraction: 0.19, tailPower: 3.2,
+              corePower: 7.8, softComposite: true, rimOffsetY: 0.0,
+            },
+            inner: {
+              color: '#718A96', strength: 0.012,
+              width: 0.030, falloff: 4.4,
+            },
           },
           lighting: {
             ambient: 0.058,
@@ -4678,7 +4744,18 @@
             stars: 0.78,
             cityLightsOpacity: 0.58, // dead param — logging only; use texture.emissiveIntensity for city light strength
           },
-          clouds: 0.02,
+          clouds: {
+            opacity: 0.11,
+            texture: 'clouds_live_8k.jpg',
+            alphaLow: 0.29,
+            alphaHigh: 0.74,
+            alphaPow: 1.30,
+            detailMix: 0.50,
+            detailContrast: 5.0,
+            color: '#d6e3ea',
+            shade: 0.36,
+            ambient: 0.40,
+          },
           starSphereOpacity: 0.22,
         },
       }
@@ -5172,6 +5249,7 @@
           stars.material.opacity = config.lighting.stars
         }
         if (cloudMaterial?.uniforms && cloudTexture) {
+          console.log('[cloud] applyTheme gate:', JSON.stringify({ resolvedTheme, cfgClouds: config.clouds, hasCfg: !!config, cfgTextureExists: !!(config && config.clouds && config.clouds.texture) }))
           applyCloudThemeConfig(config.clouds)
         }
         applyRimGlowThemeConfig(config.rimGlow)
