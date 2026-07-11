@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-07-11 修复 bootstrap 贴图异步解码竞争条件
+
+### 原因
+`loadBootstrapDayAtlasImage()` 中 `img.decoding = 'async'` 导致 `img.onload` 在下载完成时触发，
+此时 8K JPEG 可能仍在异步解码中。`onload` 回调直接设置 `bootstrapDayAtlasState = 'ready'`，
+任何后续 `resetAtlas()` → `redrawAtlasBaseLayer()` → `drawImage()` 都会抓取到部分解码的图像，
+在球面渲染为雪花屏/像素化色块。
+
+### 修复
+将 `img.onload` 内的 `state = 'ready'` 赋值推迟到 `img.decode()` promise resolve 之后。
+`decode()` 确保像素数据完全就绪后才允许 `drawImage` 使用该 image。
+catch 分支做兜底（解码失败也推进到 ready，避免管线永久卡死）。
+
+### 文件
+- `pwa/earth3d.js` — `loadBootstrapDayAtlasImage()`（~L511）
+
+---
+
 ## 2025-05-13 项目规范化节点
 
 ### 当前状态快照

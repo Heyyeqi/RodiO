@@ -509,12 +509,23 @@
         const img = new Image()
         img.decoding = 'async'
         img.onload = () => {
-          bootstrapDayAtlasImage = img
-          bootstrapDayAtlasState = 'ready'
-          if (tileManager?.redrawAtlasBaseLayer) {
-            tileManager.redrawAtlasBaseLayer()
-            requestRenderUpdate()
-          }
+          img.decode().then(() => {
+            bootstrapDayAtlasImage = img
+            bootstrapDayAtlasState = 'ready'
+            if (tileManager?.redrawAtlasBaseLayer) {
+              tileManager.redrawAtlasBaseLayer()
+              requestRenderUpdate()
+            }
+          }).catch(() => {
+            // decode() 失败兜底：按已解码对待，避免永久卡在 loading 态。
+            // drawImage 在解码失败的 image 上通常表现为空白，总好过冻结整个管线。
+            bootstrapDayAtlasImage = img
+            bootstrapDayAtlasState = 'ready'
+            if (tileManager?.redrawAtlasBaseLayer) {
+              tileManager.redrawAtlasBaseLayer()
+              requestRenderUpdate()
+            }
+          })
         }
         img.onerror = () => {
           bootstrapDayAtlasState = 'missing'
