@@ -5380,6 +5380,16 @@
     fDbg.add(dbgBtns, 'oceanMaskOnly').name('⑧ Ocean mask confidence')
     fDbg.add(dbgBtns, 'oceanGradeOnly').name('⑨ Ocean tone grade only')
 
+    // ── Camera Narrative Presets (E7 debug) ──────────────────────────────
+    var fPreset = gui.addFolder('Camera Presets (E7 debug)')
+    fPreset.close()
+    var presetKeys = ['globe', 'heroClose', 'hemisphere', 'horizon', 'lowOrbit', 'cityFocus', 'oceanView', 'deepSpace']
+    var presetBtns = {}
+    presetKeys.forEach(function (k) {
+      presetBtns[k] = function () { e3d.applyCameraPreset?.(k) }
+      fPreset.add(presetBtns, k).name('▶ ' + k)
+    })
+
     // ── Copy config snippet ───────────────────────────────────────────────
     gui.add({
       copy: function () {

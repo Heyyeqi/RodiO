@@ -3007,8 +3007,8 @@
           void main() {
             vec2 c = gl_PointCoord - vec2(0.5);
             float d2 = dot(c, c) * 4.0;           // 0 at center, 1 at sprite edge
-            float core = exp(-d2 * 7.0);          // tight bright core
-            float halo = exp(-d2 * 2.0) * 0.30;   // wide faint glow gradient
+            float core = exp(-d2 * 30.0);                   // pin-sharp bright core — gone by d2≈0.15
+            float halo = exp(-d2 * 3.5) * 0.22;        // medium-wide glow, soft falloff
             float tw = 0.86 + 0.14 * sin(uTime * 1.1 + vPhase)
                      + 0.05 * sin(uTime * 3.1 + vPhase * 1.7);
             float a = (core + halo) * tw * uOpacity;
@@ -3070,7 +3070,7 @@
             // Second harmonic for variety — some stars shimmer faster
             twinkle += 0.06 * sin(uTime * 3.7 + phase * 2.3);
 
-            gl_FragColor = vec4(tex.rgb * twinkle * uOpacity, tex.a * uOpacity);
+            gl_FragColor = vec4(tex.rgb * twinkle, tex.a) * uOpacity;
           }
         `,
         transparent: true,
@@ -3083,24 +3083,31 @@
         starSphereMaterial
       )
       scene.add(starSphere)
-      loader.load('/assets/textures/stars/starmap_2020_8k.jpg', (tex) => {
-        if ('colorSpace' in tex) {
-          tex.colorSpace = THREE.SRGBColorSpace
-        } else {
-          tex.encoding = THREE.sRGBEncoding
+      starSphere.frustumCulled = false
+      loader.load('/assets/textures/stars/starmap_2020_8k.jpg',
+        (tex) => {
+          if ('colorSpace' in tex) {
+            tex.colorSpace = THREE.SRGBColorSpace
+          } else {
+            tex.encoding = THREE.sRGBEncoding
+          }
+          tex.anisotropy = 1
+          starSphereMaterial.uniforms.uStarTexture.value = tex
+          starSphereMaterial.uniformsNeedUpdate = true
+          starSphereLoaded = true
+          starSphereMaterial.uniforms.uOpacity.value = STAR_SPHERE_OPACITY[currentTheme || pendingTheme] ?? 0
+          if (stars?.material) {
+            stars.material.opacity = PROCEDURAL_STARS_OPACITY[currentTheme || pendingTheme] ?? 0
+            stars.material.needsUpdate = true
+          }
+          requestRenderUpdate()
+          console.log('[earth3d] star texture loaded')
+        },
+        undefined,
+        () => {
+          console.warn('[earth3d] star texture load failed — procedural stars kept as fallback')
         }
-        tex.anisotropy = 1
-        starSphereMaterial.uniforms.uStarTexture.value = tex
-        starSphereMaterial.uniformsNeedUpdate = true
-        starSphereLoaded = true
-        starSphereMaterial.uniforms.uOpacity.value = STAR_SPHERE_OPACITY[currentTheme || pendingTheme] ?? 0
-        if (stars?.material) {
-          stars.material.opacity = 0
-          stars.material.needsUpdate = true
-        }
-        requestRenderUpdate()
-        console.log('[earth3d] star texture loaded')
-      })
+      )
 
       // Cloud shell — ShaderMaterial to avoid grey-film from linear alphaMap.
       // smoothstep crushes low-luminance areas to zero alpha; power sharpens edges.
@@ -3391,6 +3398,27 @@
         lateEvening:               0.18,
         deepNight:                 0.32,
         night:                     0.22,
+      }
+
+      // Procedural sprite-star overlay opacity per theme.
+      // These foreground glow-dots now coexist with the texture starmap
+      // (rather than being zeroed on load), so values are tuned lower than
+      // the historical config.lighting.stars to keep them as subtle bright accents
+      // on top of the dense background starfield.
+      // Read via PROCEDURAL_STARS_OPACITY[theme] with a daytime-safe fallback.
+      const PROCEDURAL_STARS_OPACITY = {
+        dawn:                      0.12,
+        sunrise:                   0.02,
+        earlyMorning:              0,
+        morning:                   0,
+        noon:                      0,
+        afternoon:                 0,
+        goldenApproach:            0.01,
+        sunset:                    0.05,
+        evening:                   0.12,
+        lateEvening:               0.20,
+        deepNight:                 0.28,
+        night:                     0.24,
       }
 
       const THEME_VISUAL_CONFIG = {
@@ -5258,7 +5286,7 @@
         // when the map loads): the map is the faint background sky, the
         // sprites are the bright foreground stars with glow gradients.
         if (stars?.material) {
-          stars.material.opacity = config.lighting.stars
+          stars.material.opacity = PROCEDURAL_STARS_OPACITY[resolvedTheme] ?? 0
         }
         if (cloudMaterial?.uniforms && cloudTexture) {
           console.log('[cloud] applyTheme gate:', JSON.stringify({ resolvedTheme, cfgClouds: config.clouds, hasCfg: !!config, cfgTextureExists: !!(config && config.clouds && config.clouds.texture) }))
@@ -5829,6 +5857,18 @@
       // _rdlZoomLevel drives the RDL regional overlay opacity.
       const _RDL_FOV_NORMAL = 28
       const _RDL_FOV_MIN    = 8
+      // ── Camera Narrative Presets (E7) ──────────────────────────────────
+      const CAMERA_PRESETS = {
+        globe:      { label: 'Globe',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 4.8,  lookAtY: 0.0  },
+        heroClose:  { label: 'Hero Close', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 48, cameraOffsetY: 0.0, cameraOffsetZ: 5.5,  lookAtY: 0.0  },
+        hemisphere: { label: 'Hemisphere', lat: 35.0,   lon: 110.0,   centerMode: false, fov: 22, cameraOffsetY: 0.5, cameraOffsetZ: 5.5,  lookAtY: -0.3 },
+        horizon:    { label: 'Horizon',    lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.0,  lookAtY: -0.5 },
+        lowOrbit:   { label: 'Low Orbit',  lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 3.5,  lookAtY: -0.8 },
+        cityFocus:  { label: 'City Focus', lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 8,  cameraOffsetY: 0.6, cameraOffsetZ: 3.0,  lookAtY: -1.0 },
+        oceanView:  { label: 'Ocean View', lat: -10.0,  lon: -140.0,  centerMode: false, fov: 24, cameraOffsetY: 0.3, cameraOffsetZ: 5.0,  lookAtY: -0.2 },
+        deepSpace:  { label: 'Deep Space', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 80.0, lookAtY: 0.0  },
+      }
+
       const _AUDIT_VIEW_ANGLES = {
         top: { y: 0.0, z: 4.8, lookY: -1.4 },
         oblique: { y: 1.35, z: 5.05, lookY: -1.2 },
@@ -6107,6 +6147,34 @@
           updateSunPosition()
           requestRenderUpdate()
           return _currentAuditViewAngle
+        },
+        applyCameraPreset(key) {
+          const preset = CAMERA_PRESETS[key]
+          if (!preset) { console.warn('[earth3d] unknown camera preset:', key); return false }
+
+          // camera position & FOV
+          camera.position.set(0, preset.cameraOffsetY, preset.cameraOffsetZ)
+          camera.fov = preset.fov
+          camera.lookAt(0, preset.lookAtY, 0)
+          camera.updateProjectionMatrix()
+
+          // earth orientation via rodioVisualState → getTargetOrientation()
+          useAuditCenterTarget = Boolean(preset.centerMode)
+          window.__rodioVisualState = {
+            ...(window.__rodioVisualState || {}),
+            lon: preset.lon,
+            lat: preset.lat,
+          }
+
+          const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
+          earth.quaternion.copy(target)
+          atmosphere.rotation.set(0, 0, 0)
+
+          performSceneRefresh()
+          updateSunPosition()
+          requestRenderUpdate()
+
+          return true
         },
         getDebugState() {
           return buildDebugState()
