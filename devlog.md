@@ -5405,3 +5405,16 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留问题
 - 未将 B-6 掩码实际接入 RDL 管线，未验证互补假设之外的具体接入方式
 - 接入方案（如作为 SAL 额外信号源、或 VC coastline_smoother 的额外约束层）留给真正要做的时候
+
+## 2026-07-11 HZ提交 track_profile schema
+
+### 做了什么
+- 在 SQLite 初始化 schema 中建立 `track_profile` 表及其索引，为 Phase 1 标签体系预留结构化存储。
+- 覆盖曲目身份、规范化元数据、播放行为计数、可播放性、客观标签、声学/体感标签、审美语义标签、场景适配和记忆置信度字段。
+
+### 改动文件
+- `core/state.js`
+- `devlog.md`
+
+### 遗留问题
+- 仅建表，未写入数据，Phase 1 后续步骤：抽样打标/播放日志/transition_cost观测/shadow mode 待做
