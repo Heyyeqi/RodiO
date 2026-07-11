@@ -5324,3 +5324,18 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 改动文件
 - `devlog.md`
+
+## 2026-07-11 调试面板复位按钮 + 16k/RDL 收尾核实（第三批）
+
+### 做了什么
+- 调试面板 FAR/NEAR 同行加了 RESET 按钮：点击后执行 `setAuditDistance(0)` + `setAuditAngle('top')`，效果等同刷新页面但不用真刷新。
+- 核实 16k 贴图源资源：全项目 `find` 无任何 `*16k*`/`*16384*` 结果，`stars`/`clouds`/`earth` 三个贴图目录都只有 8k。`earth3d.js:571` 的 16k 代码路径本身没问题，只是当前 GPU（`maxTextureSize=8192`）触发不到，也没有对应源图可用。确认不需要现在处理。
+- 核实 `updateRDLOverlays()` 的淡入淡出死代码：现状本来就满足"不启用"的要求（非 inspect 模式 `uOpacity=0` 且 `visible=false`，inspect 模式硬编码 `0.995`，`facingOpacity` 从未被使用），不需要改代码。
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 16k 源贴图目前不存在，等以后有支持 16384 的显卡再决定要不要生成。
+- RDL 淡入淡出死代码继续保留，等 RDL 正式上线时再决定是否接上。
