@@ -5434,3 +5434,23 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留问题
 - 未在真实 invalid_grant 场景做端到端验证（当前 refresh token 尚未过期，仅逻辑走查通过）。线上已重新走过一次授权（2026-07-11），下次真正过期预计在 2027-01 左右。
+
+---
+
+## 2026-07-11 选曲模型从 Qwen 切换到 DeepSeek
+
+### 起因
+运营决定将选曲模型从 Qwen (qwen-max / DashScope) 切换到 DeepSeek (deepseek-chat)。
+此前 Qwen key 本地曾出现 401 错误。
+
+### 做了什么
+- `core/claude.js` — OpenAI client 初始化的 apiKey 从 `DASHSCOPE_API_KEY` 改为 `DEEPSEEK_API_KEY`，baseURL 从 `dashscope.aliyuncs.com/compatible-mode/v1` 改为 `api.deepseek.com`，model 参数从 `qwen-max` 改为 `deepseek-chat`
+- `server.js` — 日志文案中 "直接入队(Qwen选曲)" 改为 "直接入队(DeepSeek选曲)"
+
+### 改动文件
+- `core/claude.js`
+- `server.js`
+
+### 遗留问题
+- 线上 Railway 尚未配置 `DEEPSEEK_API_KEY`，需手动添加
+- `DASHSCOPE_API_KEY` 相关代码和 env 暂时保留，未清理

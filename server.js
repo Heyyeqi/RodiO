@@ -1098,7 +1098,7 @@ async function buildReadyPoolBatch(input, options = {}) {
     const match = candidateByKey.get(key)
     if (!match || selectedKeys.has(key)) continue
     selectedKeys.add(key)
-    console.log(`[spotify] 直接入队(Qwen选曲): ${match.name} / ${match.artist}`)
+    console.log(`[spotify] 直接入队(DeepSeek选曲): ${match.name} / ${match.artist}`)
     selected.push(curatedTrackToQueueItem(match))
     if (selected.length >= READY_POOL_ROUND_SIZE) break
   }

@@ -1,8 +1,8 @@
 const OpenAI = require('openai')
 
 const client = new OpenAI({
-  apiKey: process.env.DASHSCOPE_API_KEY,
-  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com',
 })
 
 // 从可能包含多余文字的字符串中提取第一个完整 JSON 对象
@@ -22,7 +22,7 @@ function extractFirstJson(text) {
 
 async function askClaude(context) {
   const response = await client.chat.completions.create({
-    model: 'qwen-max',
+    model: 'deepseek-chat',
     messages: [
       { role: 'system', content: context.system },
       ...context.messages,
