@@ -107,6 +107,21 @@ db.exec(`
     updated_at             TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS play_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL CHECK(event_type IN ('skip','complete','replay')),
+    track_key TEXT NOT NULL,
+    played_seconds REAL NOT NULL,
+    duration_seconds REAL NOT NULL,
+    played_ratio REAL NOT NULL,
+    user_active INTEGER NOT NULL DEFAULT 0,
+    scene_id TEXT,
+    prev_track_key TEXT,
+    context_snapshot TEXT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_tp_genre_family   ON track_profile(genre_family);
   CREATE INDEX IF NOT EXISTS idx_tp_language       ON track_profile(language);
   CREATE INDEX IF NOT EXISTS idx_tp_energy         ON track_profile(energy);
@@ -181,6 +196,31 @@ function getFeedbackByType(feedback, limit = 50) {
   ).all(feedback, limit)
 }
 
+function insertPlayEvent(event) {
+  const {
+    track_key,
+    event_type,
+    prev_track_key = null,
+    context_snapshot = null,
+    created_at = null,
+  } = event || {}
+  db.prepare(`
+    INSERT INTO play_events (event_type, track_key, played_seconds, duration_seconds, played_ratio, user_active, scene_id, prev_track_key, context_snapshot, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    event_type,
+    track_key,
+    event.played_seconds || 0,
+    event.duration_seconds || 0,
+    event.played_ratio || 0,
+    event.user_active ? 1 : 0,
+    event.scene_id || null,
+    prev_track_key || null,
+    context_snapshot || null,
+    created_at || new Date().toISOString()
+  )
+}
+
 module.exports = {
   getRecentMessages,
   addMessage,
@@ -192,4 +232,5 @@ module.exports = {
   setSongFeedback,
   getSongFeedback,
   getFeedbackByType,
+  insertPlayEvent,
 }

@@ -1746,6 +1746,49 @@ app.post('/api/spotify/playback-failed', (req, res) => {
   return res.json({ ok: true, blacklisted: true })
 })
 
+app.post('/api/play-event', async (req, res) => {
+  try {
+    const { event_type, name, artist, prev_name, prev_artist, played_seconds, duration_seconds, played_ratio, user_active, timestamp } = req.body
+    if (!event_type || !name || !artist) return res.status(400).json({ ok: false, error: 'missing required fields' })
+
+    const track_key = `${normalizeSongKey(name)}::${normalizeArtistKey(artist)}`
+    const prev_track_key = (prev_name && prev_artist)
+      ? `${normalizeSongKey(prev_name)}::${normalizeArtistKey(prev_artist)}`
+      : null
+
+    let context_snapshot = null
+    try {
+      const { getEnvironmentSnapshot } = require('./core/context')
+      const snap = await getEnvironmentSnapshot()
+      if (snap) {
+        context_snapshot = JSON.stringify({
+          weather: snap.weather ? snap.weather.text : null,
+          solar_phase: snap.astronomy ? snap.astronomy.solar.phase : null,
+          lunar_phase: snap.astronomy ? snap.astronomy.lunar.phase : null
+        })
+      }
+    } catch (_) { /* context snapshot optional */ }
+
+    state.insertPlayEvent({
+      event_type,
+      track_key,
+      prev_track_key,
+      played_seconds: played_seconds || 0,
+      duration_seconds: duration_seconds || 0,
+      played_ratio: played_ratio || 0,
+      user_active: user_active ? 1 : 0,
+      scene_id: null,
+      context_snapshot,
+      created_at: timestamp || new Date().toISOString(),
+    })
+
+    res.json({ ok: true })
+  } catch (e) {
+    console.error('[play-event] write error:', e.message)
+    res.status(200).json({ ok: true, error: 'logged but internal error' })
+  }
+})
+
 // GET /api/next — 弹出队列下一首（前端歌曲结束时调用）
 app.get('/api/next', async (req, res) => {
   const period = ['morning', 'day', 'night'].includes(req.query.period)

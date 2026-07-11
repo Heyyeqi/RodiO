@@ -1361,7 +1361,7 @@
         // 只在“先前正在播放、现在已经结束”的情况下推进下一首
         if (wasPlaying && s.paused && s.position === 0 && currentUri && currentUri === spotifyCurrentUri) {
           spotifyCurrentUri = null
-          advanceToNext()
+          advanceToNext('complete')
         }
       })
 
@@ -2590,7 +2590,7 @@
       renderControls()
       if (action === 'dislike') {
         appendDj(`记下了，${state.currentTrack.name} 之后不再推荐。`)
-        advanceToNext()
+        advanceToNext('skip')
       }
     } catch {
       appendDj('这次偏好记录失败了，稍后再试。')
@@ -2906,7 +2906,29 @@
     }
   }
 
-  async function advanceToNext() {
+  async function advanceToNext(reason = 'auto') {
+    if (reason !== 'auto' && state.currentTrack) {
+      const dur = state.duration || 0
+      const prog = state.progress || 0
+      const prev = playedHistory.length >= 1 ? playedHistory[playedHistory.length - 1] : null
+      fetch('/api/play-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: reason === 'skip' ? 'skip' : 'complete',
+          name: state.currentTrack.name,
+          artist: state.currentTrack.artist,
+          prev_name: prev ? prev.song_info?.name || null : null,
+          prev_artist: prev ? prev.song_info?.artist || null : null,
+          played_seconds: prog,
+          duration_seconds: dur,
+          played_ratio: dur > 0 ? prog / dur : 0,
+          user_active: document.visibilityState === 'visible',
+          timestamp: new Date().toISOString()
+        })
+      }).catch(() => {})
+    }
+
     hasUnlockedAudio = true
 
     // 本地队列低于 3 首时就提前让后端补货
@@ -2954,6 +2976,27 @@
   function playPrevious() {
     hasUnlockedAudio = true
     if (state.progress > 3) {
+      if (state.currentTrack) {
+        const dur = state.duration || 0
+        const prog = state.progress || 0
+        const prev = playedHistory.length >= 1 ? playedHistory[playedHistory.length - 1] : null
+        fetch('/api/play-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_type: 'replay',
+            name: state.currentTrack.name,
+            artist: state.currentTrack.artist,
+            prev_name: prev ? prev.song_info?.name || null : null,
+            prev_artist: prev ? prev.song_info?.artist || null : null,
+            played_seconds: prog,
+            duration_seconds: dur,
+            played_ratio: dur > 0 ? prog / dur : 0,
+            user_active: document.visibilityState === 'visible',
+            timestamp: new Date().toISOString()
+          })
+        }).catch(() => {})
+      }
       if (spotifyCurrentUri && spotifyReady) {
         spotifySeek(0)
       } else {
@@ -4969,7 +5012,7 @@
   }
 
   document.getElementById('btn-prev').addEventListener('click', playPrevious)
-  document.getElementById('btn-next').addEventListener('click', advanceToNext)
+  document.getElementById('btn-next').addEventListener('click', () => advanceToNext('skip'))
   document.getElementById('btn-note').addEventListener('click', explainCurrentTrack)
   document.getElementById('btn-dislike').addEventListener('click', () => sendFeedback('dislike'))
   const SHICHIYOU_SYMBOLS = ['☀', '☽', '♂', '☿', '♃', '♀', '♄']
@@ -5050,7 +5093,7 @@
     renderControls()
   })
   audio.addEventListener('ended', () => {
-    advanceToNext()
+    advanceToNext('complete')
   })
 
   const DEV_CACHE_NAME = 'claudio-v2'

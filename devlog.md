@@ -5504,3 +5504,23 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留问题
 - few-shot 示例的 scene_fit / sequence_shape 映射为语义近似，非方案文档原始映射
+
+## 2026-07-11 播放行为日志功能（play_events 写入）
+
+### 做了什么
+- 新增播放行为日志功能：前端在 skip / complete / replay 三类事件发生时调用 `/api/play-event`，后端写入 `play_events` 表
+- `core/state.js` 新增并导出 `insertPlayEvent(event)`，复用模块内已有 `db` 实例（不暴露 db 给 server）
+- `server.js` 的 `/api/play-event` 路由改为 `async`，`getEnvironmentSnapshot()` 加 `await`，写入改用 `state.insertPlayEvent(...)`
+- 前端 `pwa/index.html` 的 `advanceToNext` / `playPrevious` 改为传 `name` / `artist`（及 `prev_name` / `prev_artist`）原始字段，后端用 `normalizeSongKey` / `normalizeArtistKey` 拼出 `track_key`（格式 "归一化曲名::归一化艺人名"）
+- 通过真实 HTTP 调用验证三类事件均成功写入 `play_events` 表；并复刻前端播放状态机验证 `prev_track_key` 取的是紧邻当前曲目之前那首
+
+### 遇到的 4 处问题及修复
+1. **getDb 缺失**：原路由用 `require('./core/state').getDb()` 取 db 实例，但 `state.js` 从未导出 `getDb`，调用直接报错；改为在 `state.js` 内新增 `insertPlayEvent` 并导出，server 端通过 `state.insertPlayEvent(...)` 写入，不暴露 db
+2. **getEnvironmentSnapshot 缺 await**：`getEnvironmentSnapshot()` 是 async 函数，原代码未 `await`，snapshot 拿到的是 Promise 而非对象；路由改为 `async` 并对调用加 `await`
+3. **track_key 前端传对象而非字符串**：前端原把整个 `state.currentTrack` 对象当 `track_key` 传入，后端无法拼 key；改为前端传 `name` / `artist` 原始字段，后端用归一化函数拼 `"曲名::艺人"`
+4. **prev_track_key off-by-one**：`playSong` 在切歌时才把刚播完的曲目推入 `playedHistory`，故上报时刻 `playedHistory` 最后一个元素（length-1）才是紧邻当前曲目之前那首；原代码取 `length-2` 多跳一首，改为 `length-1`（判断条件 `>= 1`）
+
+### 遗留问题
+- `scene_id` 暂时固定为 `null`，尚未接入场景识别
+- 惩罚逻辑（基于 skip/complete 调整推荐权重）与 shadow mode（先记录不干预）属于后续步骤，本轮未实现
+- 前端 `replay` 事件在 `playPrevious` 中触发，依赖 `playedHistory` 历史，边界场景（历史不足）已做 null 兜底
