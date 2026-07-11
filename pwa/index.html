@@ -997,6 +997,7 @@
             <div class="rdl-zoom-row">
               <button class="rdl-zoom-btn" id="rdl-zoom-out" type="button">FAR</button>
               <button class="rdl-zoom-btn" id="rdl-zoom-in" type="button">NEAR</button>
+              <button class="rdl-zoom-btn" id="rdl-zoom-reset" type="button">RESET</button>
             </div>
             <div class="rdl-zoom-row three" aria-label="Earth audit angle">
               <button class="rdl-zoom-btn active" type="button" data-audit-angle="top">TOP</button>
@@ -1523,6 +1524,7 @@
   const earthAuditLabel = document.getElementById('earth-audit-label')
   const rdlZoomIn = document.getElementById('rdl-zoom-in')
   const rdlZoomOut = document.getElementById('rdl-zoom-out')
+  const rdlZoomReset = document.getElementById('rdl-zoom-reset')
   const rdlZoomLabel = document.getElementById('rdl-zoom-label')
   const auditMoveButtons = Array.from(document.querySelectorAll('[data-audit-move]'))
   const auditAngleButtons = Array.from(document.querySelectorAll('[data-audit-angle]'))
@@ -1563,6 +1565,10 @@
 
   rdlZoomIn.addEventListener('click', () => setAuditDistance(1))
   rdlZoomOut.addEventListener('click', () => setAuditDistance(0.35))
+  rdlZoomReset.addEventListener('click', () => {
+    setAuditDistance(0)
+    setAuditAngle('top')
+  })
 
   function setAuditAngle(angle) {
     currentAuditAngle = angle

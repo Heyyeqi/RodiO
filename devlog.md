@@ -776,7 +776,6 @@
 - D5z_a 截图待 D5z_b 失败时按需执行
 - Conditional Pass 允许最多 2 项 Partial（仅限极地亮度/Indian Ocean 深海）；保护区 / Sahara 变色 / 硬边界 / UI 可读性 均不允许 Partial
 
-<<<<<<< HEAD
 ## 2026-06-10 B-6.1 Asset Audit
 
 ### 做了什么
@@ -5278,3 +5277,89 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - 若未来需要接近白天参考图的云团存在感，应单独设计 daylight cloud profile，不应继续放大当前深夜 profile。
+
+## 2026-07-11 HZ修复相机角度切换导致辉光位置错乱
+
+### 做了什么
+- 定位根因：`updateEarlyMorningGlowMode()` 里的 `shouldUseAuditShell` 开关此前只在 TOP 角度 + 零缩放时启用精细版 screen-space rim overlay（`updateEarlyMorningRimProjection`），其余角度/缩放一律回退到参数固定、与主题无关的 3D Fresnel shell。切换角度时表现为两套渲染互相替换，辉光看起来"跳"了位置，不是同一个东西在飘移。
+- 诊断确认精细版投影数学本身在全部 7 个角度（top/oblique/low/asiaTilt/asiaWide/tilt/global）下都能正确计算——用光学公式 `rimRx ∝ cot(fov/2)` 反推验证过 zoom 0→1.0（对应 fov 28°→8°）的数值，跟实测几乎精确匹配。此前"精细版不够稳"的判断，实际根因是 `[0.2, 2.0]` 的 rimRx/rimRy 范围守卫定得过窄，没考虑到 RDL zoom 会把 FOV 收到 8°（对应 TOP 角度下 rimRx 最大到 5.52）。
+- 移除该范围守卫（仅保留 `!Number.isFinite` 判断），`shouldUseAuditShell` 固定为 `false`，让精细版辉光在全部角度/缩放下生效；顺手删除了被取代的旧注释。
+- 人工在本机浏览器实拍验收（7 角度 × 3 档缩放，共 15 张真实截图）：边缘辉光位置正常，未见断裂/错位。zoom=1.0 时该投影几何上落在画面外（rimRx 远超屏幕范围），因此看不到辉光是预期结果，不是新问题。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 部分角度切换后画面清晰度明显变差（其他角度/距离正常），控制台可见大量 `NOON_AIR_V2_ISLANDS` 贴图流式加载日志，怀疑与分辨率分级选择有关，与本次改动是不同代码路径，需单独排查 `tileManager`/`updateStreaming`。
+- 调试面板缺少"复位到初始角度/缩放"入口：FAR/NEAR 固定跳转到 0.35/1.0，没有按钮能回到 0，只能刷新页面重来，是个独立的小体验缺口，不影响本次修复。
+
+## 2026-07-11 HZ相机角度耦合审计 + 贴图 LOD 缩放感知修复
+
+### 做了什么
+- 审计 `updateRDLOverlays()` 的 facing-based 淡入淡出逻辑：数学本身角度无关、7 个角度下均正确，但计算出的 `facingOpacity` 从未被写入 `uOpacity`（非 inspect 模式硬编码 0，inspect 模式硬编码 0.995）——是预留但未激活的死代码，不属于本次要修的"只信任默认角度"类问题，未改动。
+- 审计云层方向光照：`NdotL` 用 `uSunDir`（来自真实太阳位置/主题 override），不依赖相机方向，确认无耦合问题，未改动。
+- 定位清晰度问题根因：`resolveEarthTextureLOD()`（[earth3d.js:558](earth3d.js)）此前只用 `camera.position.length()` 判断分辨率档位，完全不看 `setRDLZoomLevel()` 改变的 FOV——缩放时相当于光学放大同一张贴图，纹理密度被摊薄导致发糊，不是"选错分辨率"或"贴图没加载完"。
+- 修复：LOD 判断改用等效距离 `rawDistance × (fovDegrees / 28)`，FOV 越窄（缩放越大）等效距离越短。`fovDegrees` 取自真实 `camera.fov`（[earth3d.js:5781](earth3d.js)），非桩值。
+- 实测验证：`asiaWide`/`global` 缩放至 0.35 起从 4k 升到 8k；`top`/`oblique`/`low`/`asiaTilt`/`tilt` 缩放到底后等效距离已满足 16k 阈值（5.6），但当前测试机 GPU `maxTextureSize=8192` 硬性卡住 16k 分支——确认这部分残留糊感是显卡上限，不是代码遗漏。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- `updateRDLOverlays()` 里未激活的 facing-based 淡入淡出是预留死代码，RDL 区域叠加层本身还未上生产（仅 inspect 模式可见），不紧急，之后 RDL 正式启用时需要决定是否真正接上这套淡入淡出。
+- 换到支持 16384 贴图的显卡后，`top`/`oblique`/`low`/`asiaTilt`/`tilt` 缩放到底应能自动升到 16k，届时需要确认对应的 16k 源贴图资源是否已生成（未核实）。
+
+## 2026-07-11 分支清理与工作区收尾（第二批）
+
+### 做了什么
+- 删除 4 个已确认无用的调试残留文件：`pwa/earth3d.js.bak`、`pwa/lil-gui.umd.min.js`、`tmp_stage7_grammar_preview.png`、`tmp_stage7_visual_check.png`
+- 删除 `finalize-visual-20260710` 分支（本地 + 远端）：已确认无独有 commit，内容全部并入 origin/main（PR #3）
+- 本地 `main` 同步到 `origin/main`
+- 删除 3 个无独有内容的分支（本地 + 远端）：`orbit-theme-visual-baseline`、`recovery/earth-4d4-rebuild`、`review/local-main-docs-preview-20260622`
+- 保留 2 个有独有 commit 的分支未动：
+  - `exp/b6-2x-source-cache-setup`：27 个 commit，包含 B-6 结构掩码、GEE 导出、bootstrap 等大量未合并工作
+  - `tune-earlyMorning-v1`：1 个 commit（`f75a3fc`），earlyMorning ambient 调参
+
+### 改动文件
+- `devlog.md`
+
+## 2026-07-11 调试面板复位按钮 + 16k/RDL 收尾核实（第三批）
+
+### 做了什么
+- 调试面板 FAR/NEAR 同行加了 RESET 按钮：点击后执行 `setAuditDistance(0)` + `setAuditAngle('top')`，效果等同刷新页面但不用真刷新。
+- 核实 16k 贴图源资源：全项目 `find` 无任何 `*16k*`/`*16384*` 结果，`stars`/`clouds`/`earth` 三个贴图目录都只有 8k。`earth3d.js:571` 的 16k 代码路径本身没问题，只是当前 GPU（`maxTextureSize=8192`）触发不到，也没有对应源图可用。确认不需要现在处理。
+- 核实 `updateRDLOverlays()` 的淡入淡出死代码：现状本来就满足"不启用"的要求（非 inspect 模式 `uOpacity=0` 且 `visible=false`，inspect 模式硬编码 `0.995`，`facingOpacity` 从未被使用），不需要改代码。
+
+### 改动文件
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 16k 源贴图目前不存在，等以后有支持 16384 的显卡再决定要不要生成。
+- RDL 淡入淡出死代码继续保留，等 RDL 正式上线时再决定是否接上。
+
+## 2026-07-11 分支清理 + E7 相机审计与预设草案
+
+### 做了什么
+
+**分支清理**：删除本地 `tune-earlyMorning-v1`（was f75a3fc，远端从未推送）。该分支的 earlyMorning 调参内容已被后续更大规模的主题调参覆盖——当前 origin/main 上 `earlyMorning.ambient` 为 0.56，与该分支改动前后的 0.068 / 0.16 均不对应，属于过时实验分支，无保留价值。
+
+**E7 相机审计**：对 `pwa/earth3d.js` 中地球朝向 / 相机逻辑进行只读审计，梳理以下核心机制：
+- `getTargetOrientation()` 四元数计算（地球朝向驱动源）
+- `earth.quaternion.slerp()` 每帧平滑旋转
+- `_AUDIT_VIEW_ANGLES` / `setAuditViewAngle()` debug 审计视角系统
+- FOV zoom（scroll-wheel / `setRDLZoomLevel`）
+- `auditCenterDir` 居中模式
+
+明确结论：`_AUDIT_VIEW_ANGLES` 是纯 debug 工具，当前不存在任何面向终端用户的正式镜头预设系统。
+
+**E7 预设参数草案**：设计 7 个叙事预设（Globe / Hemisphere / Horizon / Low Orbit / City Focus / Ocean View / Deep Space）的参数结构，包含 lat/lon/centerMode/fov/cameraOffsetY/cameraOffsetZ/lookAtY/layer 等字段。这是设计草案，**不包含实现代码**，未接入任何正式功能流程，等 RW 后续专门开一轮决定实现路径。
+
+### 改动文件
+- `docs/e7_camera_audit_and_preset_design.md`（新增，从根目录移入 docs/）
+- `devlog.md`
+
+### 遗留问题
+- E7 预设草案中的 4 个待确认问题（平滑过渡、城市可配置性、输出通道、远距离裁剪）需 RW 审阅后决定。
