@@ -22,11 +22,12 @@ function extractFirstJson(text) {
 
 async function askClaude(context) {
   const response = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     messages: [
       { role: 'system', content: context.system },
       ...context.messages,
     ],
+    thinking: { type: 'disabled' },
   })
 
   const raw = response.choices[0]?.message?.content || '{}'

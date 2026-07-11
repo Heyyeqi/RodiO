@@ -239,13 +239,14 @@ function validateLabels(label) {
 async function labelOne(song) {
   const userMsg = `歌名: ${song.name} / 艺人: ${song.artist}`
   const response = await client.chat.completions.create({
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userMsg },
     ],
     temperature: 0.3,
     max_tokens: 800,
+    thinking: { type: 'disabled' },
   })
 
   const raw = response.choices[0]?.message?.content || ''
@@ -359,7 +360,7 @@ function buildReviewRow(song, label) {
 // ── Main loop ────────────────────────────────────────────────────────
 async function main() {
   console.log('[label-track-sample] Phase 1 Step 2 — 抽样 200 首打标')
-  console.log(`[label-track-sample] 模型: deepseek-chat`)
+  console.log(`[label-track-sample] 模型: deepseek-v4-flash`)
 
   // Load pool & sample
   const pool = loadPool()

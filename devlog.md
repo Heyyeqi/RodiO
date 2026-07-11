@@ -5564,3 +5564,23 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留问题
 - 当前测试环境 Spotify 用户歌单为空，真实路径 B 返回空，overlap_count 恒为 0；需在真实有歌单环境才能观测到非零重合度
 - shadow_candidate_count 上限取决于 track_profile 打标进度（当前 200 首）
+
+---
+
+## [Phase 1] DeepSeek 模型迁移：deepseek-chat → deepseek-v4-flash
+
+### 起因
+- deepseek-chat 将于 2026-07-24 停用，需提前迁移到 deepseek-v4-flash 以延续选曲/打标能力
+
+### 做了什么
+- 模型名替换：`core/claude.js` 与 `scripts/label-track-sample.js` 中 `deepseek-chat` → `deepseek-v4-flash`（含日志文案同步）
+- 关闭思考模式：deepseek-v4-flash 默认开启 thinking，需显式关闭以保持与原 deepseek-chat（非思考）行为一致。Node.js openai SDK（openai@6.44.0）不支持 `extra_body` 参数（会被静默忽略），故改为在 `chat.completions.create({...})` 第一个参数对象中直接以顶层属性 `thinking: { type: 'disabled' }` 传入（与 model、messages 同级）
+
+### 验证
+- `node -c` 两个文件语法检查通过
+- 真实调用确认响应无 `reasoning_content` 字段：`response.choices[0].message` 的 keys 仅 `["role","content"]`，`reasoning_content in message` 为 false
+- 单次请求耗时约 1.08 秒，与 deepseek-chat 时期（几秒内）相当，远低于思考模式下的十几到几十秒，佐证思考模式已关闭
+- 返回内容正常解析为 JSON
+
+### 遗留问题
+- 无
