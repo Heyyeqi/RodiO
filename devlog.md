@@ -5311,3 +5311,16 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 - `updateRDLOverlays()` 里未激活的 facing-based 淡入淡出是预留死代码，RDL 区域叠加层本身还未上生产（仅 inspect 模式可见），不紧急，之后 RDL 正式启用时需要决定是否真正接上这套淡入淡出。
 - 换到支持 16384 贴图的显卡后，`top`/`oblique`/`low`/`asiaTilt`/`tilt` 缩放到底应能自动升到 16k，届时需要确认对应的 16k 源贴图资源是否已生成（未核实）。
 
+## 2026-07-11 分支清理与工作区收尾（第二批）
+
+### 做了什么
+- 删除 4 个已确认无用的调试残留文件：`pwa/earth3d.js.bak`、`pwa/lil-gui.umd.min.js`、`tmp_stage7_grammar_preview.png`、`tmp_stage7_visual_check.png`
+- 删除 `finalize-visual-20260710` 分支（本地 + 远端）：已确认无独有 commit，内容全部并入 origin/main（PR #3）
+- 本地 `main` 同步到 `origin/main`
+- 删除 3 个无独有内容的分支（本地 + 远端）：`orbit-theme-visual-baseline`、`recovery/earth-4d4-rebuild`、`review/local-main-docs-preview-20260622`
+- 保留 2 个有独有 commit 的分支未动：
+  - `exp/b6-2x-source-cache-setup`：27 个 commit，包含 B-6 结构掩码、GEE 导出、bootstrap 等大量未合并工作
+  - `tune-earlyMorning-v1`：1 个 commit（`f75a3fc`），earlyMorning ambient 调参
+
+### 改动文件
+- `devlog.md`
