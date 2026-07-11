@@ -2397,8 +2397,6 @@
 
         if (!Number.isFinite(centerUv.x) || !Number.isFinite(centerUv.y) ||
             !Number.isFinite(rimRx) || !Number.isFinite(rimRy)) return
-        if (rimRx < 0.2 || rimRx > 2.0) return
-        if (rimRy < 0.2 || rimRy > 2.0) return
 
         _emSkyPlaneMat.uniforms.uRimCenter.value.set(centerUv.x, centerUv.y)
         _emSkyPlaneMat.uniforms.uRimRadius.value.set(rimRx, rimRy)
@@ -2725,17 +2723,11 @@
         const baseAtmoPowerOuter = cfg?.atmosphere?.powerOuter ?? 5.2
         const baseAtmoStrengthOuter = cfg?.atmosphere?.strengthOuter ?? 0.18
         const baseAtmoRadius = cfg?.atmosphere?.radius ?? 2.04
-        // Systemic separation:
-        // - Default home composition only: top angle + base zoom => allow the
-        //   screen-space overlay stack.
-        // - Any audit interaction (FAR/NEAR changes zoom, or any non-top angle)
-        //   => force the stable 3D shell path. This avoids state-dependent
-        //   bounce-backs where returning from NEAR to FAR re-enables the overlay
-        //   on a camera/framing it was never robust enough to support.
-        const shouldUseAuditShell = usesRimOverlay && (
-          _rdlZoomLevel > 0.001 ||
-          _currentAuditViewAngle !== 'top'
-        )
+        // Direction 1: always use the screen-space rim overlay stack for all
+        // angles and zoom levels. The downstream guard already protects against
+        // non-finite projection, and the zoom-1.0 rim radius (max ~5.52) is
+        // visually acceptable — no need for a 3D shell fallback.
+        const shouldUseAuditShell = false
 
         _emRimOverlayMat.uniforms.uOpacity.value = shouldUseAuditShell ? 0.0 : 1.0
         _emInnerVeilMat.uniforms.uOpacity.value = shouldUseAuditShell ? 0.0 : 1.0

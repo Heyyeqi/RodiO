@@ -5213,6 +5213,22 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - 需要在用户侧硬刷新后确认云团是否仍然过淡；若过淡，应优先增加云层局部对比，不再降低 alphaLow 或扩大 inner veil。
 
+## 2026-07-11 HZ修复相机角度切换导致辉光位置错乱
+
+### 做了什么
+- 定位根因：`updateEarlyMorningGlowMode()` 里的 `shouldUseAuditShell` 开关此前只在 TOP 角度 + 零缩放时启用精细版 screen-space rim overlay（`updateEarlyMorningRimProjection`），其余角度/缩放一律回退到参数固定、与主题无关的 3D Fresnel shell。切换角度时表现为两套渲染互相替换，辉光看起来"跳"了位置，不是同一个东西在飘移。
+- 诊断确认精细版投影数学本身在全部 7 个角度（top/oblique/low/asiaTilt/asiaWide/tilt/global）下都能正确计算——用光学公式 `rimRx ∝ cot(fov/2)` 反推验证过 zoom 0→1.0（对应 fov 28°→8°）的数值，跟实测几乎精确匹配。此前"精细版不够稳"的判断，实际根因是 `[0.2, 2.0]` 的 rimRx/rimRy 范围守卫定得过窄，没考虑到 RDL zoom 会把 FOV 收到 8°（对应 TOP 角度下 rimRx 最大到 5.52）。
+- 移除该范围守卫（仅保留 `!Number.isFinite` 判断），`shouldUseAuditShell` 固定为 `false`，让精细版辉光在全部角度/缩放下生效；顺手删除了被取代的旧注释。
+- 人工在本机浏览器实拍验收（7 角度 × 3 档缩放，共 15 张真实截图）：边缘辉光位置正常，未见断裂/错位。zoom=1.0 时该投影几何上落在画面外（rimRx 远超屏幕范围），因此看不到辉光是预期结果，不是新问题。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- 部分角度切换后画面清晰度明显变差（其他角度/距离正常），控制台可见大量 `NOON_AIR_V2_ISLANDS` 贴图流式加载日志，怀疑与分辨率分级选择有关，与本次改动是不同代码路径，需单独排查 `tileManager`/`updateStreaming`。
+- 调试面板缺少"复位到初始角度/缩放"入口：FAR/NEAR 固定跳转到 0.35/1.0，没有按钮能回到 0，只能刷新页面重来，是个独立的小体验缺口，不影响本次修复。
+
 ## 2026-07-10 HZ评估高通云层后的稀薄问题
 
 ### 做了什么
