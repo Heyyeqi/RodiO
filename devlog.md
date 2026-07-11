@@ -5294,3 +5294,20 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - 若未来需要接近白天参考图的云团存在感，应单独设计 daylight cloud profile，不应继续放大当前深夜 profile。
+
+## 2026-07-11 HZ相机角度耦合审计 + 贴图 LOD 缩放感知修复
+
+### 做了什么
+- 审计 `updateRDLOverlays()` 的 facing-based 淡入淡出逻辑：数学本身角度无关、7 个角度下均正确，但计算出的 `facingOpacity` 从未被写入 `uOpacity`（非 inspect 模式硬编码 0，inspect 模式硬编码 0.995）——是预留但未激活的死代码，不属于本次要修的"只信任默认角度"类问题，未改动。
+- 审计云层方向光照：`NdotL` 用 `uSunDir`（来自真实太阳位置/主题 override），不依赖相机方向，确认无耦合问题，未改动。
+- 定位清晰度问题根因：`resolveEarthTextureLOD()`（[earth3d.js:558](earth3d.js)）此前只用 `camera.position.length()` 判断分辨率档位，完全不看 `setRDLZoomLevel()` 改变的 FOV——缩放时相当于光学放大同一张贴图，纹理密度被摊薄导致发糊，不是"选错分辨率"或"贴图没加载完"。
+- 修复：LOD 判断改用等效距离 `rawDistance × (fovDegrees / 28)`，FOV 越窄（缩放越大）等效距离越短。`fovDegrees` 取自真实 `camera.fov`（[earth3d.js:5781](earth3d.js)），非桩值。
+- 实测验证：`asiaWide`/`global` 缩放至 0.35 起从 4k 升到 8k；`top`/`oblique`/`low`/`asiaTilt`/`tilt` 缩放到底后等效距离已满足 16k 阈值（5.6），但当前测试机 GPU `maxTextureSize=8192` 硬性卡住 16k 分支——确认这部分残留糊感是显卡上限，不是代码遗漏。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 遗留问题
+- `updateRDLOverlays()` 里未激活的 facing-based 淡入淡出是预留死代码，RDL 区域叠加层本身还未上生产（仅 inspect 模式可见），不紧急，之后 RDL 正式启用时需要决定是否真正接上这套淡入淡出。
+- 换到支持 16384 贴图的显卡后，`top`/`oblique`/`low`/`asiaTilt`/`tilt` 缩放到底应能自动升到 16k，届时需要确认对应的 16k 源贴图资源是否已生成（未核实）。

@@ -557,7 +557,16 @@
       let _lastTextureSourceKey = null
       function resolveEarthTextureLOD(lodManager, deviceCaps, cameraState = {}) {
         const maxSize = (deviceCaps && deviceCaps.maxTextureSize) || getGpuMaxTextureSize()
-        const distance = Number.isFinite(cameraState.distance) ? cameraState.distance : 4.8
+        const rawDistance = Number.isFinite(cameraState.distance) ? cameraState.distance : 4.8
+        // Zoom compensation: when the camera FOV is narrowed (zoom-in), fewer
+        // tiles cover the viewport and each tile subtends a larger screen area,
+        // making resolution limits more visible.  Scale the effective distance
+        // by the FOV ratio so that zooming in behaves like moving closer —
+        // denser LOD on asiaWide / global angles that would otherwise sit just
+        // above the 8k threshold at default zoom.
+        const distance = Number.isFinite(cameraState.fovDegrees)
+          ? rawDistance * (cameraState.fovDegrees / 28)
+          : rawDistance
         let lod
         if (maxSize >= 16384 && distance <= 5.6) {
           lod = '16k'
