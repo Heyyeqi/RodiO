@@ -128,6 +128,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tp_label_source   ON track_profile(label_source);
 `)
 
+// ── Phase 1 step 4: play_events.transition_cost 迁移 ──────────────────────
+// play_events 表已存在（含历史测试数据），CREATE TABLE IF NOT EXISTS 无法加列，
+// 故用 PRAGMA 检查 + ALTER TABLE 迁移；重复启动忽略 "duplicate column" 报错。
+try {
+  const cols = db.prepare('PRAGMA table_info(play_events)').all().map(c => c.name)
+  if (!cols.includes('transition_cost')) {
+    db.prepare('ALTER TABLE play_events ADD COLUMN transition_cost REAL').run()
+  }
+} catch (e) {
+  // 列已存在等可忽略错误，保证重复启动不崩溃
+  if (!/duplicate column/i.test(e.message)) throw e
+}
+
 function getRecentMessages(n = 10) {
   return db.prepare(
     'SELECT role, content FROM messages ORDER BY id DESC LIMIT ?'
@@ -201,12 +214,13 @@ function insertPlayEvent(event) {
     track_key,
     event_type,
     prev_track_key = null,
+    transition_cost = null,
     context_snapshot = null,
     created_at = null,
   } = event || {}
   db.prepare(`
-    INSERT INTO play_events (event_type, track_key, played_seconds, duration_seconds, played_ratio, user_active, scene_id, prev_track_key, context_snapshot, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO play_events (event_type, track_key, played_seconds, duration_seconds, played_ratio, user_active, scene_id, prev_track_key, transition_cost, context_snapshot, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     event_type,
     track_key,
@@ -216,9 +230,18 @@ function insertPlayEvent(event) {
     event.user_active ? 1 : 0,
     event.scene_id || null,
     prev_track_key || null,
+    transition_cost === null || transition_cost === undefined ? null : transition_cost,
     context_snapshot || null,
     created_at || new Date().toISOString()
   )
+}
+
+// Phase 1 step 4: 读取 track_profile 一行（按 track_key 主键），无则返回 null
+function getTrackProfile(trackKey) {
+  if (!trackKey) return null
+  return db.prepare(
+    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight FROM track_profile WHERE track_key = ?'
+  ).get(trackKey) || null
 }
 
 module.exports = {
@@ -233,4 +256,5 @@ module.exports = {
   getSongFeedback,
   getFeedbackByType,
   insertPlayEvent,
+  getTrackProfile,
 }

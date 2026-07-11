@@ -5524,3 +5524,20 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 - `scene_id` 暂时固定为 `null`，尚未接入场景识别
 - 惩罚逻辑（基于 skip/complete 调整推荐权重）与 shadow mode（先记录不干预）属于后续步骤，本轮未实现
 - 前端 `replay` 事件在 `playPrevious` 中触发，依赖 `playedHistory` 历史，边界场景（历史不足）已做 null 兜底
+
+## 2026-07-12 transition_cost 观测计算（Phase 1 步骤4）
+
+### 做了什么
+- 在 play_events 观测模式下为每条播放记录补充 `transition_cost` 字段，纯观测、不用于任何候选过滤或队列决策
+- `core/state.js`：play_events 表新增 `transition_cost REAL` 列（schema 迁移）；`insertPlayEvent` 增加 `transition_cost` 参数并写入新列；新增并导出 `getTrackProfile(trackKey)`（查 track_profile 五音色字段，无则返回 null）
+- `server.js`：`/api/play-event` 在 `insertPlayEvent` 前补充计算逻辑——prev 为 null → null；两首都查到且五字段非 null → 按公式算；否则 → null
+- 公式（权重照抄方案文档）：`|energy_a-energy_b|*0.30 + |brightness_a-brightness_b|*0.20 + |density_a-density_b|*0.15 + |vocal_presence_a-vocal_presence_b|*0.15 + |emotional_weight_a-emotional_weight_b|*0.20`，其中 a=prev_track、b=current_track
+
+### 迁移方式
+- 初始化时用 `PRAGMA table_info(play_events)` 读取现有列名，仅当 `transition_cost` 不在列名列表时才执行 `ALTER TABLE play_events ADD COLUMN transition_cost REAL`
+- 外层 try/catch 捕获异常，仅当错误信息不匹配 `duplicate column` 时才 re-throw，保证重复启动不崩溃
+- 实测：首次启动加列成功；二次重启列已存在，日志无 error/duplicate/crash，服务正常存活
+
+### 遗留问题
+- 仅在两首都有 track_profile 数据时才能算出值，全库覆盖率取决于打标进度（当前 200 首抽样打标，未覆盖全曲库）
+- 未做场景阈值判断（方案文档"十、连贯性控制"的 deep_night≤0.25、work_focus≤0.30 等），不干预队列，属后续步骤
