@@ -5339,3 +5339,27 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 ### 遗留问题
 - 16k 源贴图目前不存在，等以后有支持 16384 的显卡再决定要不要生成。
 - RDL 淡入淡出死代码继续保留，等 RDL 正式上线时再决定是否接上。
+
+## 2026-07-11 分支清理 + E7 相机审计与预设草案
+
+### 做了什么
+
+**分支清理**：删除本地 `tune-earlyMorning-v1`（was f75a3fc，远端从未推送）。该分支的 earlyMorning 调参内容已被后续更大规模的主题调参覆盖——当前 origin/main 上 `earlyMorning.ambient` 为 0.56，与该分支改动前后的 0.068 / 0.16 均不对应，属于过时实验分支，无保留价值。
+
+**E7 相机审计**：对 `pwa/earth3d.js` 中地球朝向 / 相机逻辑进行只读审计，梳理以下核心机制：
+- `getTargetOrientation()` 四元数计算（地球朝向驱动源）
+- `earth.quaternion.slerp()` 每帧平滑旋转
+- `_AUDIT_VIEW_ANGLES` / `setAuditViewAngle()` debug 审计视角系统
+- FOV zoom（scroll-wheel / `setRDLZoomLevel`）
+- `auditCenterDir` 居中模式
+
+明确结论：`_AUDIT_VIEW_ANGLES` 是纯 debug 工具，当前不存在任何面向终端用户的正式镜头预设系统。
+
+**E7 预设参数草案**：设计 7 个叙事预设（Globe / Hemisphere / Horizon / Low Orbit / City Focus / Ocean View / Deep Space）的参数结构，包含 lat/lon/centerMode/fov/cameraOffsetY/cameraOffsetZ/lookAtY/layer 等字段。这是设计草案，**不包含实现代码**，未接入任何正式功能流程，等 RW 后续专门开一轮决定实现路径。
+
+### 改动文件
+- `docs/e7_camera_audit_and_preset_design.md`（新增，从根目录移入 docs/）
+- `devlog.md`
+
+### 遗留问题
+- E7 预设草案中的 4 个待确认问题（平滑过渡、城市可配置性、输出通道、远距离裁剪）需 RW 审阅后决定。
