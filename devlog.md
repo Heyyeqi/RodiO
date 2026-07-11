@@ -5418,3 +5418,19 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留问题
 - 仅建表，未写入数据，Phase 1 后续步骤：抽样打标/播放日志/transition_cost观测/shadow mode 待做
+
+## 2026-07-11 HZ 处理 Spotify refresh_token 过期（invalid_grant）
+
+### 起因
+- Spotify 官方通知，2026-07-20 起 refresh token 有效期改为 6 个月。过期后用旧 token 换 access_token 会返回 `invalid_grant` 错误。App 必须在这种情况下丢弃已存 token 并引导用户重新走登录授权。
+
+### 做了什么
+- `refreshUserToken()`：解析 Spotify 返回体，若 `data.error === 'invalid_grant'` 则打印 `console.error` 并抛出带 `.code = 'invalid_grant'` 的可识别 Error。
+- `getUserToken()`（两处 catch）+ `initializeUserToken()`（一处 catch）：捕获到 `error.code === 'invalid_grant'` 时调用 `clearUserToken()` 清零内存 + 持久层，使 `hasUserToken()` 正确返回 false，`/api/spotify/status` 恢复 `auth_url: '/auth/spotify'`。
+- 非 `invalid_grant` 错误（网络超时等）不触发清 token，避免误判。
+
+### 改动文件
+- `core/spotify.js`
+
+### 遗留问题
+- 未在真实 invalid_grant 场景做端到端验证（当前 refresh token 尚未过期，仅逻辑走查通过）。线上已重新走过一次授权（2026-07-11），下次真正过期预计在 2027-01 左右。

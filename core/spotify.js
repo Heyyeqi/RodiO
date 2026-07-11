@@ -357,6 +357,7 @@ async function initializeUserToken() {
         return refreshed
       } catch (e) {
         console.error('[spotify] 启动时刷新 token 失败:', e.message)
+        if (e.code === 'invalid_grant') await clearUserToken()
         return null
       }
     }
@@ -520,6 +521,12 @@ async function refreshUserToken() {
     }),
   })
   const data = await res.json()
+  if (data.error === 'invalid_grant') {
+    console.error('[spotify] refresh token 已失效（invalid_grant），需要重新授权：访问 /auth/spotify')
+    const err = new Error('Spotify refresh token expired (invalid_grant)')
+    err.code = 'invalid_grant'
+    throw err
+  }
   if (!data.access_token) throw new Error('Spotify refresh failed: ' + JSON.stringify(data))
   userAccessToken = data.access_token
   userTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000
@@ -532,10 +539,10 @@ async function refreshUserToken() {
 async function getUserToken() {
   if (!userAccessToken && !userRefreshToken) return null
   if (Date.now() > userTokenExpiresAt) {
-    try { await refreshUserToken() } catch { return null }
+    try { await refreshUserToken() } catch (e) { if (e.code === 'invalid_grant') await clearUserToken(); return null }
   }
   if (!userAccessToken && userRefreshToken) {
-    try { return await refreshUserToken() } catch { return null }
+    try { return await refreshUserToken() } catch (e) { if (e.code === 'invalid_grant') await clearUserToken(); return null }
   }
   return userAccessToken
 }
