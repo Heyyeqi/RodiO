@@ -5363,3 +5363,27 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - E7 预设草案中的 4 个待确认问题（平滑过渡、城市可配置性、输出通道、远距离裁剪）需 RW 审阅后决定。
+
+## 2026-07-11 exp/b6-2x-source-cache-setup 分支审计归档
+
+### 做了什么
+对 `exp/b6-2x-source-cache-setup`（27 commits，分叉点 `daeb0a4`，2026-06-22 停更）进行只读审计并形成归档结论。
+
+### 审计结论
+该分支**不是废弃的平行实验**，是 B6-2X 语义掩码管线的早期阶段，后续演化为 origin/main 上 `core/m1` / `core/sal` / `core/vc` 的 RDL 语义仲裁系统（`e0d1fc1` 之后）。
+
+B-6 分支与 RDL 的关系是**互补，不是替代**：
+- **RDL M0-M4**（已在 origin/main）：提供粗粒度 biome 分类（ocean / shallow / land / desert / forest / wetland / ice / urban）+ 不确定性量化（SAL probability map / winner_margin）
+- **B-6 独有**（RDL 未覆盖）：海洋深度分层（deep / mid / shelf / shallow 4 级）、独立极地冰盖掩码（南极 / 格陵兰分开）、河流代理（WDBII L01/L01+L02）、湖泊（GSHHG L2 等 4 个）、海岸线距离场，共 35 个 float32 2K 掩码，已生成 286MB npz 产物（`d5b_output/structure_masks_2048x1024.npz`）
+
+两者方法论不同：B-6 是确定性地理规则（ETOPO1 + GSHHG + hand-crafted bbox），RDL 是概率 SAL 语义仲裁（多信号加权投票 + uncertainty），因此 B-6 掩码可作为 RDL 管线的补充输入层。
+
+### 决定
+**保留分支，不删除，不合并。** 如果将来 RDL 语义系统需要接入海洋分层 / 极地冰盖 / 河流 / 湖泊这些细粒度维度，B-6 的掩码和生成脚本（`scripts/generate_b6_structure_masks.py`）是现成的数据源。
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 未将 B-6 掩码实际接入 RDL 管线，未验证互补假设之外的具体接入方式
+- 接入方案（如作为 SAL 额外信号源、或 VC coastline_smoother 的额外约束层）留给真正要做的时候
