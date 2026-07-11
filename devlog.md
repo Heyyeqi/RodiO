@@ -5454,3 +5454,53 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留问题
 - 线上 Railway 尚未配置 `DEEPSEEK_API_KEY`，需手动添加
 - `DASHSCOPE_API_KEY` 相关代码和 env 暂时保留，未清理
+
+---
+
+## 2026-07-11 Phase 1 步骤2 — 抽样 200 首 DeepSeek 打标
+
+### 做了什么
+- 新建 `scripts/label-track-sample.js`，离线一次性脚本
+- 从 `loadPool()`（11,732 首全量曲库）中随机抽样 200 首，每艺人最多 3 首
+- `track_key` 复用 `normalizeSongKey` / `normalizeArtistKey`（core/search-utils.js），不自己写归一化
+- 打标模型使用 DeepSeek（deepseek-chat），system prompt 内置 10 首人工校准的 few-shot 示例
+- 封闭词表校验：mood_tags（30 词）/ texture_tags（35 词）/ negative_tags（14 词）/ scene_id（14 词）/ sequence_shape（10 词），出现表外词自动重试（最多 3 次）
+- 写入 `track_profile` 表（INSERT OR REPLACE，幂等），label_version=v1_2026-07-11，label_source=deepseek_sample_batch1
+- 生成人工复核 CSV：`output/track_label_review.csv`（198 行，含所有标签字段）
+
+### 执行结果
+- 写入 198 行（2 首因 track_key 重复跳过）
+- 总 API 调用 208 次，词表越界重试 2 次（"accordion" → 扩充 word list 后重试成功；"energetic" → 重试后替换为 closed-vocab 词）
+- API 失败 6 次（均为 DeepSeek 返回截断 JSON），重试后均恢复
+- 耗时约 4-5 分钟（3 并发）
+
+### 改动文件
+- `scripts/label-track-sample.js`（新建）
+- `output/track_label_review.csv`（新建）
+
+### 遗留问题
+- 未做 Spotify 可播放性校验（validated_playable / playability_checked_at 留空）
+- 未扩展到全库打标或多模型复核（后续步骤）
+- 未接入真实播放链路
+- CSV 中 scene_fit JSON 存在双引号转义问题（不影响读取，但格式不够干净，后续可优化）
+
+## 2026-07-11 订正抽样打标词表 + 清空重跑
+
+### 做了什么
+- 上一轮脚本的 5 个 VOCAB 常量与方案文档真实封闭词表不一致，导致 110 行 mood_tags 违规、94 行 texture_tags 违规
+- `DELETE FROM track_profile WHERE label_source = 'deepseek_sample_batch1'` 清空 198 行脏数据
+- 将 `MOOD_VOCAB`（16 词）、`TEXTURE_VOCAB`（15 词）、`NEGATIVE_VOCAB`（10 词）、`SCENE_VOCAB`（10 词）、`SEQUENCE_VOCAB`（9 词）全部替换为方案文档原文
+- SYSTEM_PROMPT 内嵌的 5 组词表同步替换，10 个 few-shot 示例的 `scene_fit` key 和 `sequence_shape` 值按语义映射到新词表
+- 重新运行 200 首 DeepSeek 打标（INSERT OR REPLACE），覆盖同一 CSV 输出路径
+
+### 执行结果
+- DELETE 影响 198 行，本轮写入 200 行
+- 词表越界重试 0 次（五组词表在常量、提示词、few-shot 示例三方完全自洽）
+- API 失败 4 次（均已重试通过）
+
+### 改动文件
+- `scripts/label-track-sample.js`（修改：5 个 VOCAB 常量 + SYSTEM_PROMPT 词表 + 10 个 few-shot 示例）
+- `output/track_label_review.csv`（覆盖）
+
+### 遗留问题
+- few-shot 示例的 scene_fit / sequence_shape 映射为语义近似，非方案文档原始映射
