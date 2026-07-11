@@ -14,6 +14,7 @@ const claude = require('./core/claude')
 const tts = require('./core/tts')
 const state = require('./core/state')
 const scheduler = require('./core/scheduler')
+const { runShadowRecall } = require('./core/shadow-recall')
 const { getAstronomyContext } = require('./core/astronomy')
 const spotify = require('./core/spotify')
 const { createQueueManager } = require('./core/queue-manager')
@@ -1190,6 +1191,13 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta
       Math.max(0, targetSize - (currentQueue?.length || 0)),
       meta?.period || null
     )
+    // ── Phase 1 step 5: 路径 B shadow mode 影子召回（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    const queueFirst = (currentQueue && currentQueue[0]) || null
+    const queueFirstTrackKey = queueFirst
+      ? `${String(queueFirst.song_info?.name || '').trim().toLowerCase()}::${String(queueFirst.song_info?.artist || '').trim().toLowerCase()}`
+      : null
+    runShadowRecall(reason, spotifyItems, queueFirstTrackKey).catch(() => {})
     if (spotifyItems.length > 0 || spotify.hasUserToken()) {
       return spotifyItems
     }

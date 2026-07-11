@@ -126,6 +126,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tp_language       ON track_profile(language);
   CREATE INDEX IF NOT EXISTS idx_tp_energy         ON track_profile(energy);
   CREATE INDEX IF NOT EXISTS idx_tp_label_source   ON track_profile(label_source);
+
+  -- ── Phase 1 step 5: shadow mode 召回观测日志 ──────────────────────────
+  -- 记录路径B真实补货与影子候选计算的对比，纯观测，不影响真实队列。
+  CREATE TABLE IF NOT EXISTS shadow_recall_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reason TEXT,
+    real_count INTEGER,
+    shadow_candidate_count INTEGER,
+    overlap_count INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
 `)
 
 // ── Phase 1 step 4: play_events.transition_cost 迁移 ──────────────────────
@@ -244,6 +255,21 @@ function getTrackProfile(trackKey) {
   ).get(trackKey) || null
 }
 
+// Phase 1 step 5: 读取 track_profile 全部行（影子召回候选来源）
+function getAllTrackProfiles() {
+  return db.prepare(
+    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight FROM track_profile'
+  ).all()
+}
+
+// Phase 1 step 5: 写入 shadow_recall_log 一条观测记录
+function insertShadowRecallLog(reason, realCount, shadowCandidateCount, overlapCount) {
+  db.prepare(`
+    INSERT INTO shadow_recall_log (reason, real_count, shadow_candidate_count, overlap_count)
+    VALUES (?, ?, ?, ?)
+  `).run(reason || null, realCount || 0, shadowCandidateCount || 0, overlapCount || 0)
+}
+
 module.exports = {
   getRecentMessages,
   addMessage,
@@ -257,4 +283,6 @@ module.exports = {
   getFeedbackByType,
   insertPlayEvent,
   getTrackProfile,
+  getAllTrackProfiles,
+  insertShadowRecallLog,
 }

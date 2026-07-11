@@ -5541,3 +5541,26 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留问题
 - 仅在两首都有 track_profile 数据时才能算出值，全库覆盖率取决于打标进度（当前 200 首抽样打标，未覆盖全曲库）
 - 未做场景阈值判断（方案文档"十、连贯性控制"的 deep_night≤0.25、work_focus≤0.30 等），不干预队列，属后续步骤
+
+## 2026-07-12 路径 B shadow mode 影子召回观测（Phase 1 步骤5）
+
+### 做了什么
+- 新增 shadow mode 观测：在真实路径 B 补货（fillQueueFromSpotifyPlaylists）完成后，另起 fire-and-forget 异步调用，跑在 track_profile 数据上计算一组"影子候选"，记录候选数量与真实选中结果的重合度，纯观测
+- `core/state.js`：初始化时 `CREATE TABLE IF NOT EXISTS shadow_recall_log`（reason / real_count / shadow_candidate_count / overlap_count / created_at）；新增 `getAllTrackProfiles()`（读 track_profile 全部行）和 `insertShadowRecallLog(...)` 并导出
+- `core/shadow-recall.js`（新建）：`runShadowRecall(reason, spotifyItems, queueFirstTrackKey)`，候选来源 = track_profile 全表；过滤1 = 排除 getRecentPlays(50) 归一化命中的；过滤2 = 以队列第一首为参照算 transition_cost，仅保留 ≤0.35（参照曲目不在 profile 或无参照则跳过该过滤）；统计 shadow_candidate_count 与 overlap_count 后写入日志
+- `server.js`：在 `setRefillHandler` 的 `fillQueueFromSpotifyPlaylists` 返回后，以 `runShadowRecall(...).catch(()=>{})` 挂载，绝不 await、绝不阻塞真实补货
+
+### 硬性约束遵守
+- 未修改 fillQueueFromSpotifyPlaylists / setRefillHandler 的返回值，未触碰任何真实队列内容
+- 影子计算整体包 try/catch，内部异常仅 console.error 后吞掉，不影响真实补货
+- 未做完整6层分层召回，未引入 scene_id 判断
+
+### 验证
+- `node -c` 三个文件语法检查通过
+- 本地起服务触发真实补货（startup-background / heartbeat），shadow_recall_log 出现真实记录（real_count=0 因测试环境 Spotify 歌单为空走回退；shadow_candidate_count=200 因队列首首不在 profile 跳过 transition_cost 过滤）
+- 独立脚本验证 transition_cost 过滤生效：参照曲目命中 profile 时候选从 200 降至 185，写入值与手算一致
+- 真实补货结果（队列内容、spotifyItems）与改动前完全一致——影子逻辑只读 track_profile 和 recentPlays，不写回队列
+
+### 遗留问题
+- 当前测试环境 Spotify 用户歌单为空，真实路径 B 返回空，overlap_count 恒为 0；需在真实有歌单环境才能观测到非零重合度
+- shadow_candidate_count 上限取决于 track_profile 打标进度（当前 200 首）
