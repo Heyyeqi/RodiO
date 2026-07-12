@@ -5956,3 +5956,21 @@ batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 300
 ### 规模
 - `pwa/index.html`：33 insertions(+)
 - commit: `575d48c`
+
+---
+
+## pwa/index.html 删除孤立 CSS 属性块
+
+### 起因
+commit 991b09c 删除 `.earth-audit-label` 规则时漏删了中间 9 行属性值 + 闭括号 `}`，形成一段没有选择器的孤立 CSS 块（background/rgba、color、padding、font-family 等），破坏浏览器对后续样式的解析，导致 `#rdl-tile-preview` 的 `display: none` 被覆盖为可见。
+
+### 做了什么
+删除第 189-199 行这 11 行孤立的 CSS 属性块。
+
+### 验证
+- 全局 brace depth 扫描确认无其他孤立属性块残留
+- Playwright 浏览器验证 `#rdl-tile-preview` 的 `getComputedStyle().display` = `'none'`（修复前为 `block`），页面视觉恢复正常
+
+### 规模
+- `pwa/index.html`：11 deletions(-)
+- commit: `9500a0c`
