@@ -1470,6 +1470,79 @@ app.post('/api/explain', async (req, res) => {
     const recentOpeningsText = recentExplainOpenings.length > 0
       ? recentExplainOpenings.join(' / ')
       : '无'
+
+    // ── v1.4: 三层叠加引擎 → (intensity, warmth) 调性向量 ──────────────────
+    // 七曜 → (intensity, warmth)
+    const SHICHIYOU_TONALITY = {
+      0: { intensity: 0.7, warmth: 0.7 }, // 日曜
+      1: { intensity: 0.3, warmth: 0.4 }, // 月曜
+      2: { intensity: 0.8, warmth: 0.6 }, // 火曜
+      3: { intensity: 0.5, warmth: 0.5 }, // 水曜
+      4: { intensity: 0.4, warmth: 0.5 }, // 木曜
+      5: { intensity: 0.6, warmth: 0.6 }, // 金曜
+      6: { intensity: 0.3, warmth: 0.4 }, // 土曜
+    }
+    // 天气(weather.main) → (intensity, warmth)
+    const WEATHER_TONALITY = {
+      Clear:  { intensity: 0.6,  warmth: 0.6  },
+      Clouds: { intensity: 0.4,  warmth: 0.45 },
+      Rain:   { intensity: 0.35, warmth: 0.4  },
+      Snow:   { intensity: 0.25, warmth: 0.3  },
+      Haze:   { intensity: 0.3,  warmth: 0.35 },
+      Fog:    { intensity: 0.25, warmth: 0.4  },
+      Dust:   { intensity: 0.5,  warmth: 0.4  },
+    }
+    // 节气 seasonalQuality → (intensity, warmth)
+    const SEASON_TONALITY = {
+      // temperatureFeeling → warmth
+      temperature: {
+        '炎热': 0.75, '温暖': 0.6, '清凉': 0.4, '寒冷': 0.25,
+      },
+      // atmosphericMood → intensity
+      mood: {
+        '燥烈': 0.75, '焦灼': 0.75,
+        '期待': 0.55, '生机': 0.55, '舒爽': 0.55,
+        '清新': 0.45, '潮湿': 0.45,
+        '萧瑟': 0.3, '收敛': 0.3, '沉静': 0.3, '等待': 0.3,
+      },
+    }
+
+    const _now = new Date()
+    const _shichiyouIdx = _now.getDay()
+    const _shichiyou = SHICHIYOU_TONALITY[_shichiyouIdx] || { intensity: 0.45, warmth: 0.5 }
+
+    const _weatherMain = envSnapshot?.weather?.main || 'Clear'
+    const _weather = WEATHER_TONALITY[_weatherMain] || { intensity: 0.45, warmth: 0.5 }
+
+    const _season = envSnapshot?.astronomy?.seasonalQuality || {}
+    const _seasonWarmth = SEASON_TONALITY.temperature[_season.temperatureFeeling] ?? 0.5
+    const _seasonIntensity = SEASON_TONALITY.mood[_season.atmosphericMood] ?? 0.45
+
+    const intensity_final = _shichiyou.intensity * 0.3 + _seasonIntensity * 0.3 + _weather.intensity * 0.4
+    const warmth_final = _shichiyou.warmth * 0.3 + _seasonWarmth * 0.3 + _weather.warmth * 0.4
+
+    // 风格约束注入（与现有"禁止词汇"模式保持一致写法）
+    let tonalityConstraint = ''
+    if (intensity_final < 0.4) {
+      tonalityConstraint = `
+【风格约束：极克制】
+禁用词："画面"、"故事"、"仿佛"
+限制：句子≤2句，每句≤15字
+参照："雨停在窗上，没落下去。"`
+    } else if (intensity_final > 0.6) {
+      tonalityConstraint = `
+【风格约束：强烈】
+倾向词："裂开"、"涌"、"炸"
+允许2-3句，可以有更强画面感
+参照："鼓点砸下来的时候，灯光跟着塌了一半。"`
+    }
+    if (warmth_final > 0.55) {
+      tonalityConstraint += `
+倾向词：'绒'、'焐'、'暖光'`
+    } else if (warmth_final < 0.45) {
+      tonalityConstraint += `
+倾向词：'冷金属'、'玻璃'、'结霜'`
+    }
     const response = await explainClient.chat.completions.create({
       model: 'qwen-max',
       messages: [
@@ -1562,7 +1635,7 @@ Q. 一句话的故事——虚构一个和这首歌气质完全吻合的场景�
 - "C'est le genre de chanson qui reste après que tu l'as oubliée."
 - "有時候一句閩南話比三句普通話都準——這首就是這樣。"
 - "어떤 노래는 설명이 필요 없어. 그냥 있어."
-- "今日は重陽。秋が本当に来た。"`,
+- "今日は重陽。秋が本当に来た。"${tonalityConstraint}`,
         },
         {
           role: 'user',
@@ -1598,6 +1671,8 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
         song_artist: artist,
         weather_text: envSnapshot?.weather?.text,
         theme_name: themeName,
+        intensity_score: intensity_final,
+        warmth_score: warmth_final,
       });
     } catch (e) {
       console.error('[/api/explain] 历史记录写入失败（不影响主响应）:', e.message);

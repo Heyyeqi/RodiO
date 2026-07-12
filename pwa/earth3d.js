@@ -42,12 +42,75 @@
   // getShichiyouCeremonyBlendFactor 与 _tickCeremony 共用，避免魔法数字不同步。
   const SHICHIYOU_CEREMONY_WINDOW_SECONDS = 90
 
+  // ── v1.4: 三层叠加引擎调性映射表（与 server.js 保持一致）───────────────
+  // 七曜 → (intensity, warmth)，索引 = new Date().getDay()
+  const SHICHIYOU_TONALITY = {
+    0: { intensity: 0.7, warmth: 0.7 }, // 日曜
+    1: { intensity: 0.3, warmth: 0.4 }, // 月曜
+    2: { intensity: 0.8, warmth: 0.6 }, // 火曜
+    3: { intensity: 0.5, warmth: 0.5 }, // 水曜
+    4: { intensity: 0.4, warmth: 0.5 }, // 木曜
+    5: { intensity: 0.6, warmth: 0.6 }, // 金曜
+    6: { intensity: 0.3, warmth: 0.4 }, // 土曜
+  }
+  // 天气(weather.main) → (intensity, warmth)
+  const WEATHER_TONALITY = {
+    Clear:  { intensity: 0.6,  warmth: 0.6  },
+    Clouds: { intensity: 0.4,  warmth: 0.45 },
+    Rain:   { intensity: 0.35, warmth: 0.4  },
+    Snow:   { intensity: 0.25, warmth: 0.3  },
+    Haze:   { intensity: 0.3,  warmth: 0.35 },
+    Fog:    { intensity: 0.25, warmth: 0.4  },
+    Dust:   { intensity: 0.5,  warmth: 0.4  },
+  }
+  // 节气 seasonalQuality → (intensity, warmth)
+  const SEASON_TONALITY = {
+    temperature: { '炎热': 0.75, '温暖': 0.6, '清凉': 0.4, '寒冷': 0.25 },
+    mood: {
+      '燥烈': 0.75, '焦灼': 0.75,
+      '期待': 0.55, '生机': 0.55, '舒爽': 0.55,
+      '清新': 0.45, '潮湿': 0.45,
+      '萧瑟': 0.3, '收敛': 0.3, '沉静': 0.3, '等待': 0.3,
+    },
+  }
+
+  // 从 window.__rodioVisualState 读取天气/节气，合成 (intensity_final, warmth_final)
+  // 与 server.js 计算逻辑一致，前端独立计算避免跨端数据不同步。
+  function computeTonalityVector() {
+    const vs = window.__rodioVisualState || {}
+    const weekday = new Date().getDay()
+    const shichiyou = SHICHIYOU_TONALITY[weekday] || { intensity: 0.45, warmth: 0.5 }
+    const weatherMain = vs?.weather?.main || 'Clear'
+    const weather = WEATHER_TONALITY[weatherMain] || { intensity: 0.45, warmth: 0.5 }
+    const season = vs?.astronomy?.seasonalQuality || {}
+    const seasonWarmth = SEASON_TONALITY.temperature[season.temperatureFeeling] ?? 0.5
+    const seasonIntensity = SEASON_TONALITY.mood[season.atmosphericMood] ?? 0.45
+    const intensity_final = shichiyou.intensity * 0.3 + seasonIntensity * 0.3 + weather.intensity * 0.4
+    const warmth_final = shichiyou.warmth * 0.3 + seasonWarmth * 0.3 + weather.warmth * 0.4
+    return { intensity_final, warmth_final }
+  }
+
   // Blend a base rimGlow color toward the weekday tint. Returns a THREE.Color
   // (matching the .value.set() assignment format used by applyRimGlowThemeConfig).
+  // v1.4: blendFactor 是调用者传入的动态强度（仪式窗口内浮动，常态=0.18）
+  // intensity_final 只调制这个比例的倍率，不替换 blendFactor
   function applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18) {
     const base = new THREE.Color(baseHexColor)
     const tint = new THREE.Color(tintHexColor)
-    return base.lerp(tint, blendFactor)
+    const { intensity_final, warmth_final } = computeTonalityVector()
+    // (blendFactor / 0.18) 归一化到相对常态基准的比例，再乘 tonalityMultiplier
+    // 化简后：blendRatio = blendFactor * (0.7 + 0.6 * intensity_final)
+    // 仪式期间 blendFactor→0 时 blendRatio 也→0，仪式动画不被架空
+    const tonalityMultiplier = 0.7 + 0.6 * intensity_final
+    const blendRatio = blendFactor * tonalityMultiplier
+    let result = base.lerp(tint, blendRatio)
+    // 冷暖偏移：warmth_final 偏离 0.5 时，tint 与中性锚点做 5% 额外混合
+    if (warmth_final > 0.52) {
+      result.lerp(new THREE.Color('#FFF5E6'), 0.05) // 偏暖：暖白
+    } else if (warmth_final < 0.48) {
+      result.lerp(new THREE.Color('#E6F0FF'), 0.05) // 偏冷：冷白
+    }
+    return result
   }
 
   // 七曜零点交接仪式：在 23:58:30→00:00:00 隐退、00:00:00→00:01:30 浮现

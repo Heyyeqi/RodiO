@@ -208,6 +208,18 @@ try {
   if (!/already exists/i.test(e.message)) throw e
 }
 
+// v1.4: 兼容已存在的旧表，追加两列调性分数（重复列错误静默忽略）
+try {
+  db.exec(`ALTER TABLE commentary_history ADD COLUMN intensity_score REAL DEFAULT 0;`)
+} catch (e) {
+  if (!/duplicate column/i.test(e.message)) throw e
+}
+try {
+  db.exec(`ALTER TABLE commentary_history ADD COLUMN warmth_score REAL DEFAULT 0;`)
+} catch (e) {
+  if (!/duplicate column/i.test(e.message)) throw e
+}
+
 // 半衰期天数：180 天衰减一半
 const SCORE_HALF_LIFE_DAYS = 180
 
@@ -426,17 +438,20 @@ function insertShadowRerankCandidate(row) {
   )
 }
 
-// v1.3: 写入一条 commentary 历史记录，返回插入后的 id
-function insertCommentaryHistory({ text, song_name, song_artist, weather_text, theme_name }) {
+// v1.4: 写入一条 commentary 历史记录，返回插入后的 id
+// intensity_score / warmth_score 为三层叠加引擎合成的调性向量（0~1）
+function insertCommentaryHistory({ text, song_name, song_artist, weather_text, theme_name, intensity_score = 0, warmth_score = 0 }) {
   const info = db.prepare(`
-    INSERT INTO commentary_history (text, song_name, song_artist, weather_text, theme_name)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO commentary_history (text, song_name, song_artist, weather_text, theme_name, intensity_score, warmth_score)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     text || null,
     song_name || null,
     song_artist || null,
     weather_text || null,
-    theme_name || null
+    theme_name || null,
+    Number.isFinite(intensity_score) ? intensity_score : 0,
+    Number.isFinite(warmth_score) ? warmth_score : 0
   )
   return info.lastInsertRowid
 }
@@ -444,7 +459,7 @@ function insertCommentaryHistory({ text, song_name, song_artist, weather_text, t
 // v1.3: 按 created_at 倒序读取最近 limit 条 commentary 历史
 function getCommentaryHistory(limit = 50) {
   const rows = db.prepare(`
-    SELECT id, text, song_name, song_artist, weather_text, theme_name, created_at
+    SELECT id, text, song_name, song_artist, weather_text, theme_name, intensity_score, warmth_score, created_at
     FROM commentary_history
     ORDER BY created_at DESC, id DESC
     LIMIT ?

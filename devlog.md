@@ -5809,3 +5809,26 @@ v1.3 天外来信补全需求：commentary 消息渐现动画 + 历史持久化�
 
 ### 遗留
 - `explainClient` 使用 `DASHSCOPE_API_KEY`（当前 401 旧 key），后续可能需要迁移到 DeepSeek 或其他可用 LLM 源
+
+## 2026-07-12 v1.4 三层叠加引擎：七曜×节气×天气 → (intensity, warmth) 调性向量
+
+### 起因
+v1.4 需求：七曜×节气×天气三层叠加引擎，为 /api/explain 注入风格约束、视觉 rimGlow 调制、commentary_history 留痕。只改 core/state.js、server.js、pwa/earth3d.js，不碰选曲逻辑。
+
+### 做了什么
+- `core/state.js`：`commentary_history` 表加 `intensity_score` / `warmth_score` 两列（ALTER TABLE + try/catch 静默忽略重复列错误）；`insertCommentaryHistory` 签名扩展两参数，INSERT 时写入
+- `server.js`：新增 `SHICHIYOU_TONALITY`、`WEATHER_TONALITY`、节气映射表（temperatureFeeling→warmth / atmosphericMood→intensity）；加权合成 `intensity_final = 七曜*0.3 + 节气*0.3 + 天气*0.4`（warmth 同理）；三档 Prompt 注入（极克制 <0.4 / 中间 / 强烈 >0.6 + warmth 冷/暖倾向词）；`/api/explain` 调用 `insertCommentaryHistory` 传入分数
+- `pwa/earth3d.js`：`applyShichiyouTint` 改用 `intensity_final` 调制 blendRatio（`blendRatio = blendFactor * (0.7 + 0.6 * intensity_final)`）+ `warmth_final` 做 5% 冷暖偏移（偏暖 `#FFF5E6` / 偏冷 `#E6F0FF`）；`computeTonalityVector()` 从 `window.__rodioVisualState` 独立计算同逻辑，避免跨端不同步
+
+### 验证
+- 3 组分数手工计算 vs 代码输出逐行匹配（火曜+Rain+大暑 0.605/0.565、水曜+Clouds+秋分 0.40/0.45、土曜+Clear+冬至 0.42/0.435）全部 PASS
+- Prompt 注入：极克制档含禁用词+例句+冷金属倾向词；强烈档含倾向词+例句+暖光倾向词；中间档约束为空
+- visual uniform 验证 blendRatio 公式（3 组 blendRatio 计算全部 PASS）
+- DB 列验证：PRAGMA 确认 `intensity_score REAL` / `warmth_score REAL`，写入落盘一致
+
+### 真实 bug（本次打回修复）
+- **bug#1（阻断性）**：server.js 调用 `context.getShichiyou()` 但 `core/context.js` 的 `module.exports` 未导出该函数，导致 `/api/explain` 每次抛 `TypeError` 返回 500。修复：改用 `_now.getDay()` 直接取七曜索引（0-6），与 `SHICHIYOU_TONALITY` 的 key 对应，去掉所有 `.label.startsWith(...)` 判断链。验证：`typeof context.getShichiyou === 'undefined'` 确认根因；mock LLM + mock getEnvironmentSnapshot 后真实 HTTP POST /api/explain 返回 200，无异常。
+- **bug#2（回归性）**：`applyShichiyouTint` 架空 `blendFactor` 参数（v1.4 把 blendRatio 改成 `0.18 * (0.7 + 0.6 * intensity_final)`，完全忽略传入的 `blendFactor`）。零点交接仪式通过 `getShichiyouCeremonyBlendFactor()` 返回动态值（窗口内 0.18→0）作为第三参数传入，该参数被架空，仪式动画失效。修复：`blendRatio = blendFactor * tonalityMultiplier`，仪式窗口内 `blendFactor→0` 时 `blendRatio` 跟随→0，动画恢复。验证：仪式窗口 3 时间点 blendRatio 序列（23:59:15→0.0951 / 00:00:00→0.0000 / 00:00:30→0.0634）随 ceremonyBlendFactor 实时呼吸，修复前固定为 0.1903。
+
+### 遗留
+- 无
