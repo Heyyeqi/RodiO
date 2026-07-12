@@ -5584,3 +5584,25 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留问题
 - 无
+
+---
+
+## [Phase 1] 修复 Prompt 逻辑缺口并重跑 200 首打标（v2）
+
+### 起因
+- 上一轮 v1 打标发现两个逻辑缺口：① 11 首 negative_tags 非空但 scene_fit 最高分仍 ≥0.7，负面标签形同虚设；② genre_family 有 80+ 种值，含 k_pop/kpop 重复等过度细分
+
+### 做了什么
+- `scripts/label-track-sample.js` SYSTEM_PROMPT 追加两条规则：第8条（negative_tags 非空时 scene_fit 所有分数 ≤0.6）、第9条（genre_family 优先广义常见名，避免 k_pop/kpop 这类重复与 jazz_hop 等过度细分）
+- `validateLabels()` 在 negative_tags 词表检查后追加硬校验：negative_tags 非空且 scene_fit 最高分 >0.6 即报错，复用现有 MAX_RETRIES 重试机制
+- 重试计数拆分：vocabRetries（词表越界）与 ruleRetries（新规则）分别统计，summary 输出新增"新规则重试"行
+- LABEL_VERSION 升到 v2_2026-07-13（区分修过 Prompt 的版本），label_source 保持 deepseek_sample_batch1
+
+### 验证
+- `node -c` 语法检查通过
+- 清空重跑：`DELETE FROM track_profile WHERE label_source='deepseek_sample_batch1'` 影响 200 行；重跑后写入 200 行（v2 版本）
+- 执行日志：总 API 调用 206 次，词表越界重试 0 次，新规则重试 0 次，API 失败/超时 6 次（JSON 解析瞬时失败，均在第2-3次重试成功），成功写入 200 行
+- genre_family 分布：从 80+ 降到 56 种，k_pop/kpop 重复已消除（仅剩 k_pop 一种）
+
+### 遗留问题
+- 无

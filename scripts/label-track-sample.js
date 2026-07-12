@@ -22,7 +22,7 @@ const SAMPLE_SIZE = 200
 const MAX_PER_ARTIST = 3
 const MAX_RETRIES = 3
 const CONCURRENCY = 3
-const LABEL_VERSION = 'v1_2026-07-11'
+const LABEL_VERSION = 'v2_2026-07-13'
 const LABEL_SOURCE = 'deepseek_sample_batch1'
 const ROOT = path.join(__dirname, '..')
 const DB_PATH = path.join(ROOT, 'db', 'state.db')
@@ -163,7 +163,9 @@ slow_opening, city_to_inner_room, rain_on_glass, afterglow_fading, soft_focus_wo
 4. mood_tags 最多 3 个，texture_tags 最多 4 个
 5. energy 严格参照锚点：0.1 = 坂本龍一, 0.5 = 王菲
 6. label_confidence < 0.7 的字段允许留空/默认值，不强制填
-7. 输出必须是合法 JSON，不要包含任何 Markdown 代码块标记或额外文字`
+7. 输出必须是合法 JSON，不要包含任何 Markdown 代码块标记或额外文字
+8. 如果 negative_tags 非空，scene_fit 中所有分数不得超过 0.6——负面标签的存在本身就说明这首歌不该被高度推荐到任何场景
+9. genre_family 优先使用广义、常见的流派名称，避免为相近风格创造过多细分变体（比如已有 k_pop 就不要再用 kpop；一般的爵士类优先用 jazz，不要动辄创造 jazz_hop/jazz_fusion/latin_jazz 这类细分，除非风格确实有本质差异）`
 
 // ── JSON extraction (reuses same logic as core/claude.js) ────────────
 function extractFirstJson(text) {
@@ -216,6 +218,14 @@ function validateLabels(label) {
     }
   }
 
+  // negative_tags 存在时，scene_fit 不应给出过高分数
+  if (Array.isArray(negs) && negs.length > 0 && label.scene_fit && typeof label.scene_fit === 'object') {
+    const maxScore = Math.max(0, ...Object.values(label.scene_fit))
+    if (maxScore > 0.6) {
+      errors.push(`negative_tags 非空但 scene_fit 最高分 ${maxScore} 超过 0.6`)
+    }
+  }
+
   // Check scene_fit keys (closed vocab)
   if (label.scene_fit && typeof label.scene_fit === 'object') {
     for (const key of Object.keys(label.scene_fit)) {
@@ -232,7 +242,11 @@ function validateLabels(label) {
     }
   }
 
-  return { valid: errors.length === 0, errors }
+  // 分类：词表越界 vs 新规则（negative+scene_fit 高分）
+  const vocabErr = errors.some(e => e.includes('not in closed vocab') || e.includes('max') || e.includes('not an array') || e.includes('not an object'))
+  const ruleErr = errors.some(e => e.includes('negative_tags 非空但 scene_fit'))
+
+  return { valid: errors.length === 0, errors, vocabErr, ruleErr }
 }
 
 // ── DeepSeek call ────────────────────────────────────────────────────
@@ -376,6 +390,7 @@ async function main() {
   // Stats
   let written = 0
   let vocabRetries = 0
+  let ruleRetries = 0
   let apiFailures = 0
   let totalAttempts = 0
   const reviewRows = []
@@ -418,12 +433,13 @@ async function main() {
       if (attempt > 0) totalAttempts++
       try {
         const result = await labelOne(song)
-        const { valid, errors } = validateLabels(result)
+        const { valid, errors, vocabErr, ruleErr } = validateLabels(result)
         if (valid) {
           label = result
           break
         } else {
-          vocabRetries++
+          if (ruleErr) ruleRetries++
+          else vocabRetries++
           lastError = `vocab errors: ${errors.join('; ')}`
           console.log(`[${songIdx + 1}/${sample.length}] 🔄 RETRY ${attempt + 1}/${MAX_RETRIES}: ${song.name} — ${lastError}`)
         }
@@ -476,6 +492,7 @@ async function main() {
   console.log(`写入:         ${written} 行（track_profile）`)
   console.log(`总 API 调用:  ${totalAttempts} 次`)
   console.log(`词表越界重试: ${vocabRetries} 次`)
+  console.log(`新规则重试:   ${ruleRetries} 次（negative_tags 非空但 scene_fit 高分）`)
   console.log(`API 失败/超时:${apiFailures} 次`)
   console.log(`复核文件:     ${REVIEW_CSV}`)
   console.log(`=============================`)
