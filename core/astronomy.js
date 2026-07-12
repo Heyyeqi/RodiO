@@ -860,4 +860,5 @@ module.exports = {
   getAstronomyContext,
   detectCulturalZone,
   findGregorianDateForLunar,
+  solarEvents,
 }

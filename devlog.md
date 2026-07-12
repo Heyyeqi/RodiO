@@ -5702,3 +5702,29 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留
 - 本模块仅写 shadow_rerank_candidates 观测表，未接入真实选曲/排序；需积累足够观测数据后评估四维权重与阈值是否合理
 - 验证脚本已移出项目目录（temp/），未提交
+
+## 2026-07-12 彩云天气接入（主力数据源 + OWM 降级兜底）
+
+### 起因
+- OpenWeatherMap 为城市级精度、10 分钟刷新，天气描述粒度粗（小雨/大雨无法区分）
+- 彩云天气提供 1 公里级、1 分钟级实时数据，skycon 枚举能区分小雨→大雨、轻度霾→重度霾等细粒度天气现象，更适合作为选曲的环境信号
+
+### 做了什么
+- **新建 `core/caiyun.js`**：`fetchCaiyunRealtime(lat, lon)`（GET api.caiyunapp.com/v2.6/{KEY}/{lon},{lat}/realtime，status!=='ok' 或请求失败一律 throw）；`mapSkyconToMain(skycon)`（彩云 skycon → 与 OWM 同套 main 枚举 Clear/Clouds/Rain/Snow/Haze/Fog/Dust）；`mapSkyconToDescription(skycon)`（枚举全部 skycon 值返回中文描述）
+- **`core/context.js` 的 `fetchWeatherByCoords` 前置彩云尝试**：CAIYUN_API_KEY 存在时先调彩云，成功则构造 weatherState 直接返回；失败（throw）则 `console.warn` 后继续走原有 OWM 逻辑，不 return / 不 throw
+- **日出日落改用天文计算**：复用 `core/astronomy.js` 已有的 `solarEvents(lat, lon, midday)`（返回 rise/set 毫秒时间戳），新增 `computeSunriseSunset(lat, lon)` 包装为 Unix 秒，与 OWM 的 `sys.sunrise/sunset` 同格式；OWM 路径仍用 API 返回的日出日落，不受影响
+- **`makeWeatherState` 透传附加字段**：新增可选参数 `source`/`skycon`/`raw`，仅在显式传入时挂载到返回对象，OWM 路径不传则不含这三个字段，向后兼容
+- **下游消费方完全透明**：`checkWeatherChange` 仅比较 `weather.main`，彩云映射后的 main 与 OWM 同枚举，比较逻辑无副作用；`fetchWeatherByCity` / `server.js` / `pwa/index.html` 均未改动
+
+### 踩坑
+- `makeWeatherState` 初始未透传 `source`/`skycon`/`raw` 三个附加字段，打回后修复：改为可选参数，仅在显式传入时挂载，OWM 路径不受影响
+- caiyun 分支最初传了 `cityLine:''`/`areaLine:''`，导致 `text` 字段开头带逗号（",阴,29.68°C"）；打回后改为传 `cityLine:'当前位置'`，`text` 正确显示为"当前位置，阴，29.68°C"
+
+### 验证
+- `node -c` 三个文件全部通过
+- 真实调用上海坐标 (31.2304, 121.4737)：走彩云路径，返回 main=Clouds/description=阴/temp≈29.68，source=skycon=raw 字段齐全，text 显示正常
+- 降级测试：临时置空 CAIYUN_API_KEY，自动回落 OWM，服务不报错，数据正常返回
+- 日出日落对比：天文计算（04:59/19:01）与 OWM API（04:58/19:00）差异在 1 分钟内
+
+### 遗留
+- 额度是代理商无限量，不用监控
