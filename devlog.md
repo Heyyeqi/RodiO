@@ -5728,3 +5728,27 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留
 - 额度是代理商无限量，不用监控
+
+## 2026-07-12 七曜 rimGlow 色调偏移（deepNight 静态效果，第一步）
+
+### 起因
+- 方案文档七曜步骤一：按当前星期几给 deepNight 主题的 rimGlow 配色加轻微色相偏移，先做静态效果（不改变渐变结构），后续再考虑动态/动画化
+
+### 做了什么
+- **`pwa/earth3d.js` 新增 `SHICHIYOU_TINT` 常量表**：日/月/火/水/木/金/土七曜，各对应一个 HEX 色号（日曜暖金 #F2C879、月曜冷银蓝 #6D8796、火曜橙红 #C97A5A、水曜浅青蓝 #7FADC2、木曜深琥珀 #8A6D3B、金曜暖玫瑰金 #C9A0A5、土曜灰褐 #8B7D6B）
+- **新增 `applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18)` 混合函数**：用 `THREE.Color.lerp` 做 18% blend，返回 THREE.Color 对象（与现有 rimGlow uniform 的 `.value.set()` 赋值格式一致）
+- **`applyRimGlowThemeConfig` 增加 `themeName` 参数**：仅当 `themeName === 'deepNight'` 时，对 `outer.color` / `outer.colorNear` / `outer.colorFar` / `inner.color` 四个值包一层 `applyShichiyouTint`（取 `new Date().getDay()` 对应的曜色）；其他主题走原色，不受影响
+- **调用处传入 `resolvedTheme`**：`applyRimGlowThemeConfig(config.rimGlow, resolvedTheme)`，使主题判断生效
+
+### 踩坑 / 插曲
+- 截图验证时先误判为 chromium 连接问题，用 playwright 尝试时误装了 playwright/puppeteer 两个依赖，导致 package.json / package-lock.json 被污染；已撤除依赖、未纳入提交
+- 后续排查发现真实根因是 `assets/earth/bmng21k/` 纹理目录在当前工作副本中完全缺失，earth3d 请求的所有 BMNG tile 均 404，earth3d 无法进入 ready 状态，deepNight 主题无法应用，截图验证改为后续补做
+
+### 验证
+- `node --check pwa/earth3d.js` 通过（退出码 0）
+- 代码逻辑审查：七曜常量表、混合函数、主题门控、调用链均正确；非 deepNight 主题不受影响
+- 视觉截图对比**未做**（纹理资源缺失，环境无法渲染 earth3d）
+
+### 遗留
+- 18% 混合强度**未经过视觉验证**（纹理资源缺失导致无法截图）；截图对比待纹理就绪后补做
+- 若视觉上太淡可上调到 22-25%，太浓下调到 12-15%

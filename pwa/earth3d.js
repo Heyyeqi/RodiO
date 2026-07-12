@@ -24,6 +24,28 @@
     { name: 'Sydney', lon: 151.2, lat: -33.9, color: 0xff66ff }
   ]
 
+  // ─── 七曜 (Shichiyou) rimGlow tint ───────────────────────────────────────
+  // Per-weekday subtle hue offset applied to deepNight rimGlow colors only.
+  // 18% blend keeps the shift restrained while still perceptibly tinting the
+  // limb toward the day's planetary color (ref: Japanese day-of-week naming).
+  const SHICHIYOU_TINT = [
+    { name: '日曜', color: '#F2C879' },  // 0 周日，暖金
+    { name: '月曜', color: '#6D8796' },  // 1 周一，冷银蓝
+    { name: '火曜', color: '#C97A5A' },  // 2 周二，橙红
+    { name: '水曜', color: '#7FADC2' },  // 3 周三，浅青蓝
+    { name: '木曜', color: '#8A6D3B' },  // 4 周四，深琥珀
+    { name: '金曜', color: '#C9A0A5' },  // 5 周五，暖玫瑰金
+    { name: '土曜', color: '#8B7D6B' },  // 6 周六，灰褐
+  ]
+
+  // Blend a base rimGlow color toward the weekday tint. Returns a THREE.Color
+  // (matching the .value.set() assignment format used by applyRimGlowThemeConfig).
+  function applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18) {
+    const base = new THREE.Color(baseHexColor)
+    const tint = new THREE.Color(tintHexColor)
+    return base.lerp(tint, blendFactor)
+  }
+
   function lerp(a, b, t) {
     return a + (b - a) * t
   }
@@ -2261,15 +2283,21 @@
       // Veil materials. Defaults reproduce earlyMorning's baked-in look exactly,
       // so themes that don't define rimGlow (i.e. every theme except earlyMorning
       // and deepNight) are unaffected — same pattern as applyCloudThemeConfig.
-      function applyRimGlowThemeConfig(rimGlowCfg) {
+      function applyRimGlowThemeConfig(rimGlowCfg, themeName) {
         if (!_emRimOverlayMat?.uniforms || !_emInnerVeilMat?.uniforms) return
         const outer = rimGlowCfg?.outer
         const inner = rimGlowCfg?.inner
         const sunLobe = rimGlowCfg?.sunLobe
+        // 七曜 tint: only deepNight gets the per-weekday hue offset (step 1 of
+        // the static effect). Other themes keep their authored colors untouched.
+        const _tintWeekday = (themeName === 'deepNight')
+          ? SHICHIYOU_TINT[new Date().getDay()]
+          : null
+        const _tintColor = (hex) => _tintWeekday ? applyShichiyouTint(hex, _tintWeekday.color) : hex
         const ro = _emRimOverlayMat.uniforms
-        ro.uSkyHaloColor.value.set(outer?.color ?? '#9dd8ff')
-        ro.uSkyHaloColorNear.value.set(outer?.colorNear ?? '#f2faff')
-        ro.uSkyHaloColorFar.value.set(outer?.colorFar ?? '#598cbf')
+        ro.uSkyHaloColor.value.set(_tintColor(outer?.color ?? '#9dd8ff'))
+        ro.uSkyHaloColorNear.value.set(_tintColor(outer?.colorNear ?? '#f2faff'))
+        ro.uSkyHaloColorFar.value.set(_tintColor(outer?.colorFar ?? '#598cbf'))
         ro.uSkyHaloWidth.value    = outer?.width        ?? 0.30
         ro.uCoreFraction.value    = outer?.coreFraction  ?? 0.43
         ro.uCorePower.value       = outer?.corePower     ?? 9.4
@@ -2279,7 +2307,7 @@
         ro.uSoftComposite.value   = outer?.softComposite ? 1.0 : 0.0
         ro.uRimOffsetY.value        = outer?.rimOffsetY   ?? 0.004
         const rv = _emInnerVeilMat.uniforms
-        rv.uInnerVeilColor.value.set(inner?.color ?? '#d9f0ff')
+        rv.uInnerVeilColor.value.set(_tintColor(inner?.color ?? '#d9f0ff'))
         rv.uInnerVeilWidth.value    = inner?.width    ?? 0.16
         rv.uInnerVeilStrength.value = inner?.strength ?? 0.36
         rv.uInnerVeilFalloff.value  = inner?.falloff  ?? 1.8
@@ -5292,7 +5320,7 @@
           console.log('[cloud] applyTheme gate:', JSON.stringify({ resolvedTheme, cfgClouds: config.clouds, hasCfg: !!config, cfgTextureExists: !!(config && config.clouds && config.clouds.texture) }))
           applyCloudThemeConfig(config.clouds)
         }
-        applyRimGlowThemeConfig(config.rimGlow)
+        applyRimGlowThemeConfig(config.rimGlow, resolvedTheme)
         updateSkyTheme(resolvedTheme)
         updateEarlyMorningSkyPlane(resolvedTheme)
         applyOceanTint(resolvedTheme)
