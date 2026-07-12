@@ -1,5 +1,6 @@
 // ── Spotify 模块 ─────────────────────────────────────────────────
 const state = require('./state')
+const claude = require('./claude')
 const {
   artistMatchScore,
   buildArtistVariants,
@@ -854,6 +855,57 @@ async function searchTrack(songOrName, artist) {
       searchTrackCache.set(cacheKey, result)
       return result
     }
+  }
+
+  // ── 译名兜底：中文译名搜不到时，让 DeepSeek 猜原始语言标题再搜一次 ──
+  try {
+    const guess = await claude.guessOriginalTitle(song.name, song.artist)
+    if (guess.confidence !== 'unknown' && guess.candidates.length > 0) {
+      let fallbackBest = null
+      for (const candidate of guess.candidates) {
+        const candidateSong = { ...song, name: candidate }
+        let candidateBest = null
+        for (const query of buildStructuredQueries(candidateSong)) {
+          const tracks = await runSpotifySearch(query)
+          if (!tracks.length) continue
+          const best = tracks
+            .map(track => scoreSpotifyTrack(track, candidateSong, { allowExactTitleWithoutArtist: true }))
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score)[0]
+          if (best && (!candidateBest || best.score > candidateBest.score)) candidateBest = best
+        }
+        if (!candidateBest) {
+          for (const query of buildLooseTitleQueries(candidateSong)) {
+            const tracks = await runSpotifySearch(query)
+            if (!tracks.length) continue
+            const best = tracks
+              .map(track => scoreSpotifyTrack(track, candidateSong, { allowExactTitleWithoutArtist: true }))
+              .filter(Boolean)
+              .sort((a, b) => b.score - a.score)[0]
+            if (best && (!candidateBest || best.score > candidateBest.score)) candidateBest = best
+          }
+        }
+        if (candidateBest && (!fallbackBest || candidateBest.score > fallbackBest.score)) {
+          fallbackBest = candidateBest
+        }
+      }
+
+      if (fallbackBest?.track) {
+        const result = {
+          uri: fallbackBest.track.uri || null,
+          id: fallbackBest.track.id || null,
+          name: fallbackBest.track.name || song.name,
+          artists: (fallbackBest.track.artists || []).map(a => a.name).filter(Boolean),
+          album: fallbackBest.track.album?.name || null,
+        }
+        console.log(`[spotify] 译名兜底命中: "${song.name}" → "${fallbackBest.track.name}" / ${song.artist}`)
+        searchTrackCache.set(cacheKey, result)
+        return result
+      }
+    }
+  } catch (e) {
+    // 兜底逻辑任何异常都当作没帮上忙，继续走放弃分支
+    console.error('[spotify] 译名兜底异常（已忽略）:', e.message)
   }
 
   searchTrackCache.set(cacheKey, null)

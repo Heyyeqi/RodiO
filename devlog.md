@@ -5628,3 +5628,26 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留
 - 目标新增 800，实际写入 796，差 4 首（2 越界丢弃 + 2 碰撞跳过）
+
+## 2026-07-12 Spotify 译名兜底搜索（LLM 猜原标题）
+
+### 起因
+- 中文译名歌曲（如韩语/日语原曲）在 Spotify 常规标题搜索中搜不到：结构化查询 + 宽松查询两层链路全部返回 null
+- 例：`再次重逢的世界` / 少女时代、`月光神殿` / 吉田潔 均搜不到
+
+### 做了什么
+- `core/claude.js` 新增 `guessOriginalTitle(name, artist)`：复用现有 DeepSeek client（同 model `deepseek-v4-flash` + `thinking: { type: 'disabled' }`），给定中文标题+艺人，若判断为外语译名则给出 1-3 个原始语言标题（日文/罗马字/英文），否则返回空；输出严格 JSON `{ candidates: string[], confidence: 'high'|'medium'|'low'|'unknown' }`；解析失败/异常一律返回 `{ candidates: [], confidence: 'unknown' }`，不抛异常；已加入 `module.exports`
+- `core/spotify.js` 的 `searchTrack()` 末尾（原 `searchTrackCache.set(cacheKey, null)` 之前）插入第三层兜底：调用 `guessOriginalTitle` → 若 `confidence !== 'unknown'` 且 `candidates.length > 0`，对每个候选标题构造临时 song 对象（标题替换为候选值、艺人不变）→ 复用 `buildStructuredQueries` / `runSpotifySearch` / `scoreSpotifyTrack`（保持 `allowExactTitleWithoutArtist: true`）→ 取最高分且过阈值的结果；命中打印 `[spotify] 译名兜底命中` 日志；整段包 try/catch，异常当作没帮上忙
+- 未改动 `buildStructuredQueries` / `buildLooseTitleQueries` / `scoreSpotifyTrack` 任何打分逻辑，未改动调用方
+
+### 验证
+- `node -c core/claude.js` / `node -c core/spotify.js` 语法检查通过
+- 真实命中 2 例：
+  - `再次重逢的世界` / 少女时代 → `Into the New World` / Girls' Generation（日志：`译名兜底命中: "再次重逢的世界" → "Into the New World" / 少女时代`）
+  - `月光神殿` / 吉田潔 → `Moonlight Temple` / oxinym;Symoo（日志：`译名兜底命中: "月光神殿" → "Moonlight Temple" / 吉田潔`）
+- "不知道"场景正确跳过：`坨坨坨坨坨坨坨坨` / 虚构乐队XYZ → `unknown`（不瞎猜）；`晴天` / 周杰伦（华语原创）→ `unknown`（正确识别非译名）
+- `searchTrackCache` 正常缓存兜底结果：同一首连续调用两次，第一次 4324ms（含 DeepSeek 猜测 + Spotify 搜索），第二次 0ms 直接命中缓存，未再调 DeepSeek
+
+### 遗留
+- 这层兜底只在常规搜索（结构化 + 宽松）全部失败时触发，不影响正常搜索路径和延迟
+- 临时验证脚本（`scripts/_verify_spotify_fallback.js` / `_verify_guess.js` / `_verify_cache.js`）仍留在磁盘，可手动清理
