@@ -5752,3 +5752,20 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留
 - 18% 混合强度**未经过视觉验证**（纹理资源缺失导致无法截图）；截图对比待纹理就绪后补做
 - 若视觉上太淡可上调到 22-25%，太浓下调到 12-15%
+
+## 2026-07-12 纠正：七曜rimGlow纹理缺失误判
+
+### 起因
+上一条记录（七曜rimGlow色调偏移）里"纹理资源缺失导致无法视觉验证"的结论是错误的。
+
+### 纠正内容
+- `assets/earth/bmng21k/` 路由实际映射到 `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/`，该目录有23个真实瓦片文件（4k/16k两档+manifest.json），一直存在
+- 已用 Claude Preview 工具完整验证：
+  - 周日（日曜）rimGlow实际值 94b5c1，独立用THREE.Color.lerp算出的期望值同样是94b5c1，精确匹配
+  - 周三（水曜）实际值7fb1cf，期望值同样7fb1cf，精确匹配
+  - noon等非deepNight主题颜色不受影响，符合预期
+  - 截图确认深夜主题下地平线辉光效果克制、不张扬
+- 18%混合强度视觉效果合理，暂不需要调整
+
+### 改动文件
+- 无代码改动，仅devlog记录纠正
