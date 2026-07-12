@@ -2101,6 +2101,14 @@
     heroCommentary.textContent = state.heroCommentary || ''
     heroCommentary.classList.toggle('visible', Boolean(state.heroCommentary))
     console.log('[hero] heroCommentary element:', heroCommentary.className, heroCommentary.textContent.slice(0, 20))
+
+    // Sync MediaSession metadata
+    if ('mediaSession' in navigator && state.currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: state.currentTrack.name || '',
+        artist: state.currentTrack.artist || '',
+      })
+    }
   }
 
   function renderProgress() {
@@ -2171,6 +2179,11 @@
     heartButton.style.color = state.currentFeedback === 'like' ? 'var(--accent)' : ''
     dislikeButton.style.color = state.currentFeedback === 'dislike' ? '#B86A6A' : ''
     updatePlayIcon()
+
+    // Sync MediaSession playback state
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = state.playing ? 'playing' : 'paused'
+    }
   }
 
   // ── v1.3: 天外来信历史面板 ──────────────────────────────────────────
@@ -4753,6 +4766,26 @@
 
   document.getElementById('btn-prev').addEventListener('click', playPrevious)
   document.getElementById('btn-next').addEventListener('click', () => advanceToNext('skip'))
+
+  // MediaSession API — lock screen / notification controls
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (spotifyCurrentUri) {
+        if (spotifyReady && !state.playing) spotifyToggle()
+      } else if (audio.paused) {
+        audio.play().catch(() => {})
+      }
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (spotifyCurrentUri) {
+        if (spotifyReady && state.playing) spotifyToggle()
+      } else if (!audio.paused) {
+        audio.pause()
+      }
+    })
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
+    navigator.mediaSession.setActionHandler('nexttrack', () => advanceToNext('skip'))
+  }
   document.getElementById('btn-note').addEventListener('click', explainCurrentTrack)
   document.getElementById('btn-dislike').addEventListener('click', () => sendFeedback('dislike'))
   const SHICHIYOU_SYMBOLS = ['☀', '☽', '♂', '☿', '♃', '♀', '♄']

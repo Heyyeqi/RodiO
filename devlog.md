@@ -5934,3 +5934,25 @@ batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 300
 ### 规模
 - `server.js`：4 insertions(+), 3 deletions(-)
 - commit: `4555dad`
+
+---
+
+## pwa/index.html 添加 MediaSession API（锁屏/通知栏媒体控制）
+
+### 起因
+手机锁屏和系统通知栏看不到当前播放的歌名/艺人，也无法直接从锁屏控制播放/暂停/切歌，必须解锁进 App 操作。
+
+### 做了什么
+`pwa/index.html` 三处改动：
+1. 初始化块注册 4 个 action handler（`play` / `pause` / `previoustrack` / `nexttrack`）。`play`/`pause` 分别写具体判断——NCM 模式走 `audio.paused` / `audio.play()` / `audio.pause()`，Spotify 模式走 `spotifyReady && state.playing` 判断后调 `spotifyToggle()`。**不复用 `togglePlay`**，避免锁屏状态与实际不同步导致反向操作。
+2. `renderHero` 末尾同步 metadata（`title` / `artist`，纯文字，不做 artwork 封面）。
+3. `renderControls` 中 `updatePlayIcon()` 后同步 `playbackState`（`playing` / `paused`）。
+
+### 验证
+- `node --check` 通过（主 script 140KB）
+- Playwright + 系统 Chrome 真实应用流验证：`metadata.title/artist` 与 `app state.currentTrack` 一致（那件瘋狂的小事叫愛情 / 袁泉）、切歌跟随正确（Super Shy / NewJeans）、`playbackState` `paused`↔`playing` 切换正确、4 个 action handler 全部注册成功
+- 页面无新增 JS 错误（仅一条预存的 DRM "No supported keysystem" 警告，与 MediaSession 无关）
+
+### 规模
+- `pwa/index.html`：33 insertions(+)
+- commit: `575d48c`
