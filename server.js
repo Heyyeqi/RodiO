@@ -1610,6 +1610,10 @@ app.post('/api/feedback', (req, res) => {
 
   state.setSongFeedback(song, action)
 
+  // 累加式分数（带半衰期衰减）：dislike 传 -1，like 传 +1
+  // 与 feedback 文本列彼此独立，不影响现有 UI 高亮逻辑
+  state.adjustSongFeedbackScore(song, action === 'dislike' ? -1 : 1)
+
   if (action === 'dislike') {
     queueManager.remove(item => queueKeyFromItem(item) === `${name}::${artist}`.toLowerCase(), 'dislike-remove')
 

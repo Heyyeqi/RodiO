@@ -152,6 +152,74 @@ try {
   if (!/duplicate column/i.test(e.message)) throw e
 }
 
+// ── feedback score 迁移：song_feedback.score / score_updated_at ──────────
+// song_feedback 表已存在（含历史数据），CREATE TABLE IF NOT EXISTS 无法加列，
+// 故用 PRAGMA 检查 + ALTER TABLE 迁移；重复启动忽略 "duplicate column" 报错。
+try {
+  const fbCols = db.prepare('PRAGMA table_info(song_feedback)').all().map(c => c.name)
+  if (!fbCols.includes('score')) {
+    db.prepare('ALTER TABLE song_feedback ADD COLUMN score REAL DEFAULT 0').run()
+  }
+  if (!fbCols.includes('score_updated_at')) {
+    db.prepare('ALTER TABLE song_feedback ADD COLUMN score_updated_at TEXT').run()
+  }
+} catch (e) {
+  // 列已存在等可忽略错误，保证重复启动不崩溃
+  if (!/duplicate column/i.test(e.message)) throw e
+}
+
+// 半衰期天数：180 天衰减一半
+const SCORE_HALF_LIFE_DAYS = 180
+
+// 按半衰期公式衰减当前分数
+// score 或 score_updated_at 为 null 时当作 0 处理
+function decayScore(score, scoreUpdatedAt, now = new Date()) {
+  if (score === null || score === undefined || scoreUpdatedAt === null || scoreUpdatedAt === undefined) {
+    return 0
+  }
+  const updated = new Date(scoreUpdatedAt)
+  if (isNaN(updated.getTime())) return 0
+  const daysDiff = (now.getTime() - updated.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysDiff <= 0) return score // 未来时间或当天，不衰减
+  return score * Math.pow(0.5, daysDiff / SCORE_HALF_LIFE_DAYS)
+}
+
+// 累加式反馈分数调整（带半衰期衰减）
+// delta: dislike 传 -1，like 传 +1
+// 与 setSongFeedback 解耦：行不存在时自动 INSERT（保证分数可独立累加）
+function adjustSongFeedbackScore(song, delta) {
+  const songKey = makeSongKey(song)
+  const now = new Date()
+  const nowIso = now.toISOString()
+  const row = db.prepare(
+    'SELECT score, score_updated_at FROM song_feedback WHERE song_key = ?'
+  ).get(songKey)
+  const decayed = row ? decayScore(row.score, row.score_updated_at, now) : 0
+  const newScore = Math.round((decayed + (delta || 0)) * 1e6) / 1e6
+  if (row) {
+    db.prepare(`
+      UPDATE song_feedback SET score = ?, score_updated_at = ? WHERE song_key = ?
+    `).run(newScore, nowIso, songKey)
+  } else {
+    // 行不存在：插入最小可用行（song_id/name/artist 留空，由 setSongFeedback 补全）
+    db.prepare(`
+      INSERT INTO song_feedback (song_key, song_id, song_name, artist, feedback, score, score_updated_at)
+      VALUES (?, NULL, NULL, NULL, NULL, ?, ?)
+    `).run(songKey, newScore, nowIso)
+  }
+  return newScore
+}
+
+// 只读：返回当前衰减后的分数（不修改数据）
+function getSongFeedbackScore(song) {
+  const songKey = makeSongKey(song)
+  const row = db.prepare(
+    'SELECT score, score_updated_at FROM song_feedback WHERE song_key = ?'
+  ).get(songKey)
+  if (!row) return 0
+  return decayScore(row.score, row.score_updated_at)
+}
+
 function getRecentMessages(n = 10) {
   return db.prepare(
     'SELECT role, content FROM messages ORDER BY id DESC LIMIT ?'
@@ -281,6 +349,8 @@ module.exports = {
   setSongFeedback,
   getSongFeedback,
   getFeedbackByType,
+  adjustSongFeedbackScore,
+  getSongFeedbackScore,
   insertPlayEvent,
   getTrackProfile,
   getAllTrackProfiles,

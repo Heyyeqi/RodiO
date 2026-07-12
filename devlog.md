@@ -5651,3 +5651,27 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留
 - 这层兜底只在常规搜索（结构化 + 宽松）全部失败时触发，不影响正常搜索路径和延迟
 - 临时验证脚本（`scripts/_verify_spotify_fallback.js` / `_verify_guess.js` / `_verify_cache.js`）仍留在磁盘，可手动清理
+
+## 2026-07-12 反馈分数累加机制（Step A：数据层）
+
+### 起因
+- 喜欢/不喜欢目前是二值标记（feedback 文本列 'like'/'dislike'），无法表达"连续不喜欢应该扣更多分、很久以前的反馈应该衰减"的语义
+- 后续打分/排序模块需要可累加、带时间衰减的偏好信号
+
+### 做了什么
+- `song_feedback` 表新增两列：`score REAL DEFAULT 0`、`score_updated_at TEXT`（PRAGMA 检查 + ALTER TABLE，try/catch 忽略 duplicate column，与 transition_cost 迁移同模式）
+- 新增 `decayScore(score, scoreUpdatedAt, now)`：半衰期公式 `score * 0.5 ** (天数/180)`，score 或 score_updated_at 为 null 时当 0 处理
+- 新增 `adjustSongFeedbackScore(song, delta)`：读当前→按半衰期衰减→累加 delta（dislike=-1, like=+1）→写回 score 与 score_updated_at；行不存在时自动 INSERT（与 setSongFeedback 解耦）；结果四舍五入到 6 位小数
+- 新增 `getSongFeedbackScore(song)`：只读，按同样半衰期公式返回当前衰减后的分数（不修改数据），供后续打分模块调用
+- `server.js` 的 `/api/feedback` 中 `setSongFeedback(song, action)` 之后追加 `adjustSongFeedbackScore(song, action === 'dislike' ? -1 : 1)`，两函数并存互不影响
+- `module.exports` 导出 `adjustSongFeedbackScore`、`getSongFeedbackScore`
+
+### 验证
+- `node -c core/state.js` / `node -c server.js` 语法检查通过
+- 场景A 连续点击：dislike→-1，再 dislike→-2，再 like→-1
+- 场景B 衰减：初始 -1，score_updated_at 改到 180 天前 → getSongFeedbackScore = -0.4994（≈ -0.5）；改到 360 天前 → -0.2497（≈ -0.25）
+- 场景C UI 无变化：feedback 文本列独立更新为 'like'/'dislike'，score 列独立累加，前端高亮逻辑与"点击立即跳过"行为完全不变
+
+### 遗留
+- score 尚未接入打分/排序模块，仅完成数据层累加
+- 临时验证脚本（`scripts/verify_feedback_score*.js`）仍留在磁盘，可手动清理
