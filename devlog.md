@@ -5832,3 +5832,40 @@ v1.4 需求：七曜×节气×天气三层叠加引擎，为 /api/explain 注入
 
 ### 遗留
 - 无
+
+---
+
+## batch3 扩容：标注总量达 ~4000 首
+
+### 起因
+batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 3000 首，总规模达到约 4000 首，扩充训练/推荐样本覆盖。
+
+### 做了什么
+- 新建 `scripts/label-track-sample-batch3.js`：以 batch2 为底版改造
+- 排除逻辑：从 `output/track_label_review.csv` + `output/track_label_review_batch2.csv` 两个 CSV 提取已标注 track_key（经 `normalizeSongKey::normalizeArtistKey` 重建），合并为 `excludedKeys` Set 做候选池排除
+- 艺人配额：合并 batch1+batch2 的艺人计数作 `mergedQuota` 传入 `sampleWithArtistLimit` 作 `initialQuota`，三批合并上限仍为每艺人 3 首
+- `SAMPLE_SIZE = 3000`；`LABEL_SOURCE = 'deepseek_sample_batch3'`；`label_version = 'v2_2026-07-13'`
+- `SYSTEM_PROMPT` 完全沿用 batch2 的 v2 版（含第 8/9 条规则），未改动
+- 新增 `csv-parse` 依赖（package.json / package-lock.json 已更新）
+- 输出 `output/track_label_review_batch3.csv`
+
+### 运行结果
+- 实际写入 2947 行（抽样 3000，duplicate key 跳过 50 首，2 首 DROPPED）
+- 总 API 调用 3060 次
+- 词表越界重试 11 次；新规则违规（negative_tags 非空但 scene_fit 高分）0 次；API 失败/超时 51 次（均通过重试恢复，仅 2 首最终 DROPPED）
+- duplicate key 跳过 50 首（抽样阶段同艺人同曲重复，运行时跳过）
+
+### 验证
+- 与 batch1/batch2 无重复 track_key（交叉重复均为 0，自身重复 0）
+- 三批合并 2457 个艺人，超过 3 首的艺人数为 0
+- label_version 全部 `v2_2026-07-13`
+
+### 人工复核
+- 按每 500 首抽 30 首规则，固定种子 `20260713` 随机抽 180 首（6 组 × 30 首）
+- 清单写入 `output/track_label_review_batch3_human_check.csv`
+
+### 三批累计
+- batch1(200) + batch2(796) + batch3(2947) = **3943 首**
+
+### 遗留
+- 2 首 DROPPED（3 次重试仍失败），可后续补标
