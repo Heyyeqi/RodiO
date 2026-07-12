@@ -5907,3 +5907,30 @@ batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 300
 ### 规模
 - 净删除 481 行（484 删 / 3 加），文件从 5686 行降至 5205 行
 - commit: `6f22eeb`
+
+---
+
+## /api/explain 迁移：Qwen → DeepSeek v4-flash（修复 401）
+
+### 起因
+`/api/explain` 的 LLM 调用一直用 `DASHSCOPE_API_KEY` + `qwen-max`，此前返回 401。Qwen 已无免费额度，必须迁移。选择 `deepseek-v4-flash` 而非即将停用的 `deepseek-chat`，避免短期内二次迁移。
+
+### 做了什么
+- `server.js` 第 32-37 行 `explainClient` 初始化：从 DashScope 改为 DeepSeek（`DEEPSEEK_API_KEY` + `https://api.deepseek.com`）
+- 第 1544-1546 行 `model` 从 `qwen-max` 改为 `deepseek-v4-flash`，新增 `thinking: { type: 'disabled' }` 顶层属性关闭思考模式（与 model / messages 同级，不用 extra_body）
+
+### 没改什么
+- Prompt `messages` 原样不动
+- `explainAngles` 不变
+- `commentary_history` 写入逻辑不变
+- 三层调性引擎（七曜×节气×天气 → intensity/warmth）读写不变
+
+### 验证
+- `node --check server.js` 通过
+- grep 确认 `DASHSCOPE_API_KEY` / `qwen-max` 在 explain 路径已清零
+- 真实 HTTP 调用返回 200，`explain_text` 为流畅中文（坂本龍一《Merry Christmas Mr. Lawrence》→ "一个男人在雪地的废弃车站里，等一个永远不会回来的人，但他的手还是焐着一杯热茶"），耗时 2397ms（约 2.4 秒），响应无 `reasoning_content` 字段
+- `commentary_history` 写入正常（触发后历史计数 3→4）
+
+### 规模
+- `server.js`：4 insertions(+), 3 deletions(-)
+- commit: `4555dad`
