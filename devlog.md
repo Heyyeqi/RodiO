@@ -5606,3 +5606,25 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留问题
 - 无
+
+## [Phase 2] 扩展抽样打标到 1000 首（batch2 新增 800）
+
+### 起因
+- 按方案文档"200→1000"扩展顺序，在现有 batch1（200 首）基础上新增 800 首，凑足 1000 首样本池
+- 沿用 batch1 的 v2 Prompt（含第8/9条规则）与 validateLabels 硬校验，验证更大规模下的词表稳定性
+
+### 做了什么
+- 新增脚本 `scripts/label-track-sample-batch2.js`（原 batch1 脚本未改动，git diff 为空）
+- 合并艺人配额逻辑：`sampleWithArtistLimit` 增加 `initialQuota` 参数，抽样前从 DB 读取 batch1（label_source='deepseek_sample_batch1'）各艺人已用配额，batch1+batch2 合并后每艺人 ≤3
+- 从候选池排除 batch1 已标的 200 首（按 track_key 去重），避免重复标注浪费调用
+- 参数：SAMPLE_SIZE=800、LABEL_SOURCE='deepseek_sample_batch2'、LABEL_VERSION 保持 v2_2026-07-13
+- 输出新建 `output/track_label_review_batch2.csv`（仅含新 800 首抽样，不覆盖 batch1 CSV）
+
+### 结果
+- 796/800 成功写入（label_source = deepseek_sample_batch2）
+- 2 首 DROPPED（词表越界重试耗尽）：brass / saxophone 的 texture_tag 越界（Trophies (Brasstracks Cover)、Careless Whisper）
+- 2 首 SKIP（与 batch1 track_key 碰撞，normalize 后安全跳过）：Love Theme From "The Godfather" / Nino Rota、不想睡 / 梁靜茹
+- 54 个艺人合并后恰好达到上限 3，无超限；词表越界重试 8 次、新规则重试 0 次、API 失败 12 次（均重试成功）
+
+### 遗留
+- 目标新增 800，实际写入 796，差 4 首（2 越界丢弃 + 2 碰撞跳过）
