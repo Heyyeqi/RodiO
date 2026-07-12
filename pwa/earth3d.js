@@ -46,6 +46,22 @@
     return base.lerp(tint, blendFactor)
   }
 
+  // 七曜零点交接仪式：在 23:58:30→00:00:00 隐退、00:00:00→00:01:30 浮现
+  // 两个 90 秒窗口内，把 blend 从常态 BASE 线性降到 0（隐退）再升回 BASE（浮现），
+  // 形成 rimGlow 色相偏移的"呼吸式"过渡。窗口外保持常态 BASE。
+  function getShichiyouCeremonyBlendFactor(now = new Date()) {
+    const BASE = 0.18
+    const secondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+    const secondsUntilMidnight = 86400 - secondsSinceMidnight
+    if (secondsUntilMidnight <= 90 && secondsUntilMidnight > 0) {
+      return BASE * (secondsUntilMidnight / 90) // 隐退：BASE → 0
+    }
+    if (secondsSinceMidnight <= 90) {
+      return BASE * (secondsSinceMidnight / 90) // 浮现：0 → BASE
+    }
+    return BASE // 常态
+  }
+
   function lerp(a, b, t) {
     return a + (b - a) * t
   }
@@ -176,6 +192,7 @@
     let isDestroyed = false
     let visibilityChangeHandler = null
     let _sunUpdateInterval = null
+    let _ceremonyTimer = null   // 七曜零点交接仪式窗口内的 rimGlow 刷新定时器
     let earthMaterial = null
     let earthShaderUniforms = null   // retained from onBeforeCompile for per-theme uniform updates
     let atmosphereMaterial = null
@@ -2293,7 +2310,7 @@
         const _tintWeekday = (themeName === 'deepNight')
           ? SHICHIYOU_TINT[new Date().getDay()]
           : null
-        const _tintColor = (hex) => _tintWeekday ? applyShichiyouTint(hex, _tintWeekday.color) : hex
+        const _tintColor = (hex) => _tintWeekday ? applyShichiyouTint(hex, _tintWeekday.color, getShichiyouCeremonyBlendFactor()) : hex
         const ro = _emRimOverlayMat.uniforms
         ro.uSkyHaloColor.value.set(_tintColor(outer?.color ?? '#9dd8ff'))
         ro.uSkyHaloColorNear.value.set(_tintColor(outer?.colorNear ?? '#f2faff'))
@@ -5978,6 +5995,28 @@
 
       _sunUpdateInterval = setInterval(updateSunPosition, 60000)
 
+      // 七曜零点交接仪式：每秒轮询，仅在 23:58:30–00:01:30 窗口内且 deepNight
+      // 主题下，重新应用 rimGlow 配色（blendFactor 随仪式窗口实时呼吸）。
+      // 窗口外不触碰颜色，避免无效重绘。
+      let _ceremonyWasActive = false
+      const _tickCeremony = () => {
+        if (currentTheme !== 'deepNight') { _ceremonyWasActive = false; return }
+        const now = new Date()
+        const s = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+        const inWindow = (s >= 86190 && s <= 86400) || (s >= 0 && s <= 90) // 23:58:30–00:01:30
+        if (inWindow) {
+          const cfg = getThemeVisualConfig('deepNight')
+          if (cfg?.rimGlow) applyRimGlowThemeConfig(cfg.rimGlow, 'deepNight')
+          _ceremonyWasActive = true
+        } else if (_ceremonyWasActive) {
+          // 刚离开窗口：恢复常态 BASE（blendFactor 回到 0.18）
+          const cfg = getThemeVisualConfig('deepNight')
+          if (cfg?.rimGlow) applyRimGlowThemeConfig(cfg.rimGlow, 'deepNight')
+          _ceremonyWasActive = false
+        }
+      }
+      _ceremonyTimer = setInterval(_tickCeremony, 1000)
+
       visibilityChangeHandler = () => {
         if (document.hidden) return
       }
@@ -6215,6 +6254,7 @@
           isDestroyed = true
           renderer.setAnimationLoop(null)
           if (_sunUpdateInterval) { clearInterval(_sunUpdateInterval); _sunUpdateInterval = null }
+          if (_ceremonyTimer) { clearInterval(_ceremonyTimer); _ceremonyTimer = null }
           if (visibilityChangeHandler) {
             document.removeEventListener('visibilitychange', visibilityChangeHandler)
             visibilityChangeHandler = null
