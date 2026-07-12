@@ -5788,3 +5788,24 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 遗留
 - 无
+
+## 2026-07-12 v1.3 天外来信补全：commentary 历史持久化 + 渐现动画 + 查看/导出
+
+### 起因
+v1.3 天外来信补全需求：commentary 消息渐现动画 + 历史持久化存储 + 查看/导出入口。不改 /api/explain 生成逻辑，不影响普通 DJ 对话气泡。
+
+### 做了什么
+- `core/state.js`：新增 `commentary_history` 表（id / text / song_name / song_artist / weather_text / theme_name / created_at，IF NOT EXISTS 保护）+ `insertCommentaryHistory()` / `getCommentaryHistory()` 两个函数并导出
+- `server.js`：`/api/explain` 成功路径在 `return res.json` 前调用 `insertCommentaryHistory`（try/catch 包裹，失败不影响主响应）；新增 `GET /api/commentary-history` 路由
+- `pwa/index.html`：CSS `@keyframes msgLetterFadeIn` 渐现动画（opacity 0→1 + translateY 6px→0 + blur 2px→0，1.1s ease-out）+ `.msg-entering` 类隔离（仅最新 commentary 消息生效，普通气泡/用户消息无动画）；消息面板顶部加低调历史按钮 + 历史面板（复用 `.msg-commentary` 样式）+ JSON 导出（Blob 下载）
+
+### 验证
+- `node --check core/state.js server.js` 通过
+- mock explainClient（Module._load 拦截 openai 模块注入假数据）走真实 HTTP 路径 POST /api/explain，确认 `insertCommentaryHistory` 被执行；sqlite3 直接查库确认记录落盘完整（id / text / song_name / song_artist / weather_text / theme_name / created_at 全字段正确）
+- `GET /api/commentary-history` 路由经实际 HTTP 请求验证返回真实记录
+
+### 插曲
+首轮报告声称已在 server.js 加入 `insertCommentaryHistory` 调用，实际未落盘（与 state.js 建表代码同态丢失——edit 替换未真正写入文件）。经打回后重新修复，并走真实 HTTP 路径重新验证通过。
+
+### 遗留
+- `explainClient` 使用 `DASHSCOPE_API_KEY`（当前 401 旧 key），后续可能需要迁移到 DeepSeek 或其他可用 LLM 源

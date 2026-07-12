@@ -1591,12 +1591,36 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
     rememberExplainOpening(explainText)
     const sayAudio = await tts.synthesizeSlow(explainText)
 
+    try {
+      state.insertCommentaryHistory({
+        text: explainText,
+        song_name: name,
+        song_artist: artist,
+        weather_text: envSnapshot?.weather?.text,
+        theme_name: themeName,
+      });
+    } catch (e) {
+      console.error('[/api/explain] 历史记录写入失败（不影响主响应）:', e.message);
+    }
+
     return res.json({
       explain_text: explainText,
       say_audio: sayAudio,
     })
   } catch (e) {
     console.error('[/api/explain]', e)
+    return res.status(500).json({ error: e.message })
+  }
+})
+
+// v1.3: 读取 commentary 历史记录
+app.get('/api/commentary-history', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50
+    const rows = await state.getCommentaryHistory(limit)
+    res.json(rows)
+  } catch (e) {
+    console.error('[/api/commentary-history]', e)
     return res.status(500).json({ error: e.message })
   }
 })

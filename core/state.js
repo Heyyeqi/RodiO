@@ -190,6 +190,24 @@ try {
   if (!/already exists/i.test(e.message)) throw e
 }
 
+// ── commentary_history 表（v1.3 天外来信持久化）──
+// 记录每次 /api/explain 生成的 commentary 文本及当时的歌曲/天气/主题上下文。
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS commentary_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      song_name TEXT,
+      song_artist TEXT,
+      weather_text TEXT,
+      theme_name TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
+  `)
+} catch (e) {
+  if (!/already exists/i.test(e.message)) throw e
+}
+
 // 半衰期天数：180 天衰减一半
 const SCORE_HALF_LIFE_DAYS = 180
 
@@ -408,8 +426,36 @@ function insertShadowRerankCandidate(row) {
   )
 }
 
+// v1.3: 写入一条 commentary 历史记录，返回插入后的 id
+function insertCommentaryHistory({ text, song_name, song_artist, weather_text, theme_name }) {
+  const info = db.prepare(`
+    INSERT INTO commentary_history (text, song_name, song_artist, weather_text, theme_name)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    text || null,
+    song_name || null,
+    song_artist || null,
+    weather_text || null,
+    theme_name || null
+  )
+  return info.lastInsertRowid
+}
+
+// v1.3: 按 created_at 倒序读取最近 limit 条 commentary 历史
+function getCommentaryHistory(limit = 50) {
+  const rows = db.prepare(`
+    SELECT id, text, song_name, song_artist, weather_text, theme_name, created_at
+    FROM commentary_history
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+  `).all(limit)
+  return rows
+}
+
 module.exports = {
   getRecentMessages,
+  insertCommentaryHistory,
+  getCommentaryHistory,
   addMessage,
   addPlay,
   getRecentPlays,

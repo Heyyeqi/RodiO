@@ -733,6 +733,110 @@
     border-radius: 1px;
   }
 
+  .chat-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 28px 0;
+  }
+  .chat-panel-title {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--text-dim);
+  }
+  .chat-history-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+  }
+  .chat-history-btn:hover { color: var(--accent); }
+
+  .commentary-history-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  .commentary-history-overlay.visible { display: flex; }
+  .commentary-history-panel {
+    width: min(560px, 90vw);
+    max-height: 80vh;
+    background: var(--panel, #14141a);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .commentary-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .commentary-history-head h3 {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--text);
+  }
+  .commentary-history-export {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .commentary-history-export:hover { color: var(--accent); border-color: var(--accent); }
+  .commentary-history-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+  }
+  .commentary-history-close:hover { color: var(--text); }
+  .commentary-history-list {
+    overflow-y: auto;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .commentary-history-item .msg-bubble.msg-commentary {
+    margin-bottom: 6px;
+  }
+  .commentary-history-meta {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .commentary-history-empty {
+    color: var(--text-dim);
+    font-size: 12px;
+    text-align: center;
+    padding: 30px 0;
+  }
+
   .chat-panel {
     min-height: 0;
     flex: 1;
@@ -808,6 +912,14 @@
   .msg-commentary {
     background: var(--bubble-commentary);
     border-left: 2px solid var(--accent);
+  }
+
+  @keyframes msgLetterFadeIn {
+    from { opacity: 0; transform: translateY(6px); filter: blur(2px); }
+    to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  }
+  .msg-commentary.msg-entering {
+    animation: msgLetterFadeIn 1.1s ease-out;
   }
 
   .msg.you .msg-bubble {
@@ -1106,6 +1218,14 @@
           </div>
 
           <div class="chat-panel">
+            <div class="chat-panel-head">
+              <span class="chat-panel-title">LETTERS</span>
+              <button class="chat-history-btn" id="commentary-history-btn" aria-label="来信历史" title="天外来信历史">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 5h16v11H7l-3 3V5z"></path>
+                </svg>
+              </button>
+            </div>
             <div class="chat-scroll" id="chat-scroll">
               <div class="chat-live">CONNECTED · LIVE</div>
               <div id="message-list"></div>
@@ -1129,6 +1249,19 @@
 
   <div class="overlay" id="start-overlay">
     <button class="overlay-button" id="start-button">Tune In</button>
+  </div>
+
+  <div class="commentary-history-overlay" id="commentary-history-overlay">
+    <div class="commentary-history-panel">
+      <div class="commentary-history-head">
+        <h3>天外来信 · 历史</h3>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="commentary-history-export" id="commentary-history-export">导出</button>
+          <button class="commentary-history-close" id="commentary-history-close" aria-label="关闭">&times;</button>
+        </div>
+      </div>
+      <div class="commentary-history-list" id="commentary-history-list"></div>
+    </div>
   </div>
 </div>
 
@@ -1508,6 +1641,11 @@
   const queueList = document.getElementById('queue-list')
   const messageList = document.getElementById('message-list')
   const chatScroll = document.getElementById('chat-scroll')
+  const commentaryHistoryBtn = document.getElementById('commentary-history-btn')
+  const commentaryHistoryOverlay = document.getElementById('commentary-history-overlay')
+  const commentaryHistoryList = document.getElementById('commentary-history-list')
+  const commentaryHistoryExport = document.getElementById('commentary-history-export')
+  const commentaryHistoryClose = document.getElementById('commentary-history-close')
   const composerInput = document.getElementById('composer-input')
   const composerSend = document.getElementById('composer-send')
   const startOverlay = document.getElementById('start-overlay')
@@ -2457,6 +2595,7 @@
     messageList.innerHTML = state.messages.map((message) => {
       const isYou = message.from === 'user'
       const commentary = message.kind === 'commentary'
+      const entering = commentary && message.id === _lastAppendedMsgId
       return `
         <div class="msg${isYou ? ' you' : ''}">
           ${isYou ? `
@@ -2467,7 +2606,7 @@
               <span>${commentary ? 'RodiO · 讲解' : 'RodiO'}</span>
             </div>
           `}
-          <div class="msg-bubble${commentary ? ' msg-commentary' : ''}">${escapeHtml(message.text)}</div>
+          <div class="msg-bubble${commentary ? ' msg-commentary' : ''}${entering ? ' msg-entering' : ''}">${escapeHtml(message.text)}</div>
           <div class="msg-time">
             ${escapeHtml(message.time)}
             ${message.replayUrl ? `<button class="msg-replay" data-replay="${escapeHtml(message.replayUrl)}" data-duck="${commentary ? '1' : '0'}">REPLAY</button>` : ''}
@@ -2476,6 +2615,16 @@
       `
     }).join('')
     chatScroll.scrollTop = chatScroll.scrollHeight
+    // 动画结束后移除类，避免重复触发
+    if (_lastAppendedMsgId) {
+      const enteringEl = messageList.querySelector('.msg-commentary.msg-entering')
+      if (enteringEl) {
+        const clearEntering = () => { enteringEl.classList.remove('msg-entering') }
+        enteringEl.addEventListener('animationend', clearEntering, { once: true })
+        setTimeout(clearEntering, 1200)
+      }
+      _lastAppendedMsgId = null
+    }
   }
 
   function renderControls() {
@@ -2487,6 +2636,65 @@
     dislikeButton.style.color = state.currentFeedback === 'dislike' ? '#B86A6A' : ''
     updatePlayIcon()
   }
+
+  // ── v1.3: 天外来信历史面板 ──────────────────────────────────────────
+  let _commentaryHistoryData = []
+
+  async function openCommentaryHistory() {
+    commentaryHistoryOverlay.classList.add('visible')
+    commentaryHistoryList.innerHTML = '<div class="commentary-history-empty">加载中…</div>'
+    try {
+      const res = await fetch('/api/commentary-history?limit=50')
+      const data = await res.json()
+      _commentaryHistoryData = Array.isArray(data) ? data : []
+      renderCommentaryHistory()
+    } catch (e) {
+      commentaryHistoryList.innerHTML = '<div class="commentary-history-empty">加载失败</div>'
+    }
+  }
+
+  function renderCommentaryHistory() {
+    if (!_commentaryHistoryData.length) {
+      commentaryHistoryList.innerHTML = '<div class="commentary-history-empty">还没有来信记录</div>'
+      return
+    }
+    commentaryHistoryList.innerHTML = _commentaryHistoryData.map((row) => {
+      const meta = [
+        row.created_at,
+        row.song_name ? `${row.song_name}${row.song_artist ? ' — ' + row.song_artist : ''}` : '',
+        row.weather_text || '',
+        row.theme_name || '',
+      ].filter(Boolean).join(' · ')
+      return `
+        <div class="commentary-history-item">
+          <div class="msg-bubble msg-commentary">${escapeHtml(row.text)}</div>
+          <div class="commentary-history-meta">${escapeHtml(meta)}</div>
+        </div>
+      `
+    }).join('')
+  }
+
+  function closeCommentaryHistory() {
+    commentaryHistoryOverlay.classList.remove('visible')
+  }
+
+  function exportCommentaryHistory() {
+    if (!_commentaryHistoryData.length) return
+    const blob = new Blob([JSON.stringify(_commentaryHistoryData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'commentary_history.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  commentaryHistoryBtn.addEventListener('click', openCommentaryHistory)
+  commentaryHistoryClose.addEventListener('click', closeCommentaryHistory)
+  commentaryHistoryExport.addEventListener('click', exportCommentaryHistory)
+  commentaryHistoryOverlay.addEventListener('click', (e) => {
+    if (e.target === commentaryHistoryOverlay) closeCommentaryHistory()
+  })
 
   // 双页切换
   let currentPage = 1
@@ -2616,8 +2824,11 @@
     } catch {}
   }
 
+  let _lastAppendedMsgId = null
+
   function appendMessage(message) {
     state.messages.push(message)
+    _lastAppendedMsgId = message.id
     renderMessages()
   }
 
