@@ -29,8 +29,8 @@ const {
 } = require('./core/search-utils')
 
 const explainClient = new OpenAI({
-  apiKey: process.env.DASHSCOPE_API_KEY,
-  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com',
 })
 const explainAngles = [
   'B. 声音质感——用通感描述这首歌的物理触感或材质，不靠歌词，靠感官',
@@ -1458,7 +1458,7 @@ app.post('/api/explain', async (req, res) => {
       ? recentExplainOpenings.join(' / ')
       : '无'
     const response = await explainClient.chat.completions.create({
-      model: 'qwen-max',
+      model: 'deepseek-v4-flash',
       messages: [
         {
           role: 'system',
@@ -1572,6 +1572,7 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
 最近用过的开头（必须不同）：${recentOpeningsText}`,
         },
       ],
+      thinking: { type: 'disabled' },
     })
 
     const explainText = (response.choices[0]?.message?.content || '').trim()

@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-07-12 修复：/api/explain 的 explainClient 迁移到 DeepSeek
+
+### 做了什么
+- Railway 生产环境排查发现两个独立问题：`DASHSCOPE_API_KEY`（server.js 的 `explainClient`，供 `/api/explain` DJ 播报调用 `qwen-max`）已过期返回 401；`DEEPSEEK_API_KEY`（`core/claude.js` 选曲用，Phase 1 补货失败时的降级路径）在 Railway 上完全未配置
+- 决定统一到 DeepSeek，废弃 DashScope：`server.js` 的 `explainClient` 改为 `apiKey: process.env.DEEPSEEK_API_KEY`、`baseURL: 'https://api.deepseek.com'`；`model` 从 `qwen-max` 改为 `deepseek-v4-flash`（与 `core/claude.js` 保持一致）；补充 `thinking: { type: 'disabled' }` 参数（同 `core/claude.js` 用法，避免推理模式拖慢 TTS 前置延迟）
+- Railway 生产环境变量新增 `DEEPSEEK_API_KEY`（复用本地 `.env` 已验证可用的 key），修复 Phase 2 降级选曲的兜底路径
+- 本次改动在独立 worktree（`fix/explain-client-deepseek` 分支，基于 `origin/main`）完成，未接触 `codex/deploy-noon-air-v2-islands-tiles` 分支上尚在进行的视觉渲染工作
+
+### 改动文件
+- `server.js`（`explainClient` 初始化、`/api/explain` 内 `model` 与 `thinking` 参数）
+- `devlog.md`
+
+### 验证
+- `node --check server.js` 通过
+- 用 curl 直接对 `https://api.deepseek.com/chat/completions` 发起请求验证 `DEEPSEEK_API_KEY` 有效（200，返回 `model: deepseek-v4-flash` 的正常 completion）
+
+### 遗留问题
+- Railway 上的 `DASHSCOPE_API_KEY` 未删除（保留以防回滚需要，当前代码已无引用）
+- CLAUDE.md 技术栈表格仍写"AI 选曲 | Qwen via DashScope"，与实际代码（DeepSeek）不符，需要后续更新
+- `/api/explain` 接口本身仍是 Qwen/TTS 任一失败即 500，无优雅降级（已知问题，本次未处理）
+
+---
+
 ## 2026-07-11 修复 bootstrap 贴图异步解码竞争条件
 
 ### 原因
