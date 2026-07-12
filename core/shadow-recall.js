@@ -10,20 +10,7 @@
 //   - 本模块内部整体包 try/catch，任何报错都不影响真实补货流程
 
 const state = require('./state')
-
-// transition_cost 公式（权重照抄方案文档，与 Phase 1 step 4 一致）
-// a = prev_track（参照曲目），b = current_track（候选曲目）
-function transitionCost(a, b) {
-  if (!a || !b) return null
-  const d = (x, y) => Math.abs((x ?? 0) - (y ?? 0))
-  return (
-    d(a.energy, b.energy) * 0.30 +
-    d(a.brightness, b.brightness) * 0.20 +
-    d(a.density, b.density) * 0.15 +
-    d(a.vocal_presence, b.vocal_presence) * 0.15 +
-    d(a.emotional_weight, b.emotional_weight) * 0.20
-  )
-}
+const { transitionCost } = require('./transition-cost')
 
 // 归一化 key：与 filterQueueCandidates 中 recentPlays 比对保持一致
 // recentPlays 用 `${song_name}::${artist}`.toLowerCase()

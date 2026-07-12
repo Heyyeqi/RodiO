@@ -15,6 +15,8 @@ const tts = require('./core/tts')
 const state = require('./core/state')
 const scheduler = require('./core/scheduler')
 const { runShadowRecall } = require('./core/shadow-recall')
+const { transitionCost } = require('./core/transition-cost')
+const { logShadowRerank } = require('./core/candidate-rerank')
 const { getAstronomyContext } = require('./core/astronomy')
 const spotify = require('./core/spotify')
 const { createQueueManager } = require('./core/queue-manager')
@@ -1198,6 +1200,9 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta
       ? `${String(queueFirst.song_info?.name || '').trim().toLowerCase()}::${String(queueFirst.song_info?.artist || '').trim().toLowerCase()}`
       : null
     runShadowRecall(reason, spotifyItems, queueFirstTrackKey).catch(() => {})
+    // ── Phase 1 step 6: 候选打分影子日志（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    logShadowRerank(spotifyItems, queueFirstTrackKey, reason).catch(() => {})
     if (spotifyItems.length > 0 || spotify.hasUserToken()) {
       return spotifyItems
     }
@@ -1783,26 +1788,13 @@ app.post('/api/play-event', async (req, res) => {
 
     // ── Phase 1 step 4: 观测模式 transition_cost 计算（不用于任何选曲决策）──
     // a = prev_track（上一首），b = current_track（当前曲目）
+    // 复用共享模块 core/transition-cost.js
     let transition_cost = null
     if (prev_track_key) {
       const prevProfile = state.getTrackProfile(prev_track_key)
       const curProfile = state.getTrackProfile(track_key)
-      const fields = ['energy', 'brightness', 'density', 'vocal_presence', 'emotional_weight']
-      const bothFound = prevProfile && curProfile
-      const allFieldsValid = bothFound && fields.every(
-        f => prevProfile[f] !== null && prevProfile[f] !== undefined
-              && curProfile[f] !== null && curProfile[f] !== undefined
-      )
-      if (allFieldsValid) {
-        const a = prevProfile, b = curProfile
-        transition_cost =
-          Math.abs(a.energy - b.energy)             * 0.30
-        + Math.abs(a.brightness - b.brightness)     * 0.20
-        + Math.abs(a.density - b.density)           * 0.15
-        + Math.abs(a.vocal_presence - b.vocal_presence) * 0.15
-        + Math.abs(a.emotional_weight - b.emotional_weight) * 0.20
-      }
-      // 只要有一首没查到，或任一字段为 null → transition_cost 保持 null（不用 0 凑）
+      transition_cost = transitionCost(prevProfile, curProfile)
+      // 任一对象缺失或任一字段为 null → transition_cost 为 null（不用 0 凑）
     }
 
     state.insertPlayEvent({

@@ -168,6 +168,28 @@ try {
   if (!/duplicate column/i.test(e.message)) throw e
 }
 
+// ── shadow_rerank_candidates 表迁移（Phase 1 step 6 候选打分影子日志）──
+// 纯观测表，记录候选打分四维度与混合分，不影响真实选曲。
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shadow_rerank_candidates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reason TEXT,
+      track_key TEXT,
+      freshness_raw_days REAL,
+      continuity_raw_cost REAL,
+      feedback_raw_score REAL,
+      feedback_excluded INTEGER,
+      playability_ever_played INTEGER,
+      blended_score REAL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    );
+  `)
+} catch (e) {
+  // 表已存在等可忽略错误，保证重复启动不崩溃
+  if (!/already exists/i.test(e.message)) throw e
+}
+
 // 半衰期天数：180 天衰减一半
 const SCORE_HALF_LIFE_DAYS = 180
 
@@ -338,6 +360,54 @@ function insertShadowRecallLog(reason, realCount, shadowCandidateCount, overlapC
   `).run(reason || null, realCount || 0, shadowCandidateCount || 0, overlapCount || 0)
 }
 
+// Phase 1 step 6: 读取某 track_key 最近一次播放时间（play_events.MAX(timestamp)）
+function getLastPlayAt(trackKey) {
+  if (!trackKey) return null
+  const row = db.prepare(
+    'SELECT MAX(timestamp) AS last_at FROM play_events WHERE track_key = ?'
+  ).get(trackKey)
+  return row && row.last_at ? row.last_at : null
+}
+
+// Phase 1 step 6: 判断某 track_key 是否在 play_events 中至少出现过一次
+function hasPlayEvent(trackKey) {
+  if (!trackKey) return false
+  const row = db.prepare(
+    'SELECT 1 AS exists_flag FROM play_events WHERE track_key = ? LIMIT 1'
+  ).get(trackKey)
+  return !!row
+}
+
+// Phase 1 step 6: 写入 shadow_rerank_candidates 一行候选打分观测
+function insertShadowRerankCandidate(row) {
+  const {
+    reason = null,
+    track_key = null,
+    freshness_raw_days = null,
+    continuity_raw_cost = null,
+    feedback_raw_score = null,
+    feedback_excluded = 0,
+    playability_ever_played = 0,
+    blended_score = null,
+  } = row || {}
+  db.prepare(`
+    INSERT INTO shadow_rerank_candidates (
+      reason, track_key, freshness_raw_days, continuity_raw_cost,
+      feedback_raw_score, feedback_excluded, playability_ever_played, blended_score
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    reason,
+    track_key,
+    freshness_raw_days,
+    continuity_raw_cost,
+    feedback_raw_score,
+    feedback_excluded ? 1 : 0,
+    playability_ever_played ? 1 : 0,
+    blended_score
+  )
+}
+
 module.exports = {
   getRecentMessages,
   addMessage,
@@ -355,4 +425,7 @@ module.exports = {
   getTrackProfile,
   getAllTrackProfiles,
   insertShadowRecallLog,
+  getLastPlayAt,
+  hasPlayEvent,
+  insertShadowRerankCandidate,
 }

@@ -5675,3 +5675,30 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 ### 遗留
 - score 尚未接入打分/排序模块，仅完成数据层累加
 - 临时验证脚本（`scripts/verify_feedback_score*.js`）仍留在磁盘，可手动清理
+
+## 2026-07-12 候选打分模块（Step B：影子模式，4 指标）
+
+### 起因
+- Step A 已完成 feedback score 数据层累加，但 score 尚未接入任何打分/排序逻辑
+- 需要一套候选打分体系（freshness/continuity/feedback/playability 四维加权），先以影子模式只记录、不影响真实选曲，验证打分分布合理性后再决定是否接入真实选曲
+- transition_cost 公式此前散落两份副本（server.js 内嵌 + shadow-recall.js 内嵌），本次是第三次使用，必须先提取为共享模块避免第三份复制
+
+### 做了什么
+- **前置重构**：新建 `core/transition-cost.js`，导出 `transitionCost(a, b)`（五维度加权：energy 0.30 / brightness 0.20 / density 0.15 / vocal_presence 0.15 / emotional_weight 0.20，sum(|差值|*权重)，权重和=1）；任一对象缺失或任一字段为 null 时返回 null（不用 0 凑）。`server.js` 删除内嵌计算块改为 `require('./core/transition-cost')`；`core/shadow-recall.js` 删除原地定义改为 `require('./core/transition-cost')`
+- **新建 `core/candidate-rerank.js`**：
+  - `computeCandidateScore(candidateSong, currentTrackKey)` 返回四维 + blended：`freshness`（查 play_events MAX(created_at)，无记录 raw_days=null/score=1，有记录 score=min(1, log(1+days)/log(1+90))）、`continuity`（查 track_profile 两行算 transitionCost，任一缺失 raw_cost=null/score=0.5 中性值，都在则 score=1-cost）、`feedback`（调 getSongFeedbackScore 用原始歌名/艺人名，raw≤-3 → excluded=true/score=0，否则 score=clamp((raw+3)/6,0,1)）、`playability`（play_events 是否 EXISTS，出现过 score=1 否则 0）
+  - 加权混合：feedback.excluded → blended=null/excluded=true；否则 blended = freshness*0.40 + continuity*0.30 + feedback*0.20 + playability*0.10
+  - `logShadowRerank(candidates, currentTrackKey, reason)`：对前 30 个候选逐首 computeCandidateScore 并写入 shadow_rerank_candidates 表；整体 try/catch 吞异常
+- **`core/state.js` 追加**：`shadow_rerank_candidates` 表迁移（CREATE TABLE IF NOT EXISTS）；`getLastPlayAt(trackKey)`（play_events MAX(timestamp)）、`hasPlayEvent(trackKey)`（LIMIT 1 存在性）、`insertShadowRerankCandidate(row)`；均加入 module.exports
+- **`server.js` 挂载**：`setRefillHandler` 回调中 `runShadowRecall` 之后追加 `logShadowRerank(spotifyItems, queueFirstTrackKey, reason).catch(() => {})`，fire-and-forget，绝不 await、绝不修改返回值
+
+### 验证
+- 语法检查 `node -c` 五个文件全部通过
+- 前置重构：新旧 transitionCost 实现用 track_profile 真实数据对比 4 组参数对（含相邻行、首尾行、字段缺失、对象缺失），数值逐位相等
+- 打分逻辑：用 track_profile 前 5 行真实数据驱动 logShadowRerank，抽 #0 手算核对 freshness/continuity/feedback/playability 四字段与日志行完全一致
+- excluded 场景：构造 song_feedback.score≈-3 测试数据，确认 computeCandidateScore 返回 excluded=true/blended=null，日志行 feedback_excluded=1/blended_score=null
+- 真实选曲不变：logShadowRerank 为 fire-and-forget 且不返回任何业务值，setRefillHandler 回调的 `return spotifyItems` 路径完全不受影响
+
+### 遗留
+- 本模块仅写 shadow_rerank_candidates 观测表，未接入真实选曲/排序；需积累足够观测数据后评估四维权重与阈值是否合理
+- 验证脚本已移出项目目录（temp/），未提交
