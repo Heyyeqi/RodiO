@@ -5869,3 +5869,41 @@ batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 300
 
 ### 遗留
 - 2 首 DROPPED（3 次重试仍失败），可后续补标
+
+---
+
+## UI 清理：移除两组旧调试控制器（保留 Theme Tuner）
+
+### 起因
+清理旧调试 UI——两组旧调试控制器（时段选择按钮 + FAR/NEAR/AUDIT 面板）不再需要，只保留 localhost 开关控制的 Theme Tuner。不触碰 `pwa/earth3d.js`。
+
+### 做了什么
+**第一组（时段选择按钮 #theme-preview）**
+- 删除 CSS `.theme-preview` / `.theme-chip` / `.theme-chip.active`
+- 删除 HTML `#theme-preview` 容器及全部按钮
+- 删除 `TIME_OF_DAY_OPTIONS` 数组、`renderThemePreview()` 函数
+- 删除 `forcedThemeKey` 变量及全部 10 处引用、`applyForcedTheme()` 函数、`window.__claudioSetThemePreview` 赋值
+
+**第二组（FAR/NEAR/AUDIT 面板）**
+- 删除 CSS `.earth-audit-control` / `.rdl-zoom-control` 及子样式
+- 删除 HTML `#rdl-zoom-control` + `#earth-audit-control` 容器
+- 删除 `EARTH_AUDIT_REGIONS`、`renderEarthAuditControl()`、`setAuditDistance()`、`currentEarthAuditIndex`、`getActiveAuditRegion`、`setEarthAuditRegion`、`nudgeAuditView`、`applyAuditLocation`、`getBestThemeForLon`、`_AUDIT_THEME_HOURS`、`bindHoldButton`
+- 删除所有对应事件监听：`rdlZoomIn/Out/Reset`、`earthAuditPrev/Next/LightingToggle`、`data-audit-angle`、`data-audit-move`
+
+### 改了什么
+- `effectivePhase` 从 `forcedThemeKey` 判断简化为 `astronomy.solar?.phase || phaseKey`
+- 修复 4 处删除残留的悬空括号（state 对象多余 `]`、renderHero 后悬空 `}`、startButton 后悬空 `}`、renderProgress 前悬空 `}`）
+- 保留 `auditGlobeImageRefreshTimer` 变量声明（正常播放器 `loadGlobeImages` 仍在使用）
+
+### Theme Tuner 保护
+完整保留，未触碰任何配置项：Mode 下拉、Texture/Atmosphere/Lighting 滑块、Night Grade、Diagnose、Camera Presets (E7 debug)、Copy config 按钮、`window._earthTuner` 调试入口、localStorage 逻辑。
+
+### 验证
+- `node --check`（提取所有 `<script>` 内容）通过
+- grep 全部 30+ 关键词 → ALL CLEAR（forcedThemeKey / renderThemePreview / TIME_OF_DAY_OPTIONS / applyForcedTheme / __claudioSetThemePreview / EARTH_AUDIT_REGIONS / renderEarthAuditControl / setAuditDistance / currentEarthAuditIndex / rdlZoomIn/Out/Reset / earthAuditPrev/Next/LightingToggle 等）
+- Playwright + Chromium 浏览器验证：三组旧 UI 容器 `theme-preview` / `rdl-zoom-control` / `earth-audit-control` 均 ABSENT；无 JS 运行时错误（PAGEERROR: NONE）；Theme Tuner 脚本加载正常、`lil-gui` CDN 可达
+- `pwa/earth3d.js` 未触碰，Theme Tuner 调用的 `patchTheme` / `setTimeOfDay` / `getDebugState` 等接口完好
+
+### 规模
+- 净删除 481 行（484 删 / 3 加），文件从 5686 行降至 5205 行
+- commit: `6f22eeb`
