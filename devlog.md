@@ -5769,3 +5769,22 @@ B-6 分支与 RDL 的关系是**互补，不是替代**：
 
 ### 改动文件
 - 无代码改动，仅devlog记录纠正
+
+## 2026-07-12 修复：七曜仪式窗口常数不同步
+
+### 起因
+`_tickCeremony()` 的 `inWindow` 判断用了 `s >= 86190`（对应 23:56:30 起），而 `getShichiyouCeremonyBlendFactor()` 用的是 90 秒窗口（对应 23:58:30 起）。两处魔法数字不一致，导致 ticker 在 23:56:30–23:58:30 这 2 分钟里白白空转（每秒重应用 rimGlow 但 blendFactor 仍是常态 0.18，无视觉变化）。
+
+### 做了什么
+- 提取模块级常量 `SHICHIYOU_CEREMONY_WINDOW_SECONDS = 90`
+- `getShichiyouCeremonyBlendFactor` 两处硬编码 `90` 改为引用该常量（浮现分支边界由 `<=` 改为 `<`，使 00:01:30 整点严格落在窗口外）
+- `_tickCeremony` 的 `inWindow` 改为 `s >= 86400 - SHICHIYOU_CEREMONY_WINDOW_SECONDS || s < SHICHIYOU_CEREMONY_WINDOW_SECONDS`，与 blendFactor 共用同一份常量
+- 仅改 `pwa/earth3d.js`，颜色计算逻辑、镜头/朝向均未动
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- 6 个时间点脚本 ALL PASS：23:56:30(inWindow=false) / 23:58:30(true) / 23:59:00(true,blend=0.12) / 00:00:30(true,blend=0.06) / 00:01:30(false) / 15:30:00(false)
+- 窗口边界 `86400 - 90 = 86310`（=23:58:30），与 blendFactor 的 90 秒窗口完全对齐
+
+### 遗留
+- 无

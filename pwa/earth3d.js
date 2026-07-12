@@ -38,6 +38,10 @@
     { name: '土曜', color: '#8B7D6B' },  // 6 周六，灰褐
   ]
 
+  // 七曜零点交接仪式的窗口半宽（秒）：23:58:30→00:00:00 隐退 + 00:00:00→00:01:30 浮现。
+  // getShichiyouCeremonyBlendFactor 与 _tickCeremony 共用，避免魔法数字不同步。
+  const SHICHIYOU_CEREMONY_WINDOW_SECONDS = 90
+
   // Blend a base rimGlow color toward the weekday tint. Returns a THREE.Color
   // (matching the .value.set() assignment format used by applyRimGlowThemeConfig).
   function applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18) {
@@ -53,11 +57,11 @@
     const BASE = 0.18
     const secondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
     const secondsUntilMidnight = 86400 - secondsSinceMidnight
-    if (secondsUntilMidnight <= 90 && secondsUntilMidnight > 0) {
-      return BASE * (secondsUntilMidnight / 90) // 隐退：BASE → 0
+    if (secondsUntilMidnight <= SHICHIYOU_CEREMONY_WINDOW_SECONDS && secondsUntilMidnight > 0) {
+      return BASE * (secondsUntilMidnight / SHICHIYOU_CEREMONY_WINDOW_SECONDS) // 隐退：BASE → 0
     }
-    if (secondsSinceMidnight <= 90) {
-      return BASE * (secondsSinceMidnight / 90) // 浮现：0 → BASE
+    if (secondsSinceMidnight < SHICHIYOU_CEREMONY_WINDOW_SECONDS) {
+      return BASE * (secondsSinceMidnight / SHICHIYOU_CEREMONY_WINDOW_SECONDS) // 浮现：0 → BASE
     }
     return BASE // 常态
   }
@@ -6003,7 +6007,7 @@
         if (currentTheme !== 'deepNight') { _ceremonyWasActive = false; return }
         const now = new Date()
         const s = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
-        const inWindow = (s >= 86190 && s <= 86400) || (s >= 0 && s <= 90) // 23:58:30–00:01:30
+        const inWindow = s >= 86400 - SHICHIYOU_CEREMONY_WINDOW_SECONDS || s < SHICHIYOU_CEREMONY_WINDOW_SECONDS // 23:58:30–00:01:30（不含 00:01:30 整点）
         if (inWindow) {
           const cfg = getThemeVisualConfig('deepNight')
           if (cfg?.rimGlow) applyRimGlowThemeConfig(cfg.rimGlow, 'deepNight')
