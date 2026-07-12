@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-07-12 TTS 供应商切换：MiniMax → Fish Audio
+
+### 起因
+听感评估后判断 MiniMax 与 Fish Audio 自然度差不多，Fish Audio 免费额度（`s2.1-pro-free`，限时到 2026-07-底，Fair Use 下无限量）覆盖当前低频播报场景，且 `FISH_API_KEY`/`FISH_VOICE_ID` 已在 Railway 生产环境变量中配置好但从未被代码引用。决定统一到 Fish Audio，不再维护 MiniMax 这套。
+
+### 做了什么
+- `core/tts.js`：`synthesizeWithOptions` 内部实现从 MiniMax（`https://api.minimax.chat/v1/t2a_v2`，JSON 响应体内 base64/hex 音频）改为 Fish Audio（`https://api.fish.audio/v1/tts`，`model: s2.1-pro-free` header，`prosody.speed` 控制语速，响应体直接是原始音频二进制，无需 JSON 解析/base64 解码）
+- 环境变量从 `MINIMAX_API_KEY` 改为 `FISH_API_KEY` + `FISH_VOICE_ID`（作为 `reference_id`），均已存在于 Railway，无需新增变量
+- 对外接口 `synthesize()` / `synthesizeSlow()` 签名不变，`server.js` 两处调用点（DJ 播报 / `/api/explain`）无需改动
+- 保留原有串行队列（`enqueueTtsTask`）+ 请求间隔节流（`TTS_MIN_GAP_MS`，沿用 MiniMax 时期的 2000ms 保守值，未验证 Fish Audio 实际限流阈值）
+
+### 验证
+- `node --check core/tts.js` 通过
+- 直接 require 真实模块调用 `synthesizeSlow()`（未经过 server.js），200 响应，本地生成合法 MP3（128kbps/44.1kHz），确认业务代码路径本身（非仅 curl 裸测试）可用
+
+### 遗留问题
+- `MINIMAX_API_KEY` 未从 Railway 删除（保留作回退用，当前代码已无引用）
+- Fish Audio 实际限流阈值未知，`TTS_MIN_GAP_MS=2000` 是沿用旧值的保守估计，未针对性验证
+- `s2.1-pro-free` 是限时免费模型（到 2026-07-底），到期后需评估按量付费或切回 MiniMax
+- 闽南话/福州话等方言混读效果未做针对性验证，只测试过普通话/英文场景
+
+---
+
 ## 2026-07-12 修复：/api/explain 的 explainClient 迁移到 DeepSeek
 
 ### 做了什么
