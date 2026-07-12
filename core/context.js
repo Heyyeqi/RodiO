@@ -340,7 +340,10 @@ async function fetchWeatherByCoords(lat, lon) {
   // 【彩云天气前置尝试】作为主力数据源；失败则降级到 OpenWeatherMap
   if (process.env.CAIYUN_API_KEY) {
     try {
-      const caiyunData = await caiyun.fetchCaiyunRealtime(lat, lon)
+      const [caiyunData, cityLabel] = await Promise.all([
+        caiyun.fetchCaiyunRealtime(lat, lon),
+        fetchCityLabelByCoords(lat, lon, '当前位置'),
+      ])
       const realtime = caiyunData.result.realtime
       const main = caiyun.mapSkyconToMain(realtime.skycon)
       const description = caiyun.mapSkyconToDescription(realtime.skycon)
@@ -353,9 +356,10 @@ async function fetchWeatherByCoords(lat, lon) {
         main,
         description,
         temp,
-        city: '当前位置',
-        locationName: '当前位置',
-        cityLine: '当前位置',
+        city: cityLabel.cityLine || '当前位置',
+        locationName: cityLabel.cityLine || '当前位置',
+        cityLine: cityLabel.cityLine,
+        areaLine: cityLabel.areaLine,
         sunrise,
         sunset,
         sunriseTs: sunrise,

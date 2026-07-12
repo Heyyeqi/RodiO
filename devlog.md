@@ -5974,3 +5974,21 @@ commit 991b09c 删除 `.earth-audit-label` 规则时漏删了中间 9 行属性�
 ### 规模
 - `pwa/index.html`：11 deletions(-)
 - commit: `9500a0c`
+
+---
+
+## core/context.js 恢复彩云天气地名反向地理编码
+
+### 起因
+commit fb7fd03 引入彩云天气后，`fetchWeatherByCoords()` 彩云分支直接用 `'当前位置'` 占位符，未调用 `fetchCityLabelByCoords()` 做反向地理编码，而 OWM 分支一直在用，导致彩云路径下地名丢失。
+
+### 做了什么
+彩云分支改为 `Promise.all` 并行请求天气 + 地理编码，`city`/`cityLine`/`areaLine` 字段改用 `cityLabel` 返回值（`locationName` 也同步为 `cityLine` 回退值）。
+
+### 验证
+- 上海坐标 (31.2304, 121.4737) 真实调用返回 `cityLine='上海市'` `areaLine='南京东路街道'` `source='caiyun'`
+- Nominatim 失败时 `fetchCityLabelByCoords` 返回空对象，`city` 回退到 `'当前位置'`，天气数据不受影响
+
+### 规模
+- `core/context.js`：8 insertions(+), 4 deletions(-)
+- commit: `cf5b304`
