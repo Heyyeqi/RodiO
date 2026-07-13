@@ -154,10 +154,10 @@ function formatClock(timestampSeconds) {
   })
 }
 
-function normalizeCityName(name, fallbackLabel) {
-  const value = String(name || fallbackLabel || '').trim()
-  if (!value) return '当前位置'
-  return value
+function normalizeCityName(name, fallbackLabel = '当前位置') {
+  const value = String(name || '').trim()
+  if (value) return value
+  return fallbackLabel
 }
 
 function makeLocationParts(cityLine, areaLine, fallbackLabel = '当前位置') {
@@ -269,10 +269,15 @@ async function fetchCityLabelByCoords(lat, lon, fallbackLabel) {
 
     const country = addr.country_code?.toUpperCase()
 
-    // 中国：城市 + 区县
+    // 中国：城市 + 区县（直辖市 state 是"XX市"，取反：state 作城市名，city 作区县名）
     if (country === 'CN') {
-      const city = addr.city || addr.municipality || addr.state_district || addr.county || addr.state || ''
-      const district = addr.city_district || addr.district || addr.suburb || ''
+      const isMunicipality = /市$/.test(addr.state || '') && ['上海市','北京市','天津市','重庆市'].includes(addr.state)
+      const city = isMunicipality
+        ? addr.state
+        : (addr.city || addr.municipality || addr.state_district || addr.county || addr.state || '')
+      const district = isMunicipality
+        ? (addr.city || addr.city_district || addr.district || addr.suburb || '')
+        : (addr.city_district || addr.district || addr.suburb || '')
       return city || district ? makeLocationParts(city || district, district, '当前位置') : makeEmptyLocationParts()
     }
 
@@ -357,7 +362,7 @@ async function fetchWeatherByCoords(lat, lon) {
         description,
         temp,
         city: cityLabel.cityLine || '当前位置',
-        locationName: cityLabel.cityLine || '当前位置',
+        locationName: cityLabel.areaLine || cityLabel.cityLine || '当前位置',
         cityLine: cityLabel.cityLine,
         areaLine: cityLabel.areaLine,
         sunrise,

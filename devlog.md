@@ -5992,3 +5992,28 @@ commit fb7fd03 引入彩云天气后，`fetchWeatherByCoords()` 彩云分支直�
 ### 规模
 - `core/context.js`：8 insertions(+), 4 deletions(-)
 - commit: `cf5b304`
+
+---
+
+## core/context.js 城市/区县地名解析两处修复
+
+### 起因
+1. `normalizeCityName` 在 `areaLine` 为空时本该返回调用方传入的 `''`，却硬编码返回 `'当前位置'`，导致彩云路径下 `areaLine` 错误显示为"当前位置"。
+2. 直辖市（上海/北京/天津/重庆）的 Nominatim 返回中 `state` 字段是"XX市"（市名），`city` 字段是"XX区"（区名），跟普通省份（`state="XX省"`）的语义相反，当前代码未做区分导致城市名错误地显示为区名。
+
+### 做了什么
+1. `normalizeCityName` 改为 `fallbackLabel` 挪到函数参数默认值，空值时直接返回调用方传入的 `fallbackLabel` 本身而不是硬编码 `'当前位置'`。
+2. `fetchCityLabelByCoords` CN 分支新增 `isMunicipality` 判断（白名单匹配上海/北京/天津/重庆），直辖区县名，`city=state`（市名），`district=city`（区名）。
+3. 彩云分支 `locationName` 从 `cityLabel.cityLine` 改为 `cityLabel.areaLine || cityLabel.cityLine`，避免 `locationName` 在渲染中遮蔽 `areaLine` 导致两行显示退化为单行。
+
+### 验证
+- 上海坐标 (31.2396, 121.3745) → `cityLine='上海市'` `areaLine='普陀区'`
+- 杭州坐标 (30.25, 120.15) → `cityLine='西湖区'` `areaLine='北山街道'`（不受影响）
+- 页面 `.hero-city` 两行 span 正确显示 `'上海市'` + `'普陀区'`
+
+### 已知限制（国际地址）
+JP/US/其他国家的 `fetchCityLabelByCoords` 分支目前各自有特定字段映射逻辑，未经过真实坐标逐一验证。已知问题包括：东京可能取不到具体区名（`city_district` 字段不稳定）、美国城市可能过粗（只有 state 没有 city）、欧洲国家缺乏专门分支（走通用 fallback 逻辑可能不准确）。这些在当前只面向中国用户的产品中影响较小，后续如果需要国际化可以再完善。
+
+### 规模
+- `core/context.js`：13 insertions(+), 8 deletions(-)
+- commit: `0172ed0`
