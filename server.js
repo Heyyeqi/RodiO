@@ -17,6 +17,7 @@ const scheduler = require('./core/scheduler')
 const { runShadowRecall } = require('./core/shadow-recall')
 const { transitionCost } = require('./core/transition-cost')
 const { logShadowRerank } = require('./core/candidate-rerank')
+const { generateShadowMoodIntent } = require('./core/mood-intent')
 const { getAstronomyContext } = require('./core/astronomy')
 const spotify = require('./core/spotify')
 const { createQueueManager } = require('./core/queue-manager')
@@ -1202,6 +1203,9 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta
     // ── Phase 1 step 6: 候选打分影子日志（纯观测，fire-and-forget）──
     // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
     logShadowRerank(spotifyItems, queueFirstTrackKey, reason).catch(() => {})
+    // ── Phase 2 Step 1: 影子 Mood Intent（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    generateShadowMoodIntent(reason, currentQueue, meta).catch(() => {})
     if (spotifyItems.length > 0 || spotify.hasUserToken()) {
       return spotifyItems
     }

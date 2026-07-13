@@ -140,6 +140,22 @@ db.exec(`
   );
 `)
 
+// ── Phase 2 Step 1: 影子 Mood Intent 日志表（纯观测）────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS shadow_mood_intent_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reason TEXT,
+    valid INTEGER NOT NULL,
+    fallback_reason TEXT,
+    intent_json TEXT,
+    raw_response TEXT,
+    tonality_intensity REAL,
+    tonality_warmth REAL,
+    latency_ms INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+`)
+
 // ── sequence_shape 迁移：track_profile 补回遗漏的 LLM 标注字段 ────
 // 建表语句从 Phase 1 起遗漏，4 批 CSV 中均有此行数据但 DB 未写入，
 // 后续由 backfill 脚本从 CSV 回填。
@@ -403,6 +419,32 @@ function insertShadowRecallLog(reason, realCount, shadowCandidateCount, overlapC
   `).run(reason || null, realCount || 0, shadowCandidateCount || 0, overlapCount || 0)
 }
 
+// Phase 2 Step 1: 写入 shadow_mood_intent_log 一条观测记录
+function insertShadowMoodIntentLog(row) {
+  db.prepare(`
+    INSERT INTO shadow_mood_intent_log
+      (reason, valid, fallback_reason, intent_json, raw_response,
+       tonality_intensity, tonality_warmth, latency_ms)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    row.reason || null,
+    row.valid != null ? row.valid : 0,
+    row.fallback_reason || null,
+    row.intent_json || null,
+    row.raw_response || null,
+    row.tonality_intensity != null ? row.tonality_intensity : null,
+    row.tonality_warmth != null ? row.tonality_warmth : null,
+    row.latency_ms != null ? row.latency_ms : null
+  )
+}
+
+// Phase 2 Step 1: 读取最近 N 条影子 Mood Intent 日志
+function getRecentShadowMoodIntentLogs(limit = 50) {
+  return db.prepare(`
+    SELECT * FROM shadow_mood_intent_log ORDER BY id DESC LIMIT ?
+  `).all(limit)
+}
+
 // Phase 1 step 6: 读取某 track_key 最近一次播放时间（play_events.MAX(timestamp)）
 function getLastPlayAt(trackKey) {
   if (!trackKey) return null
@@ -502,4 +544,6 @@ module.exports = {
   getLastPlayAt,
   hasPlayEvent,
   insertShadowRerankCandidate,
+  insertShadowMoodIntentLog,
+  getRecentShadowMoodIntentLogs,
 }
