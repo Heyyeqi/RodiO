@@ -101,6 +101,7 @@ db.exec(`
     label_confidence       REAL,
     label_version          TEXT,
     label_source           TEXT,
+    sequence_shape         TEXT,               -- LLM labeling: circular/repetitive/linear/...
 
     -- Housekeeping
     created_at             TEXT DEFAULT (datetime('now')),
@@ -138,6 +139,18 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
 `)
+
+// ── sequence_shape 迁移：track_profile 补回遗漏的 LLM 标注字段 ────
+// 建表语句从 Phase 1 起遗漏，4 批 CSV 中均有此行数据但 DB 未写入，
+// 后续由 backfill 脚本从 CSV 回填。
+try {
+  const tpCols = db.prepare('PRAGMA table_info(track_profile)').all().map(c => c.name)
+  if (!tpCols.includes('sequence_shape')) {
+    db.prepare('ALTER TABLE track_profile ADD COLUMN sequence_shape TEXT').run()
+  }
+} catch (e) {
+  if (!/duplicate column/i.test(e.message)) throw e
+}
 
 // ── Phase 1 step 4: play_events.transition_cost 迁移 ──────────────────────
 // play_events 表已存在（含历史测试数据），CREATE TABLE IF NOT EXISTS 无法加列，
