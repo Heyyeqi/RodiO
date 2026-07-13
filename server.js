@@ -851,10 +851,9 @@ async function fillQueueFromSpotifyPlaylists(
     let pulled = await pullPlaylistItems(baseItems)
     if (
       pulled.length === 0 &&
-      lastPhase1Meta.cachedTrackCount === 0 &&
       !lastPhase1Meta.freshPlaylistFetchAttempted
     ) {
-      console.log(`[spotify] Phase 1(${reason}) cache 为空，强制 fresh fetch playlist tracks`)
+      console.log(`[spotify] Phase 1(${reason}) 补货为空，强制 fresh fetch playlist tracks`)
       pulled = await pullPlaylistItems(baseItems, { forceRefresh: true })
     }
     if (!pulled.length) break
