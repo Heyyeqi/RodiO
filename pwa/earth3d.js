@@ -24,6 +24,24 @@
     { name: 'Sydney', lon: 151.2, lat: -33.9, color: 0xff66ff }
   ]
 
+  // ─── 移动端 / Lite 模式判定与共享参数 ──────────────────────────────────
+  // URL 参数解析（模块顶层，只解析一次）
+  const urlParams = new URLSearchParams(window.location.search)
+  const LITE_MODE = urlParams.get('lite') === '1'
+  const DEBUG_WEBGL = urlParams.get('debugWebGL') === '1'
+
+  // 移动端判定：LITE_MODE 强制覆盖；否则视口最短边 ≤ 820 或触摸屏。
+  function isMobileDevice() {
+    if (LITE_MODE) return true
+    const minDim = Math.min(window.innerWidth, window.innerHeight)
+    if (minDim <= 820) return true
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true
+    return false
+  }
+
+  // 球体精度：移动端降级为 64 段，桌面保持 128 段。
+  const SPHERE_SEGMENTS = isMobileDevice() ? 64 : 128
+
   // ─── 七曜 (Shichiyou) rimGlow tint ───────────────────────────────────────
   // Per-weekday subtle hue offset applied to deepNight rimGlow colors only.
   // 18% blend keeps the shift restrained while still perceptibly tinting the
@@ -301,8 +319,23 @@
     window.earth3d = earth3dApi
 
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isMobileDevice() })
+      renderer.setPixelRatio(isMobileDevice() ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2))
+
+      // GPU 诊断日志（仅 ?debugWebGL=1 时输出）
+      if (DEBUG_WEBGL) {
+        const gl = renderer.getContext()
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+        console.log('[WebGL Diagnostic]')
+        console.log('  maxTextureSize:', renderer.capabilities.maxTextureSize)
+        console.log('  devicePixelRatio:', window.devicePixelRatio)
+        console.log('  isMobileDevice:', isMobileDevice())
+        console.log('  GPU vendor:', debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unavailable')
+        console.log('  GPU renderer:', debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unavailable')
+        console.log('  SPHERE_SEGMENTS:', SPHERE_SEGMENTS)
+        console.log('  pixelRatio cap:', isMobileDevice() ? '1.5' : '2')
+        console.log('  antialias:', !isMobileDevice())
+      }
       renderer.setClearColor(0x000000, 0)
       if (typeof THREE.SRGBColorSpace !== 'undefined') {
         renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -1741,7 +1774,7 @@
         )
       }
       loadNormalMapTexture()
-      earthGeometry = new THREE.SphereGeometry(2, 128, 128)
+      earthGeometry = new THREE.SphereGeometry(2, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
       // Fresnel-based atmosphere shader: opacity = pow(1 - |dot(N,V)|, power) * scale
       // Produces a natural limb glow — transparent at center, bright only at the edge.
@@ -1822,7 +1855,7 @@
         // Unit sphere — actual radius (and therefore how much room the glow has to
         // bleed outward into space vs inward onto the terrain) is set per-theme via
         // the uRadius uniform above.
-        new THREE.SphereGeometry(1, 128, 128),
+        new THREE.SphereGeometry(1, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         atmosphereMaterial
       )
       atmosphere.frustumCulled = false
@@ -1848,7 +1881,7 @@
         side: THREE.BackSide,
       })
       atmosphere2 = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 128, 128),
+        new THREE.SphereGeometry(1, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         atmosphere2Material
       )
       atmosphere2.visible = false
@@ -2734,7 +2767,7 @@
       let   _rdlInspectRegion = null // region id forced visible for audit/inspection mode
       let   _currentAuditViewAngle = 'top'
 
-      const _rdlSphereGeom = new THREE.SphereGeometry(2.003, 128, 128)
+      const _rdlSphereGeom = new THREE.SphereGeometry(2.003, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
 
       const _rdlVertShader = `
         varying vec2 vUv;
@@ -3362,7 +3395,7 @@
         side: THREE.FrontSide,
       })
       cloudMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(2.018, 128, 128),
+        new THREE.SphereGeometry(2.018, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         cloudMaterial
       )
       cloudMesh.renderOrder = 0
