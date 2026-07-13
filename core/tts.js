@@ -3,11 +3,10 @@ const path = require('path')
 const crypto = require('crypto')
 
 const CACHE_DIR = path.join(__dirname, '../cache/tts')
-const FISH_URL = 'https://api.fish.audio/v1/tts'
-const FISH_MODEL = 's2.1-pro-free'
-const TTS_MIN_GAP_MS = 2000
+const MINIMAX_URL = 'https://api.minimax.chat/v1/t2a_v2'
+const MINIMAX_MIN_GAP_MS = 2000
 let ttsQueue = Promise.resolve()
-let lastTtsRequestAt = 0
+let lastMiniMaxRequestAt = 0
 let queueLength = 0
 
 function delay(ms) {
@@ -51,50 +50,66 @@ async function synthesizeWithOptions(text, options = {}) {
 
   if (fs.existsSync(cachePath)) return `/cache/tts/${filename}`
 
-  const apiKey = process.env.FISH_API_KEY
-  if (!apiKey) throw new Error('FISH_API_KEY 未配置')
-  const voiceId = process.env.FISH_VOICE_ID
-  if (!voiceId) throw new Error('FISH_VOICE_ID 未配置')
+  const apiKey = process.env.MINIMAX_API_KEY
+  if (!apiKey) throw new Error('MINIMAX_API_KEY 未配置')
 
   fs.mkdirSync(CACHE_DIR, { recursive: true })
 
   const requestBody = {
+    model: 'speech-01-turbo',
     text: normalizedText,
-    reference_id: voiceId,
-    format: 'mp3',
-    prosody: { speed },
+    stream: false,
+    voice_setting: {
+      voice_id: 'male-qn-jingying',
+      speed,
+      vol: 0.92,
+      pitch: 0,
+    },
+    language_boost: 'auto',
+    audio_setting: {
+      audio_sample_rate: 32000,
+      bitrate: 128000,
+      format: 'mp3',
+    },
   }
 
-  console.log('[fish-tts] request body:', JSON.stringify(requestBody))
+  console.log('[minimax-tts] request body:', JSON.stringify(requestBody))
 
-  const wait = TTS_MIN_GAP_MS - (Date.now() - lastTtsRequestAt)
+  const wait = MINIMAX_MIN_GAP_MS - (Date.now() - lastMiniMaxRequestAt)
   if (wait > 0) {
     await delay(wait)
   }
   console.log('[tts-queue] starting request, queue length:', queueLength)
-  lastTtsRequestAt = Date.now()
+  lastMiniMaxRequestAt = Date.now()
 
-  const response = await fetch(FISH_URL, {
+  const response = await fetch(MINIMAX_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      model: FISH_MODEL,
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify(requestBody),
   })
 
-  console.log('[fish-tts] response status:', response.status)
+  console.log('[minimax-tts] response status:', response.status)
 
+  const rawText = await response.text()
+  console.log('[minimax-tts] response preview:', rawText.slice(0, 500))
+
+  const payload = rawText ? JSON.parse(rawText) : {}
   if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`Fish Audio TTS 请求失败: ${response.status} ${errText.slice(0, 200)}`)
+    throw new Error(payload?.base_resp?.status_msg || payload?.message || `MiniMax TTS 请求失败: ${response.status}`)
   }
 
-  const audioBuffer = Buffer.from(await response.arrayBuffer())
-  if (!audioBuffer.length) {
-    throw new Error('Fish Audio TTS 未返回音频数据')
+  const base64Audio = payload?.data?.audio
+  if (!base64Audio) {
+    throw new Error('MiniMax TTS 未返回音频数据')
   }
+
+  const isHexAudio = typeof base64Audio === 'string' && /^[0-9a-f]+$/i.test(base64Audio) && base64Audio.length % 2 === 0
+  const audioBuffer = isHexAudio
+    ? Buffer.from(base64Audio, 'hex')
+    : Buffer.from(base64Audio, 'base64')
 
   fs.writeFileSync(cachePath, audioBuffer)
 
