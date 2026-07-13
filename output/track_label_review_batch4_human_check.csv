@@ -1,0 +1,241 @@
+group,seq_in_group,track_key_name,track_key_artist,name,artist,label(mood_tags),genre_family,label_confidence
+1,1,Temujin,Sir Hiss,Temujin,Sir Hiss,restless;urban;unresolved,electronic,0.85
+1,2,Popup Cinema,Tropics,Popup Cinema,Tropics,dreamy;urban;nostalgic,chillwave,0.85
+1,3,Not The End Of The World,Howe Gelb,Not The End Of The World,Howe Gelb,introspective;melancholic;restrained,singer_songwriter,0.85
+1,4,红豆,王菲,红豆,王菲,nostalgic;warm;bittersweet,mandopop,0.9
+1,5,天堂鸟,郑嘉嘉,天堂鸟,郑嘉嘉,dreamy;nostalgic;bittersweet,mandopop,0.85
+1,6,"""A Dream, Pt. 2""",Von Spar,"""A Dream, Pt. 2""",Von Spar,dreamy;introspective;restrained,ambient,0.85
+1,7,Crazy In Love (feat. JAY-Z),Beyoncé,Crazy In Love (feat. JAY-Z),Beyoncé,restless;urban;hopeful,pop,0.85
+1,8,Alhena,Erik Truffaz,Alhena,Erik Truffaz,introspective;melancholic;restrained,modern_classical,0.85
+2,1,Caro mio ben,Cecilia Bartoli,Caro mio ben,Cecilia Bartoli,warm;nostalgic;restrained,classical,0.85
+2,2,Tossed Salad & Scrambled Eggs,Chris Minh Doky,Tossed Salad & Scrambled Eggs,Chris Minh Doky,warm;clear;nostalgic,jazz,0.85
+2,3,Where Is The Love（Soule Rework),The Black Eyed Peas,Where Is The Love（Soule Rework),The Black Eyed Peas,urban;restless;hopeful,pop,0.85
+2,4,Freek'n You,Jodeci,Freek'n You,Jodeci,sensual;warm;urban,r&b,0.9
+2,5,Movies,Weyes Blood,Movies,Weyes Blood,nostalgic;melancholic;dreamy,art_pop,0.9
+2,6,I'm Still Standing,Elton John,I'm Still Standing,Elton John,hopeful;restless;urban,rock,0.85
+2,7,一辈子的孤单,刘若英,一辈子的孤单,刘若英,lonely;melancholic;nostalgic,mandopop,0.9
+2,8,Pieces,Howling,Pieces,Howling,introspective;melancholic;restrained,electronic,0.85
+3,1,Nothing’s Special,Oneohtrix Point Never,Nothing’s Special,Oneohtrix Point Never,detached;restrained;unresolved,ambient,0.85
+3,2,Right Side of My Neck,Faye Webster,Right Side of My Neck,Faye Webster,dreamy;warm;nostalgic,indie_folk,0.85
+3,3,Don't You Forget,Parov Stelar,Don't You Forget,Parov Stelar,nostalgic;urban;restless,electro_swing,0.85
+3,4,未闻花名,OnceFly,未闻花名,OnceFly,nostalgic;melancholic;bittersweet,mandopop,0.85
+3,5,Por una Cabeza,Viveza,Por una Cabeza,Viveza,warm;sensual;nostalgic,tango,0.9
+3,6,our love,西原健一郎 / Mabanua,our love,西原健一郎 / Mabanua,warm;nostalgic;bittersweet,jazz_hop,0.85
+3,7,Another Day of Sun,Justin Hurwitz,Another Day of Sun,Justin Hurwitz,hopeful;warm;clear,musical_film,0.9
+3,8,美麗的插曲,萧亚轩,美麗的插曲,萧亚轩,nostalgic;warm;bittersweet,mandopop,0.85
+4,1,不变,王菲,不变,王菲,nostalgic;bittersweet;restrained,mandopop,0.85
+4,2,Les pianos de Brazzaville,Yonathan Avishai,Les pianos de Brazzaville,Yonathan Avishai,introspective;melancholic;restrained,modern_classical,0.9
+4,3,酔月,erica,酔月,erica,dreamy;nostalgic;bittersweet,ambient,0.85
+4,4,Speechless,Hollerado,Speechless,Hollerado,restless;urban;hopeful,indie_rock,0.85
+4,5,In Utopia,Gliss,In Utopia,Gliss,dreamy;nostalgic;restrained,dream_pop,0.85
+4,6,The Best,Self Esteem,The Best,Self Esteem,hopeful;warm;clear,art_pop,0.85
+4,7,Morricone: Cinema Paradiso (Se),Katherine Jenkins,Morricone: Cinema Paradiso (Se),Katherine Jenkins,nostalgic;warm;bittersweet,classical_crossover,0.85
+4,8,Epilogue,Emil Brandqvist,Epilogue,Emil Brandqvist,introspective;melancholic;restrained,modern_classical,0.9
+5,1,Rain On Me (with Ariana Grande),Lady Gaga,Rain On Me (with Ariana Grande),Lady Gaga,restless;urban;hopeful,dance_pop,0.85
+5,2,Last Ride Home,Magnus Ringblom Quartet,Last Ride Home,Magnus Ringblom Quartet,nostalgic;warm;bittersweet,jazz,0.85
+5,3,LOVE LOVE LOVE - Play World Tour Live,JOLIN蔡依林,LOVE LOVE LOVE - Play World Tour Live,JOLIN蔡依林,restless;urban;hopeful,mandopop,0.85
+5,4,Grace,Patrice Bäumel,Grace,Patrice Bäumel,dreamy;warm;nostalgic,ambient_house,0.85
+5,5,Get It,PRISTIN V,Get It,PRISTIN V,urban;restless;clear,k_pop,0.85
+5,6,光年之外 (電影 《Passengers》 中國區主題曲),鄧紫棋,光年之外 (電影 《Passengers》 中國區主題曲),鄧紫棋,hopeful;nostalgic;bittersweet,mandopop,0.85
+5,7,Carefully in the Dark,Close Talker,Carefully in the Dark,Close Talker,introspective;melancholic;restrained,indie_rock,0.85
+5,8,2all,Catfish and the Bottlemen,2all,Catfish and the Bottlemen,restless;urban;hopeful,indie_rock,0.85
+6,1,Deep into It,Larry Carlton,Deep into It,Larry Carlton,warm;clear;restrained,jazz,0.85
+6,2,Honey,Sorcha Richardson,Honey,Sorcha Richardson,warm;nostalgic;dreamy,indie_folk,0.85
+6,3,Prologo,La Batteria,Prologo,La Batteria,restrained;melancholic;unresolved,modern_classical,0.85
+6,4,An Impossible Condo,CFCF,An Impossible Condo,CFCF,urban;restless;unresolved,electronic,0.85
+6,5,亲爱的你怎么不在身边,江美琪,亲爱的你怎么不在身边,江美琪,nostalgic;lonely;bittersweet,mandopop,0.9
+6,6,台,莫文蔚,台,莫文蔚,introspective;melancholic;restrained,mandopop,0.85
+6,7,The Edge Of Heaven,Wham!,The Edge Of Heaven,Wham!,warm;nostalgic;hopeful,pop,0.85
+6,8,The Well-Meaning Professor,Eluvium,The Well-Meaning Professor,Eluvium,introspective;melancholic;restrained,modern_classical,0.9
+7,1,沙滩 / Over The Rainbow (Live),陶喆,沙滩 / Over The Rainbow (Live),陶喆,nostalgic;warm;bittersweet,mandopop,0.85
+7,2,然后,萧亚轩 / 倪子冈,然后,萧亚轩 / 倪子冈,urban;nostalgic;bittersweet,mandopop,0.85
+7,3,Let the Sun Come Through,Sam Cohen,Let the Sun Come Through,Sam Cohen,hopeful;warm;nostalgic,folk_rock,0.85
+7,4,Policy of Truth,Depeche Mode,Policy of Truth,Depeche Mode,restrained;urban;unresolved,synthpop,0.9
+7,5,Looking For Sunshine,YEAH BOY,Looking For Sunshine,YEAH BOY,hopeful;warm;nostalgic,indie_pop,0.85
+7,6,Touch Me,UNKLE,Touch Me,UNKLE,urban;restless;melancholic,trip_hop,0.85
+7,7,偿还 / 红豆 (Live),王菲,偿还 / 红豆 (Live),王菲,nostalgic;warm;bittersweet,mandopop,0.9
+7,8,Overlap,Catfish and the Bottlemen,Overlap,Catfish and the Bottlemen,restless;urban;hopeful,indie_rock,0.85
+8,1,When The Working Day Is Done,The Divine Comedy,When The Working Day Is Done,The Divine Comedy,nostalgic;warm;hopeful,chamber_pop,0.85
+8,2,Usal Road,Yann Tiersen,Usal Road,Yann Tiersen,introspective;melancholic;restrained,modern_classical,0.9
+8,3,Fragment I,Drinker,Fragment I,Drinker,introspective;melancholic;restrained,modern_classical,0.9
+8,4,Cell Block Tango,Taye Diggs / Susan Misner / Deidre Goodwin / Denise Faye / Mya Harrison,Cell Block Tango,Taye Diggs / Susan Misner / Deidre Goodwin / Denise Faye / Mya Harrison,restless;urban;bittersweet,musical_theatre,0.85
+8,5,Twenty-Two Dreaming,Wy,Twenty-Two Dreaming,Wy,dreamy;nostalgic;hopeful,dream_pop,0.85
+8,6,"""Variations on a Rococo Theme, Op. 33, TH 57: Var: VI. Andante""",Pyotr Ilyich Tchaikovsky,"""Variations on a Rococo Theme, Op. 33, TH 57: Var: VI. Andante""",Pyotr Ilyich Tchaikovsky,warm;nostalgic;restrained,classical,0.85
+8,7,Salt Flats,SUSS,Salt Flats,SUSS,introspective;melancholic;restrained,ambient,0.9
+8,8,Feedback,Kanye West,Feedback,Kanye West,restless;urban;unresolved,hip_hop,0.85
+9,1,喜洋洋,Guzz,喜洋洋,Guzz,warm;nostalgic;hopeful,jazz,0.85
+9,2,My Favourite Things,Chris Minh Doky,My Favourite Things,Chris Minh Doky,warm;clear;hopeful,jazz,0.85
+9,3,Time After Time ～花舞う街で～-Theater Version-,倉木麻衣,Time After Time ～花舞う街で～-Theater Version-,倉木麻衣,nostalgic;warm;bittersweet,j_pop,0.85
+9,4,Diamonds Are a Girl's Best Friend,The Tierney Sutton Band,Diamonds Are a Girl's Best Friend,The Tierney Sutton Band,warm;clear;sensual,jazz,0.85
+9,5,The Man Who Sold The World,Nirvana,The Man Who Sold The World,Nirvana,melancholic;restless;unresolved,grunge,0.9
+9,6,Heart-Shaped Locket,Tanbark,Heart-Shaped Locket,Tanbark,dreamy;nostalgic;bittersweet,lo_fi,0.85
+9,7,Roller Coaster,Balthazar,Roller Coaster,Balthazar,restless;urban;bittersweet,indie_rock,0.85
+9,8,Burn of the Shieling,Teeth Of The Sea,Burn of the Shieling,Teeth Of The Sea,restless;melancholic;unresolved,experimental_rock,0.85
+10,1,Naptalan - Bonus,The Evpatoria Report,Naptalan - Bonus,The Evpatoria Report,introspective;melancholic;restrained,post_rock,0.9
+10,2,The Snow,Malihini,The Snow,Malihini,introspective;melancholic;restrained,modern_classical,0.9
+10,3,À la claire fontaine,Natalie Choquette,À la claire fontaine,Natalie Choquette,warm;nostalgic;clear,folk,0.85
+10,4,Stay Gold,宇多田ヒカル,Stay Gold,宇多田ヒカル,warm;nostalgic;hopeful,j_pop,0.9
+10,5,The Other Side,UNKLE,The Other Side,UNKLE,restless;urban;melancholic,trip_hop,0.85
+10,6,Sunset,Caroline Polachek,Sunset,Caroline Polachek,dreamy;nostalgic;bittersweet,art_pop,0.9
+10,7,猫咪,卡奇社,猫咪,卡奇社,dreamy;warm;nostalgic,indie_pop,0.85
+10,8,Enigma,Doon Kanda,Enigma,Doon Kanda,dreamy;misty;restrained,ambient,0.85
+11,1,Sex And The Suburbs,The Rhythm Method,Sex And The Suburbs,The Rhythm Method,urban;restless;bittersweet,indie_pop,0.85
+11,2,Models Of Wellbeing,Barker,Models Of Wellbeing,Barker,introspective;restrained;misty,ambient_techno,0.85
+11,3,Kill Me Now,Montevideo,Kill Me Now,Montevideo,melancholic;restless;unresolved,indie_rock,0.85
+11,4,Violence - The Blanck Mass recording,Editors,Violence - The Blanck Mass recording,Editors,restless;unresolved;melancholic,post_punk_revival,0.85
+11,5,dancer,Reuben And The Dark,dancer,Reuben And The Dark,introspective;melancholic;restrained,indie_folk,0.85
+11,6,Bucky Done Gun,M.I.A.,Bucky Done Gun,M.I.A.,restless;urban;unresolved,electro_pop,0.85
+11,7,No Sleeep,Janet Jackson,No Sleeep,Janet Jackson,sensual;urban;restrained,r&b,0.85
+11,8,Pink Venom,BLACKPINK,Pink Venom,BLACKPINK,urban;restless;unresolved,k_pop,0.85
+12,1,Stay Gold,大橋トリオ,Stay Gold,大橋トリオ,warm;nostalgic;hopeful,jazz_pop,0.85
+12,2,Speed of Light,Digitalism,Speed of Light,Digitalism,restless;urban;unresolved,electro_house,0.85
+12,3,Electric Heart,Kaiser Chiefs,Electric Heart,Kaiser Chiefs,restless;urban;hopeful,indie_rock,0.85
+12,4,Oniria,Daniel García Trio,Oniria,Daniel García Trio,dreamy;introspective;restrained,jazz,0.85
+12,5,北归,苏紫旭&The Paramecia,北归,苏紫旭&The Paramecia,melancholic;restrained;nostalgic,folk_rock,0.85
+12,6,故郷の原風景,宗次郎,故郷の原風景,宗次郎,nostalgic;melancholic;restrained,new_age,0.9
+12,7,Arrivals,Datach'i,Arrivals,Datach'i,restless;urban;detached,electronic,0.85
+12,8,Goodbye for Now,The Tierney Sutton Band,Goodbye for Now,The Tierney Sutton Band,bittersweet;nostalgic;warm,jazz,0.85
+13,1,Lost Times,Anna Ternheim,Lost Times,Anna Ternheim,nostalgic;melancholic;bittersweet,singer_songwriter,0.85
+13,2,Run II U,FRENSHIP,Run II U,FRENSHIP,dreamy;hopeful;urban,synthpop,0.85
+13,3,Prosecco,Croosh,Prosecco,Croosh,warm;dreamy;clear,lo_fi,0.85
+13,4,One Way Or Another,Seeker Lover Keeper,One Way Or Another,Seeker Lover Keeper,warm;nostalgic;hopeful,indie_folk,0.85
+13,5,独占神话,蔡依林,独占神话,蔡依林,warm;nostalgic;hopeful,mandopop,0.85
+13,6,Meridian,Ikarus,Meridian,Ikarus,dreamy;misty;restrained,ambient,0.85
+13,7,Off The Grid,Kanye West,Off The Grid,Kanye West,restless;urban;unresolved,hip_hop,0.85
+13,8,Hollywood,Nick Cave & The Bad Seeds,Hollywood,Nick Cave & The Bad Seeds,melancholic;restrained;bittersweet,art_rock,0.85
+14,1,MORE THAN A TV STAR,Innovator / 李遐怡,MORE THAN A TV STAR,Innovator / 李遐怡,urban;restless;hopeful,r&b,0.85
+14,2,Crossing Winds (Original),Jacoo,Crossing Winds (Original),Jacoo,introspective;restrained;melancholic,ambient,0.85
+14,3,Messenger,Ioanna Gika,Messenger,Ioanna Gika,melancholic;dreamy;bittersweet,art_pop,0.85
+14,4,Purple Rain,Prince,Purple Rain,Prince,melancholic;nostalgic;bittersweet,pop_rock,0.9
+14,5,Same,Bayonne,Same,Bayonne,restless;urban;unresolved,electronic,0.85
+14,6,Peach Sky,Bat For Lashes,Peach Sky,Bat For Lashes,dreamy;nostalgic;bittersweet,art_pop,0.85
+14,7,未来形Answer (Anime OP Version),TRUSTRICK,未来形Answer (Anime OP Version),TRUSTRICK,hopeful;restless;urban,j_pop,0.8
+14,8,Lapwing,Ishmael Ensemble,Lapwing,Ishmael Ensemble,dreamy;misty;restrained,ambient,0.85
+15,1,Out in the Cold,SPC ECO,Out in the Cold,SPC ECO,melancholic;detached;urban,dream_pop,0.85
+15,2,This Broken Design,The Ninth Wave,This Broken Design,The Ninth Wave,melancholic;unresolved;restless,post_punk,0.85
+15,3,It’s Nice To Have A Friend,Taylor Swift,It’s Nice To Have A Friend,Taylor Swift,warm;nostalgic;hopeful,folk_pop,0.85
+15,4,The Saraphati Hang Crew,Rejoicer,The Saraphati Hang Crew,Rejoicer,dreamy;warm;restrained,ambient,0.85
+15,5,Johannes Brahms: 4 Ballades,Op.10 - No.2 in D,Johannes Brahms: 4 Ballades,Op.10 - No.2 in D,introspective;melancholic;restrained,classical,0.9
+15,6,808Luv,KINGBNJMN,808Luv,KINGBNJMN,urban;nostalgic;dreamy,lo_fi,0.85
+15,7,Samba De Uma Nota So - Instrumental,Charlie Byrd,Samba De Uma Nota So - Instrumental,Charlie Byrd,warm;clear;nostalgic,jazz,0.9
+15,8,Family Affair,Mary J. Blige,Family Affair,Mary J. Blige,urban;restless;hopeful,r&b,0.85
+16,1,Near,Teen Daze,Near,Teen Daze,dreamy;misty;restrained,ambient,0.85
+16,2,Drone Maze,Datach'i,Drone Maze,Datach'i,restless;detached;urban,electronic,0.85
+16,3,went to meet her (intro),The Japanese House,went to meet her (intro),The Japanese House,dreamy;introspective;melancholic,dream_pop,0.85
+16,4,Pond Life,Sam Loveridge,Pond Life,Sam Loveridge,dreamy;warm;nostalgic,ambient,0.85
+16,5,Moksha,Caspian,Moksha,Caspian,introspective;melancholic;restrained,post_rock,0.9
+16,6,Time (is),Solange,Time (is),Solange,introspective;restrained;bittersweet,art_pop,0.85
+16,7,The Hunger,Bat For Lashes,The Hunger,Bat For Lashes,melancholic;dreamy;restrained,art_pop,0.85
+16,8,Natalie,Milk & Bone,Natalie,Milk & Bone,dreamy;nostalgic;bittersweet,dream_pop,0.85
+17,1,Berlin Basement,Helge Lien Trio,Berlin Basement,Helge Lien Trio,introspective;restrained;melancholic,jazz,0.85
+17,2,Murderous,GO DARK,Murderous,GO DARK,restless;unresolved;melancholic,dark_ambient,0.85
+17,3,人間失格~メインテーマ~,中島ノブユキ,人間失格~メインテーマ~,中島ノブユキ,introspective;melancholic;restrained,modern_classical,0.9
+17,4,This Is Not Enough (Epilogue),Hammock,This Is Not Enough (Epilogue),Hammock,introspective;melancholic;restrained,ambient,0.9
+17,5,Merry Christmas Mr. Lawrence (Arr. Metcalfe),Jess Gillam,Merry Christmas Mr. Lawrence (Arr. Metcalfe),Jess Gillam,introspective;melancholic;restrained,modern_classical,0.95
+17,6,Paris,The Racer,Paris,The Racer,urban;nostalgic;hopeful,synthwave,0.85
+17,7,爱情的海洋,S.H.E,爱情的海洋,S.H.E,warm;nostalgic;hopeful,mandopop,0.85
+17,8,Speaking Unto Nations (Beethoven Symphony no 7 - II ),Ludwig van Beethoven,Speaking Unto Nations (Beethoven Symphony no 7 - II ),Ludwig van Beethoven,restrained;melancholic;unresolved,classical,0.9
+18,1,I Bet You Look Good On The Dancefloor,Arctic Monkeys,I Bet You Look Good On The Dancefloor,Arctic Monkeys,restless;urban;hopeful,indie_rock,0.85
+18,2,Say Nothing,Baxter Dury,Say Nothing,Baxter Dury,urban;restless;detached,art_pop,0.85
+18,3,"""Doors Locked, Oven's Off""","""Liar, Flower""","""Doors Locked, Oven's Off""","""Liar, Flower""",restrained;melancholic;unresolved,art_pop,0.85
+18,4,Sweet Boy,Malcolm Todd,Sweet Boy,Malcolm Todd,warm;nostalgic;bittersweet,indie_pop,0.85
+18,5,Naked Truth赤裸真相,萧亚轩,Naked Truth赤裸真相,萧亚轩,introspective;melancholic;restrained,mandopop,0.85
+18,6,One for the Head Skit,M.I.A.,One for the Head Skit,M.I.A.,restless;urban;detached,experimental,0.8
+18,7,Velera,Roy Hargrove,Velera,Roy Hargrove,warm;clear;sensual,jazz,0.85
+18,8,November Rain,吳亦凡,November Rain,吳亦凡,melancholic;urban;bittersweet,c_pop,0.85
+19,1,Love War (Feat. BE′O),YENA,Love War (Feat. BE′O),YENA,urban;restless;hopeful,k_pop,0.85
+19,2,心牆,林俊傑,心牆,林俊傑,warm;nostalgic;hopeful,mandopop,0.85
+19,3,Typa,GloRilla,Typa,GloRilla,restless;urban;unresolved,hip_hop,0.8
+19,4,Venice B***h,Lana Del Rey,Venice B***h,Lana Del Rey,nostalgic;dreamy;bittersweet,dream_pop,0.9
+19,5,I Feel an Urge Coming On,Nick Waterhouse,I Feel an Urge Coming On,Nick Waterhouse,restless;urban;hopeful,soul,0.85
+19,6,Angel Eyes,Ella Fitzgerald,Angel Eyes,Ella Fitzgerald,bittersweet;nostalgic;warm,jazz,0.9
+19,7,Hable con Ella,Vicente Amigo,Hable con Ella,Vicente Amigo,melancholic;nostalgic;restrained,flamenco,0.85
+19,8,The Crow Knows,J Majik,The Crow Knows,J Majik,restless;urban;melancholic,drum_and_bass,0.85
+20,1,Buggin',Hot Since 82,Buggin',Hot Since 82,restless;urban;unresolved,deep_house,0.85
+20,2,想念你 (Live),李玟,想念你 (Live),李玟,nostalgic;warm;bittersweet,mandopop,0.85
+20,3,Distance,Jacques Greene,Distance,Jacques Greene,dreamy;urban;nostalgic,electronic,0.85
+20,4,Where the Light Goes,Pat Dam Smyth,Where the Light Goes,Pat Dam Smyth,hopeful;warm;nostalgic,folk_pop,0.85
+20,5,你有自己一套,at17,你有自己一套,at17,warm;nostalgic;hopeful,mandopop,0.85
+20,6,Marika Is Sleeping,The Japanese House,Marika Is Sleeping,The Japanese House,dreamy;introspective;melancholic,dream_pop,0.9
+20,7,Sunlight,Hozier,Sunlight,Hozier,warm;hopeful;clear,folk,0.85
+20,8,Child Asleep,The Faint,Child Asleep,The Faint,dreamy;melancholic;restrained,indie_electronic,0.85
+21,1,"""Ständchen in D Minor (After Schubert), S. 560""",Franz Liszt,"""Ständchen in D Minor (After Schubert), S. 560""",Franz Liszt,melancholic;introspective;restrained,classical,0.9
+21,2,The Ride,Allison Miller,The Ride,Allison Miller,restless;urban;hopeful,jazz,0.85
+21,3,And The Winner Is,Gérard Darmon,And The Winner Is,Gérard Darmon,melancholic;nostalgic;bittersweet,chanson,0.9
+21,4,Shapeshifter,Alexi Tuomarila,Shapeshifter,Alexi Tuomarila,introspective;restrained;melancholic,modern_jazz,0.85
+21,5,情人节快乐,曹格,情人节快乐,曹格,warm;nostalgic;bittersweet,mandopop,0.85
+21,6,Thickening Air (tidal pool version),Barbarossa,Thickening Air (tidal pool version),Barbarossa,misty;introspective;restrained,ambient,0.85
+21,7,Talk Tick Talk,Strings & Timpani,Talk Tick Talk,Strings & Timpani,restless;urban;unresolved,electronic,0.85
+21,8,Alice,Lady Gaga,Alice,Lady Gaga,dreamy;nostalgic;bittersweet,art_pop,0.85
+22,1,C/2015 V2,Meat Beat Manifesto,C/2015 V2,Meat Beat Manifesto,restless;unresolved;urban,electronic,0.85
+22,2,Search,Doon Kanda,Search,Doon Kanda,introspective;dreamy;detached,ambient,0.85
+22,3,Strange Things,DOUBLE,Strange Things,DOUBLE,urban;nostalgic;bittersweet,r&b,0.85
+22,4,Life Is Good (feat. Drake),Future,Life Is Good (feat. Drake),Future,urban;restless;hopeful,hip_hop,0.85
+22,5,Roter Teppich,OTTO,Roter Teppich,OTTO,urban;restless;unresolved,electronic,0.8
+22,6,Dying of Jealousy,HTRK,Dying of Jealousy,HTRK,melancholic;restrained;unresolved,darkwave,0.9
+22,7,Big Jet Plane,Angus & Julia Stone,Big Jet Plane,Angus & Julia Stone,dreamy;melancholic;warm,folk,0.9
+22,8,我的驕傲無可救藥 (Live 版）,陳綺貞,我的驕傲無可救藥 (Live 版）,陳綺貞,introspective;melancholic;restrained,singer_songwriter,0.85
+23,1,Unless You Love Me,Friska Viljor,Unless You Love Me,Friska Viljor,warm;hopeful;nostalgic,indie_folk,0.85
+23,2,Fortean Steed,Teeth Of The Sea,Fortean Steed,Teeth Of The Sea,restless;urban;unresolved,post_rock,0.85
+23,3,What Are You Doing the Rest of Your Life?,The Tierney Sutton Band,What Are You Doing the Rest of Your Life?,The Tierney Sutton Band,warm;nostalgic;bittersweet,jazz,0.85
+23,4,Ministry of Magic,Alexandre Desplat,Ministry of Magic,Alexandre Desplat,introspective;restrained;melancholic,film_score,0.9
+23,5,She Wolf,Shakira,She Wolf,Shakira,sensual;urban;restless,latin_pop,0.85
+23,6,It's Gonna Be Me,*NSYNC,It's Gonna Be Me,*NSYNC,hopeful;warm;nostalgic,pop,0.85
+23,7,Exodus,Alexandre Desplat,Exodus,Alexandre Desplat,introspective;melancholic;restrained,modern_classical,0.9
+23,8,Holy Woods,Jonathan Hultén,Holy Woods,Jonathan Hultén,introspective;melancholic;dreamy,folk,0.85
+24,1,Fingerprints,Ane Brun,Fingerprints,Ane Brun,introspective;melancholic;restrained,singer_songwriter,0.85
+24,2,换装,王诗安,换装,王诗安,dreamy;urban;clear,art_pop,0.85
+24,3,心酸 / 浪费 / 耳朵 / 想自由 (Live),林宥嘉,心酸 / 浪费 / 耳朵 / 想自由 (Live),林宥嘉,melancholic;bittersweet;introspective,mandopop,0.9
+24,4,The Scientist,Coldplay,The Scientist,Coldplay,melancholic;nostalgic;bittersweet,alternative_rock,0.9
+24,5,風待ち,伍々慧,風待ち,伍々慧,introspective;melancholic;restrained,fingerstyle_guitar,0.9
+24,6,The Flood,Haiku Salut,The Flood,Haiku Salut,dreamy;misty;restrained,ambient,0.85
+24,7,Love Me Like You Do,Ellie Goulding,Love Me Like You Do,Ellie Goulding,warm;hopeful;sensual,electropop,0.85
+24,8,Cherry,Chromatics,Cherry,Chromatics,dreamy;nostalgic;urban,synthpop,0.9
+25,1,He's Mine,MoKenStef,He's Mine,MoKenStef,warm;nostalgic;hopeful,r&b,0.85
+25,2,staples,Lowly,staples,Lowly,introspective;melancholic;restrained,ambient,0.85
+25,3,Play我呸 - Play World Tour Live,JOLIN蔡依林,Play我呸 - Play World Tour Live,JOLIN蔡依林,restless;urban;clear,mandopop,0.85
+25,4,Algol,Erik Truffaz,Algol,Erik Truffaz,introspective;melancholic;restrained,modern_jazz,0.85
+25,5,"""Solomon, HWV 67, Act III: The Arrival of the Queen of Sheba""",George Frideric Handel,"""Solomon, HWV 67, Act III: The Arrival of the Queen of Sheba""",George Frideric Handel,clear;hopeful;restless,baroque,0.95
+25,6,Silence II,Son Lux,Silence II,Son Lux,introspective;melancholic;restrained,modern_classical,0.9
+25,7,Occurring In Waves,Fenella,Occurring In Waves,Fenella,dreamy;misty;restrained,ambient,0.85
+25,8,Prismatism,All India Radio,Prismatism,All India Radio,dreamy;misty;restrained,ambient,0.85
+26,1,Shepperton Moon Landing,Special Request,Shepperton Moon Landing,Special Request,restless;urban;unresolved,electronic,0.85
+26,2,Malaga,Allison Miller,Malaga,Allison Miller,warm;clear;hopeful,jazz,0.85
+26,3,BROKEN LITTLE ORPHAN,Perry Blake,BROKEN LITTLE ORPHAN,Perry Blake,melancholic;lonely;restrained,art_pop,0.85
+26,4,The Bloop,Hydrogen Sea,The Bloop,Hydrogen Sea,misty;detached;unresolved,ambient,0.85
+26,5,Down The Meadow,Elena Setién,Down The Meadow,Elena Setién,dreamy;warm;nostalgic,folk,0.85
+26,6,春风吹之吹吹风mix,方大同,春风吹之吹吹风mix,方大同,warm;nostalgic;hopeful,mandopop,0.85
+26,7,Lovely Lonely Cat (Feat. Pernelle),Cosmograph / Penelle,Lovely Lonely Cat (Feat. Pernelle),Cosmograph / Penelle,lonely;dreamy;detached,ambient_pop,0.85
+26,8,Pitter-Patter,Rymden,Pitter-Patter,Rymden,restrained;melancholic;introspective,modern_jazz,0.85
+27,1,Peer Gynt,David Garrett,Peer Gynt,David Garrett,restrained;melancholic;clear,classical_crossover,0.85
+27,2,The Last Temptation of Brussels,Bill Pritchard,The Last Temptation of Brussels,Bill Pritchard,melancholic;restrained;bittersweet,chamber_pop,0.85
+27,3,Juvenescence,verzache,Juvenescence,verzache,dreamy;nostalgic;hopeful,lo_fi,0.85
+27,4,Do That for You,Andreya Triana,Do That for You,Andreya Triana,warm;hopeful;bittersweet,neo_soul,0.85
+27,5,Be Alright,The Dandy Warhols,Be Alright,The Dandy Warhols,hopeful;warm;restrained,indie_rock,0.85
+27,6,Money in the Desert - Live,Bill Laurance,Money in the Desert - Live,Bill Laurance,restrained;introspective;bittersweet,modern_classical,0.9
+27,7,TANGO,坂本龍一,TANGO,坂本龍一,restrained;melancholic;bittersweet,modern_classical,0.9
+27,8,ATAXIA_B1,Rian Treanor,ATAXIA_B1,Rian Treanor,restless;urban;unresolved,electronic,0.8
+28,1,On The Ground,ROSÉ,On The Ground,ROSÉ,hopeful;urban;clear,k_pop,0.85
+28,2,桜色,竹井詩織里,桜色,竹井詩織里,nostalgic;warm;dreamy,j_pop,0.85
+28,3,Eternity Theme,Eleni Karaindrou,Eternity Theme,Eleni Karaindrou,introspective;melancholic;restrained,modern_classical,0.95
+28,4,Everybody Hates Me,The Japanese House,Everybody Hates Me,The Japanese House,melancholic;lonely;restless,indie_pop,0.85
+28,5,Nonstop,Drake,Nonstop,Drake,urban;restless;hopeful,hip_hop,0.85
+28,6,Take on Me,Shalosh,Take on Me,Shalosh,restless;urban;unresolved,jazz,0.85
+28,7,Swift Kick in the Butt,Jay-Jay Johanson,Swift Kick in the Butt,Jay-Jay Johanson,restless;urban;bittersweet,trip_hop,0.85
+28,8,Black Black Heart,David Usher / Jeff Pearce,Black Black Heart,David Usher / Jeff Pearce,melancholic;restrained;bittersweet,alternative_rock,0.9
+29,1,Whyrl,Stenny,Whyrl,Stenny,restrained;melancholic;urban,electronic,0.85
+29,2,Homegrown,Rymden,Homegrown,Rymden,introspective;warm;nostalgic,jazz,0.85
+29,3,Cruiser,Bethany Curve,Cruiser,Bethany Curve,dreamy;misty;restrained,shoegaze,0.85
+29,4,Merry Christmas Mr. Lawrence,Anastasi,Merry Christmas Mr. Lawrence,Anastasi,introspective;melancholic;restrained,modern_classical,0.95
+29,5,"""Sweet Dreams, Helena""",Kevin Kern,"""Sweet Dreams, Helena""",Kevin Kern,introspective;dreamy;nostalgic,new_age,0.85
+29,6,Perfect Day,Lou Reed,Perfect Day,Lou Reed,nostalgic;warm;bittersweet,folk_rock,0.9
+29,7,推开世界的门,杨乃文,推开世界的门,杨乃文,introspective;melancholic;hopeful,mandopop,0.9
+29,8,"""My Moment (feat. 2 Chainz, Meek Mill and Jeremih)""",DJ Drama,"""My Moment (feat. 2 Chainz, Meek Mill and Jeremih)""",DJ Drama,urban;restless;hopeful,hip_hop,0.85
+30,1,Babylon Fall,GOTH-TRAD,Babylon Fall,GOTH-TRAD,restless;urban;melancholic,industrial_techno,0.85
+30,2,Love Theme II,梅林茂,Love Theme II,梅林茂,melancholic;introspective;restrained,film_score,0.9
+30,3,Superficial Love,Calica,Superficial Love,Calica,urban;restless;bittersweet,indie_pop,0.85
+30,4,Station,Låpsley,Station,Låpsley,melancholic;urban;restrained,art_pop,0.85
+30,5,Pyotr Ilyich Tchaikovsky: Swan Lake,Act 2 - No.10 Scène (Moderato),Pyotr Ilyich Tchaikovsky: Swan Lake,Act 2 - No.10 Scène (Moderato),melancholic;restrained;bittersweet,classical,0.9
+30,6,THERE YOU ARE (HIDING PLACE),La Dispute,THERE YOU ARE (HIDING PLACE),La Dispute,restless;melancholic;unresolved,post_hardcore,0.85
+30,7,All I Want,Stonefox,All I Want,Stonefox,dreamy;warm;nostalgic,dream_pop,0.85
+30,8,Cold,Sam Loveridge,Cold,Sam Loveridge,melancholic;lonely;restrained,ambient_pop,0.85

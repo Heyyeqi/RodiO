@@ -6017,3 +6017,34 @@ JP/US/其他国家的 `fetchCityLabelByCoords` 分支目前各自有特定字段
 ### 规模
 - `core/context.js`：13 insertions(+), 8 deletions(-)
 - commit: `0172ed0`
+
+---
+
+## batch4 全量曲库标注 + 人工复核抽样
+
+### 起因
+Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=2947）后，对剩余全部曲库进行全量标注，覆盖未标注曲目。
+
+### 做了什么
+1. 新建 `scripts/label-track-sample-batch4.js`：全量遍历剩余曲库（候选池 7454 首），直接查 DB 排除 batch1/2/3 已标注的 track_key，天然支持断点续跑；去掉了 batch3 的抽样逻辑与每艺人配额上限；`LABEL_SOURCE='deepseek_sample_batch4'`；Summary 新增 `Processed: X / Y total candidates` 进度行。SYSTEM_PROMPT、5 个封闭词表、validateLabels、DeepSeek 调用参数、DB 字段写入逻辑均原样保留。
+2. 新建 `scripts/generate-batch4-human-check.js`：纯本地、无 API key 依赖，从 batch4 全量 CSV 中不放回随机抽样 240 行（30 组 × 8 首），输出 `output/track_label_review_batch4_human_check.csv`，列结构与 batch3 人工复核文件一致。
+
+### 运行结果
+- 候选池总数：7454 首
+- 成功写入（DB `track_profile`，`label_source='deepseek_sample_batch4'`）：7166 首
+- 跳过（duplicate key，候选池内重复 track_key）：269 首
+- 最终失败（API 失败/超时，耗尽重试）：125 首
+- 人工复核 CSV 抽样：240 首（30 组 × 8 首）
+- 注：脚本 Summary 中"写入 7173 行"为物理行计数（CSV 中 7 首曲目标签含字段内换行被拆成多物理行），经 track_key 比对确认 DB 实际唯一写入 7166 行，与 CSV 逻辑记录数完全一致。
+
+### 验证
+- `output/track_label_review_batch4.csv` 生成，track_key 与 DB 逐条比对 0 差异
+- `output/track_label_review_batch4_human_check.csv` 241 行（含表头），group 1-30 × seq_in_group 1-8 连续唯一
+- DB 写入行数（7166）与脚本输出 written 数一致
+
+### 规模
+- `scripts/label-track-sample-batch4.js`：新建
+- `scripts/generate-batch4-human-check.js`：新建
+- `output/track_label_review_batch4.csv`：新建（7166 条标注记录）
+- `output/track_label_review_batch4_human_check.csv`：新建（240 行抽样）
+- commit: `f071320`
