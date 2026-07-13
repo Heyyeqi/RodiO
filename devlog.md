@@ -4,6 +4,52 @@
 
 ---
 
+## 2026-07-12 TTS 供应商切换：MiniMax → Fish Audio
+
+### 起因
+听感评估后判断 MiniMax 与 Fish Audio 自然度差不多，Fish Audio 免费额度（`s2.1-pro-free`，限时到 2026-07-底，Fair Use 下无限量）覆盖当前低频播报场景，且 `FISH_API_KEY`/`FISH_VOICE_ID` 已在 Railway 生产环境变量中配置好但从未被代码引用。决定统一到 Fish Audio，不再维护 MiniMax 这套。
+
+### 做了什么
+- `core/tts.js`：`synthesizeWithOptions` 内部实现从 MiniMax（`https://api.minimax.chat/v1/t2a_v2`，JSON 响应体内 base64/hex 音频）改为 Fish Audio（`https://api.fish.audio/v1/tts`，`model: s2.1-pro-free` header，`prosody.speed` 控制语速，响应体直接是原始音频二进制，无需 JSON 解析/base64 解码）
+- 环境变量从 `MINIMAX_API_KEY` 改为 `FISH_API_KEY` + `FISH_VOICE_ID`（作为 `reference_id`），均已存在于 Railway，无需新增变量
+- 对外接口 `synthesize()` / `synthesizeSlow()` 签名不变，`server.js` 两处调用点（DJ 播报 / `/api/explain`）无需改动
+- 保留原有串行队列（`enqueueTtsTask`）+ 请求间隔节流（`TTS_MIN_GAP_MS`，沿用 MiniMax 时期的 2000ms 保守值，未验证 Fish Audio 实际限流阈值）
+
+### 验证
+- `node --check core/tts.js` 通过
+- 直接 require 真实模块调用 `synthesizeSlow()`（未经过 server.js），200 响应，本地生成合法 MP3（128kbps/44.1kHz），确认业务代码路径本身（非仅 curl 裸测试）可用
+
+### 遗留问题
+- `MINIMAX_API_KEY` 未从 Railway 删除（保留作回退用，当前代码已无引用）
+- Fish Audio 实际限流阈值未知，`TTS_MIN_GAP_MS=2000` 是沿用旧值的保守估计，未针对性验证
+- `s2.1-pro-free` 是限时免费模型（到 2026-07-底），到期后需评估按量付费或切回 MiniMax
+- 闽南话/福州话等方言混读效果未做针对性验证，只测试过普通话/英文场景
+
+---
+
+## 2026-07-12 修复：/api/explain 的 explainClient 迁移到 DeepSeek
+
+### 做了什么
+- Railway 生产环境排查发现两个独立问题：`DASHSCOPE_API_KEY`（server.js 的 `explainClient`，供 `/api/explain` DJ 播报调用 `qwen-max`）已过期返回 401；`DEEPSEEK_API_KEY`（`core/claude.js` 选曲用，Phase 1 补货失败时的降级路径）在 Railway 上完全未配置
+- 决定统一到 DeepSeek，废弃 DashScope：`server.js` 的 `explainClient` 改为 `apiKey: process.env.DEEPSEEK_API_KEY`、`baseURL: 'https://api.deepseek.com'`；`model` 从 `qwen-max` 改为 `deepseek-v4-flash`（与 `core/claude.js` 保持一致）；补充 `thinking: { type: 'disabled' }` 参数（同 `core/claude.js` 用法，避免推理模式拖慢 TTS 前置延迟）
+- Railway 生产环境变量新增 `DEEPSEEK_API_KEY`（复用本地 `.env` 已验证可用的 key），修复 Phase 2 降级选曲的兜底路径
+- 本次改动在独立 worktree（`fix/explain-client-deepseek` 分支，基于 `origin/main`）完成，未接触 `codex/deploy-noon-air-v2-islands-tiles` 分支上尚在进行的视觉渲染工作
+
+### 改动文件
+- `server.js`（`explainClient` 初始化、`/api/explain` 内 `model` 与 `thinking` 参数）
+- `devlog.md`
+
+### 验证
+- `node --check server.js` 通过
+- 用 curl 直接对 `https://api.deepseek.com/chat/completions` 发起请求验证 `DEEPSEEK_API_KEY` 有效（200，返回 `model: deepseek-v4-flash` 的正常 completion）
+
+### 遗留问题
+- Railway 上的 `DASHSCOPE_API_KEY` 未删除（保留以防回滚需要，当前代码已无引用）
+- CLAUDE.md 技术栈表格仍写"AI 选曲 | Qwen via DashScope"，与实际代码（DeepSeek）不符，需要后续更新
+- `/api/explain` 接口本身仍是 Qwen/TTS 任一失败即 500，无优雅降级（已知问题，本次未处理）
+
+---
+
 ## 2026-07-11 修复 bootstrap 贴图异步解码竞争条件
 
 ### 原因
@@ -6048,3 +6094,48 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - `output/track_label_review_batch4.csv`：新建（7166 条标注记录）
 - `output/track_label_review_batch4_human_check.csv`：新建（240 行抽样）
 - commit: `f071320`
+
+---
+
+## 2026-07-13 移动端 WebGL 性能优化
+
+### 起因
+外部评审（Evan）反馈 RodiO 在手机上渲染负载偏重。
+
+### 做了什么
+- `pwa/earth3d.js` 新增 `isMobileDevice()`（视口最短边 ≤820 或 `matchMedia('(pointer: coarse)')` 命中，可通过 `?lite=1` 强制覆盖），驱动三处降级：
+  - `renderer.setPixelRatio`：移动端封顶 1.5，桌面端维持封顶 2
+  - 5 处 `SphereGeometry`（earth/atmosphere/atmosphere2/RDL 瓦片球/云层）精度：移动端 64×64，桌面端维持 128×128
+  - `antialias`：移动端关闭，桌面端维持开启
+- 新增 `?debugWebGL=1` 调试参数，开启后打印 GPU 诊断信息（maxTextureSize、devicePixelRatio、GPU vendor/renderer 通过 `WEBGL_debug_renderer_info` 扩展读取）
+- 现有的 `isLowSpecularDevice()`（仅用于海洋高光贴图分辨率选择）保持独立未改动，语义不等价（无 `?lite=1` 覆盖），未复用
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- 逐条核对 diff：仅涉及 `pwa/earth3d.js`，`git status` 确认无 package.json/package-lock.json 变化
+
+### 规模
+- `pwa/earth3d.js`：40 insertions(+), 7 deletions(-)
+- commit: `32cf706`
+
+---
+
+## 2026-07-13 修复 track_profile.sequence_shape 字段缺失 + 回填
+
+### 起因
+核对 batch4 标注数据时发现：`core/state.js` 的 `track_profile` 建表语句从 Phase 1 起就漏掉了 `sequence_shape` 列——4 批标注脚本里 LLM 都正常生成了这个字段、也过了封闭词表校验、也写进了各自的 CSV，但 `INSERT` 语句没带这一列，导致这 11109 条记录的 sequence_shape 数据实际只存在于 CSV，数据库里一直是空的。
+
+### 做了什么
+- `core/state.js`：建表语句补上 `sequence_shape TEXT` 列（位于 `label_source` 之后、Housekeeping 之前）；新增 `PRAGMA table_info` 检查 + `ALTER TABLE ADD COLUMN` 迁移块（与既有的 `play_events.transition_cost`/`song_feedback.score` 迁移写法一致，重复启动忽略 duplicate column 报错）
+- 新建 `scripts/backfill-sequence-shape.js`：依次读取 4 批标注 CSV（`track_label_review.csv`/`_batch2.csv`/`_batch3.csv`/`_batch4.csv`），用 `normalizeSongKey`/`normalizeArtistKey` 算出 track_key，`UPDATE track_profile SET sequence_shape = ? WHERE track_key = ?` 回填
+
+### 验证
+- `node --check core/state.js` / `scripts/backfill-sequence-shape.js` 均通过
+- `SELECT COUNT(*) FROM track_profile WHERE sequence_shape IS NOT NULL` = 11109，等于 track_profile 总行数，100% 覆盖
+- 9 种 sequence_shape 取值分布合理（slow_opening/city_to_inner_room 占多数）
+- 回填脚本报告"匹配更新 11116"与 DB 非空数 11109 的 7 行差异，核实为 batch4 内部 7 组同曲不同版本（如宇多田ヒカル《First Love》原版与"(2022 Mix)"版）经 `normalizeSongKey` 归一化后 track_key 相同，非数据丢失
+
+### 规模
+- `core/state.js`：13 insertions(+)
+- `scripts/backfill-sequence-shape.js`：新建
+- commit: `f8d5fb5`
