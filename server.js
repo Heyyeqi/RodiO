@@ -525,11 +525,18 @@ function makeCuratedTrackKey(name, artist) {
 }
 
 function curatedTrackToQueueItem(track) {
+  const trackKey = `${normalizeSongKey(track.name)}::${normalizeArtistKey(track.artist)}`
+  const profile = state.getTrackProfile(trackKey)
+  const rhythmicMotion = (profile && typeof profile.rhythmic_motion === 'number')
+    ? profile.rhythmic_motion
+    : 0.344
   return {
     song_info: {
       id: track.id || null,
       name: track.name,
       artist: track.artist,
+      rhythmic_motion: rhythmicMotion,
+      duration_ms: track.duration_ms || null,
     },
     requested_song_info: {
       id: track.id || null,
@@ -748,6 +755,14 @@ async function resolveQueue(songs) {
   for (let index = 0; index < songs.length; index++) {
     const song = songs[index]
     try {
+      // ── 查询 track_profile 获取 rhythmic_motion（两队共用的歌曲级运动强度）──
+      const trackKey = `${normalizeSongKey(song.name)}::${normalizeArtistKey(song.artist)}`
+      const profile = state.getTrackProfile(trackKey)
+      const rhythmicMotion = (profile && typeof profile.rhythmic_motion === 'number')
+        ? profile.rhythmic_motion
+        : 0.344  // 全库均值兜底
+      // ── /track_profile ──
+
       if (useSpotify) {
         let match = null
         try {
@@ -769,6 +784,8 @@ async function resolveQueue(songs) {
               id: match.id || song.id || null,
               name: match.name || song.name,
               artist: actualArtists || song.artist,
+              rhythmic_motion: rhythmicMotion,
+              duration_ms: match.duration_ms || null,
             },
             requested_song_info: { ...song },
             spotify_uri: match.uri,
@@ -783,7 +800,7 @@ async function resolveQueue(songs) {
       const { url, id: realId } = await ncmGetUrl(song)
       if (!url) continue
       spotifyQueue[index] = {
-        song_info: { ...song, id: realId || song.id },
+        song_info: { ...song, id: realId || song.id, rhythmic_motion: rhythmicMotion },
         requested_song_info: { ...song },
         play_url: url,
         source: 'ncm',
@@ -911,7 +928,7 @@ function triggerQwenEnhancer(reason = 'background', period = null) {
       const prepended = queueManager.prepend(filtered, `qwen-enhancer:${reason}`)
       const actuallyPrepended = prepended.slice(0, filtered.length)
       rememberRecentRecommendedQueue(filtered)
-      console.log(`[queue] Phase 2(${reason}) 前插 ${filtered.length} 首 Qwen 选曲`)
+      console.log(`[queue] Phase 2(${reason}) 前插 ${filtered.length} 首 DeepSeek 选曲`)
       return actuallyPrepended
     } catch (error) {
       console.warn(`[queue] Phase 2(${reason}) 跳过: ${error.message}`)
