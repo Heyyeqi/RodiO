@@ -14,6 +14,10 @@ const claude = require('./core/claude')
 const tts = require('./core/tts')
 const state = require('./core/state')
 const scheduler = require('./core/scheduler')
+const { runShadowRecall } = require('./core/shadow-recall')
+const { transitionCost } = require('./core/transition-cost')
+const { logShadowRerank } = require('./core/candidate-rerank')
+const { generateShadowMoodIntent } = require('./core/mood-intent')
 const { getAstronomyContext } = require('./core/astronomy')
 const spotify = require('./core/spotify')
 const { createQueueManager } = require('./core/queue-manager')
@@ -848,10 +852,9 @@ async function fillQueueFromSpotifyPlaylists(
     let pulled = await pullPlaylistItems(baseItems)
     if (
       pulled.length === 0 &&
-      lastPhase1Meta.cachedTrackCount === 0 &&
       !lastPhase1Meta.freshPlaylistFetchAttempted
     ) {
-      console.log(`[spotify] Phase 1(${reason}) cache 为空，强制 fresh fetch playlist tracks`)
+      console.log(`[spotify] Phase 1(${reason}) 补货为空，强制 fresh fetch playlist tracks`)
       pulled = await pullPlaylistItems(baseItems, { forceRefresh: true })
     }
     if (!pulled.length) break
@@ -1098,7 +1101,7 @@ async function buildReadyPoolBatch(input, options = {}) {
     const match = candidateByKey.get(key)
     if (!match || selectedKeys.has(key)) continue
     selectedKeys.add(key)
-    console.log(`[spotify] 直接入队(Qwen选曲): ${match.name} / ${match.artist}`)
+    console.log(`[spotify] 直接入队(DeepSeek选曲): ${match.name} / ${match.artist}`)
     selected.push(curatedTrackToQueueItem(match))
     if (selected.length >= READY_POOL_ROUND_SIZE) break
   }
@@ -1190,6 +1193,19 @@ queueManager.setRefillHandler(async ({ reason, needed, currentQueue, force, meta
       Math.max(0, targetSize - (currentQueue?.length || 0)),
       meta?.period || null
     )
+    // ── Phase 1 step 5: 路径 B shadow mode 影子召回（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    const queueFirst = (currentQueue && currentQueue[0]) || null
+    const queueFirstTrackKey = queueFirst
+      ? `${String(queueFirst.song_info?.name || '').trim().toLowerCase()}::${String(queueFirst.song_info?.artist || '').trim().toLowerCase()}`
+      : null
+    runShadowRecall(reason, spotifyItems, queueFirstTrackKey).catch(() => {})
+    // ── Phase 1 step 6: 候选打分影子日志（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    logShadowRerank(spotifyItems, queueFirstTrackKey, reason).catch(() => {})
+    // ── Phase 2 Step 1: 影子 Mood Intent（纯观测，fire-and-forget）──
+    // 绝不 await、绝不阻塞真实补货；任何异常由模块内部吞掉，不影响真实队列。
+    generateShadowMoodIntent(reason, currentQueue, meta).catch(() => {})
     if (spotifyItems.length > 0 || spotify.hasUserToken()) {
       return spotifyItems
     }
@@ -1457,8 +1473,82 @@ app.post('/api/explain', async (req, res) => {
     const recentOpeningsText = recentExplainOpenings.length > 0
       ? recentExplainOpenings.join(' / ')
       : '无'
+
+    // ── v1.4: 三层叠加引擎 → (intensity, warmth) 调性向量 ──────────────────
+    // 七曜 → (intensity, warmth)
+    const SHICHIYOU_TONALITY = {
+      0: { intensity: 0.7, warmth: 0.7 }, // 日曜
+      1: { intensity: 0.3, warmth: 0.4 }, // 月曜
+      2: { intensity: 0.8, warmth: 0.6 }, // 火曜
+      3: { intensity: 0.5, warmth: 0.5 }, // 水曜
+      4: { intensity: 0.4, warmth: 0.5 }, // 木曜
+      5: { intensity: 0.6, warmth: 0.6 }, // 金曜
+      6: { intensity: 0.3, warmth: 0.4 }, // 土曜
+    }
+    // 天气(weather.main) → (intensity, warmth)
+    const WEATHER_TONALITY = {
+      Clear:  { intensity: 0.6,  warmth: 0.6  },
+      Clouds: { intensity: 0.4,  warmth: 0.45 },
+      Rain:   { intensity: 0.35, warmth: 0.4  },
+      Snow:   { intensity: 0.25, warmth: 0.3  },
+      Haze:   { intensity: 0.3,  warmth: 0.35 },
+      Fog:    { intensity: 0.25, warmth: 0.4  },
+      Dust:   { intensity: 0.5,  warmth: 0.4  },
+    }
+    // 节气 seasonalQuality → (intensity, warmth)
+    const SEASON_TONALITY = {
+      // temperatureFeeling → warmth
+      temperature: {
+        '炎热': 0.75, '温暖': 0.6, '清凉': 0.4, '寒冷': 0.25,
+      },
+      // atmosphericMood → intensity
+      mood: {
+        '燥烈': 0.75, '焦灼': 0.75,
+        '期待': 0.55, '生机': 0.55, '舒爽': 0.55,
+        '清新': 0.45, '潮湿': 0.45,
+        '萧瑟': 0.3, '收敛': 0.3, '沉静': 0.3, '等待': 0.3,
+      },
+    }
+
+    const _now = new Date()
+    const _shichiyouIdx = _now.getDay()
+    const _shichiyou = SHICHIYOU_TONALITY[_shichiyouIdx] || { intensity: 0.45, warmth: 0.5 }
+
+    const _weatherMain = envSnapshot?.weather?.main || 'Clear'
+    const _weather = WEATHER_TONALITY[_weatherMain] || { intensity: 0.45, warmth: 0.5 }
+
+    const _season = envSnapshot?.astronomy?.seasonalQuality || {}
+    const _seasonWarmth = SEASON_TONALITY.temperature[_season.temperatureFeeling] ?? 0.5
+    const _seasonIntensity = SEASON_TONALITY.mood[_season.atmosphericMood] ?? 0.45
+
+    const intensity_final = _shichiyou.intensity * 0.3 + _seasonIntensity * 0.3 + _weather.intensity * 0.4
+    const warmth_final = _shichiyou.warmth * 0.3 + _seasonWarmth * 0.3 + _weather.warmth * 0.4
+
+    // 风格约束注入（与现有"禁止词汇"模式保持一致写法）
+    let tonalityConstraint = ''
+    if (intensity_final < 0.4) {
+      tonalityConstraint = `
+【风格约束：极克制】
+禁用词："画面"、"故事"、"仿佛"
+限制：句子≤2句，每句≤15字
+参照："雨停在窗上，没落下去。"`
+    } else if (intensity_final > 0.6) {
+      tonalityConstraint = `
+【风格约束：强烈】
+倾向词："裂开"、"涌"、"炸"
+允许2-3句，可以有更强画面感
+参照："鼓点砸下来的时候，灯光跟着塌了一半。"`
+    }
+    if (warmth_final > 0.55) {
+      tonalityConstraint += `
+倾向词：'绒'、'焐'、'暖光'`
+    } else if (warmth_final < 0.45) {
+      tonalityConstraint += `
+倾向词：'冷金属'、'玻璃'、'结霜'`
+    }
     const response = await explainClient.chat.completions.create({
       model: 'deepseek-v4-flash',
+      thinking: { type: 'disabled' },
       messages: [
         {
           role: 'system',
@@ -1549,7 +1639,7 @@ Q. 一句话的故事——虚构一个和这首歌气质完全吻合的场景�
 - "C'est le genre de chanson qui reste après que tu l'as oubliée."
 - "有時候一句閩南話比三句普通話都準——這首就是這樣。"
 - "어떤 노래는 설명이 필요 없어. 그냥 있어."
-- "今日は重陽。秋が本当に来た。"`,
+- "今日は重陽。秋が本当に来た。"${tonalityConstraint}`,
         },
         {
           role: 'user',
@@ -1579,12 +1669,38 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
     rememberExplainOpening(explainText)
     const sayAudio = await tts.synthesizeSlow(explainText)
 
+    try {
+      state.insertCommentaryHistory({
+        text: explainText,
+        song_name: name,
+        song_artist: artist,
+        weather_text: envSnapshot?.weather?.text,
+        theme_name: themeName,
+        intensity_score: intensity_final,
+        warmth_score: warmth_final,
+      });
+    } catch (e) {
+      console.error('[/api/explain] 历史记录写入失败（不影响主响应）:', e.message);
+    }
+
     return res.json({
       explain_text: explainText,
       say_audio: sayAudio,
     })
   } catch (e) {
     console.error('[/api/explain]', e)
+    return res.status(500).json({ error: e.message })
+  }
+})
+
+// v1.3: 读取 commentary 历史记录
+app.get('/api/commentary-history', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50
+    const rows = await state.getCommentaryHistory(limit)
+    res.json(rows)
+  } catch (e) {
+    console.error('[/api/commentary-history]', e)
     return res.status(500).json({ error: e.message })
   }
 })
@@ -1602,6 +1718,10 @@ app.post('/api/feedback', (req, res) => {
   }
 
   state.setSongFeedback(song, action)
+
+  // 累加式分数（带半衰期衰减）：dislike 传 -1，like 传 +1
+  // 与 feedback 文本列彼此独立，不影响现有 UI 高亮逻辑
+  state.adjustSongFeedbackScore(song, action === 'dislike' ? -1 : 1)
 
   if (action === 'dislike') {
     queueManager.remove(item => queueKeyFromItem(item) === `${name}::${artist}`.toLowerCase(), 'dislike-remove')
@@ -1745,6 +1865,61 @@ app.post('/api/spotify/playback-failed', (req, res) => {
 
   blacklistSpotifyUri(uri, [status, reason].filter(Boolean).join(' '))
   return res.json({ ok: true, blacklisted: true })
+})
+
+app.post('/api/play-event', async (req, res) => {
+  try {
+    const { event_type, name, artist, prev_name, prev_artist, played_seconds, duration_seconds, played_ratio, user_active, timestamp } = req.body
+    if (!event_type || !name || !artist) return res.status(400).json({ ok: false, error: 'missing required fields' })
+
+    const track_key = `${normalizeSongKey(name)}::${normalizeArtistKey(artist)}`
+    const prev_track_key = (prev_name && prev_artist)
+      ? `${normalizeSongKey(prev_name)}::${normalizeArtistKey(prev_artist)}`
+      : null
+
+    let context_snapshot = null
+    try {
+      const { getEnvironmentSnapshot } = require('./core/context')
+      const snap = await getEnvironmentSnapshot()
+      if (snap) {
+        context_snapshot = JSON.stringify({
+          weather: snap.weather ? snap.weather.text : null,
+          solar_phase: snap.astronomy ? snap.astronomy.solar.phase : null,
+          lunar_phase: snap.astronomy ? snap.astronomy.lunar.phase : null
+        })
+      }
+    } catch (_) { /* context snapshot optional */ }
+
+    // ── Phase 1 step 4: 观测模式 transition_cost 计算（不用于任何选曲决策）──
+    // a = prev_track（上一首），b = current_track（当前曲目）
+    // 复用共享模块 core/transition-cost.js
+    let transition_cost = null
+    if (prev_track_key) {
+      const prevProfile = state.getTrackProfile(prev_track_key)
+      const curProfile = state.getTrackProfile(track_key)
+      transition_cost = transitionCost(prevProfile, curProfile)
+      // 任一对象缺失或任一字段为 null → transition_cost 为 null（不用 0 凑）
+    }
+
+    state.insertPlayEvent({
+      event_type,
+      track_key,
+      prev_track_key,
+      transition_cost,
+      played_seconds: played_seconds || 0,
+      duration_seconds: duration_seconds || 0,
+      played_ratio: played_ratio || 0,
+      user_active: user_active ? 1 : 0,
+      scene_id: null,
+      context_snapshot,
+      created_at: timestamp || new Date().toISOString(),
+    })
+
+    res.json({ ok: true })
+  } catch (e) {
+    console.error('[play-event] write error:', e.message)
+    res.status(200).json({ ok: true, error: 'logged but internal error' })
+  }
 })
 
 // GET /api/next — 弹出队列下一首（前端歌曲结束时调用）

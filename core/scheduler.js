@@ -29,6 +29,19 @@ function broadcast(data) {
 function getTodayCount() { return todayCount }
 function incrementCount() { todayCount++ }
 
+// 七曜零点交接仪式台词：索引 = new Date().getDay()（今天当值、即将隐退的曜日）。
+// 前句"X隐去/离去"是退场，后句"Y接手/升起/流转/沉定/落地/复升"是明曜进场，
+// 保持"三字退 + 三字进"的对称节奏。
+const SHICHIYOU_CEREMONY_LINES = [
+  '子时。日离去，月接手。',   // 0 周日→周一
+  '子时。月隐去，火升起。',   // 1 周一→周二
+  '子时。火隐去，水流转。',   // 2 周二→周三
+  '子时。水散去，木沉定。',   // 3 周三→周四
+  '子时。木退去，金浮现。',   // 4 周四→周五
+  '子时。金隐去，土落地。',   // 5 周五→周六
+  '子时。土归寂，日复升。',   // 6 周六→周日
+]
+
 // 07:00 晨间播报
 cron.schedule('0 7 * * *', async () => {
   try {
@@ -66,6 +79,23 @@ cron.schedule('0 9-22 * * *', async () => {
     incrementCount()
   } catch (e) {
     console.error('[scheduler] 整点检查失败:', e.message)
+  }
+})
+
+// 23:58 七曜零点交接仪式播报（前端 rimGlow 呼吸过渡同步进行）
+cron.schedule('58 23 * * *', () => {
+  try {
+    const today = new Date().getDay() // 当前曜日（即将隐退）
+    broadcast({
+      type: 'shichiyou',
+      say: SHICHIYOU_CEREMONY_LINES[today],
+      play: [],
+      replace_pool: false,
+      reason: '七曜零点交接',
+      segue: '',
+    })
+  } catch (e) {
+    console.error('[scheduler] 七曜交接播报失败:', e.message)
   }
 })
 

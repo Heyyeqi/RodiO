@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-07-12 TTS 供应商切换：MiniMax → Fish Audio
+
+### 起因
+听感评估后判断 MiniMax 与 Fish Audio 自然度差不多，Fish Audio 免费额度（`s2.1-pro-free`，限时到 2026-07-底，Fair Use 下无限量）覆盖当前低频播报场景，且 `FISH_API_KEY`/`FISH_VOICE_ID` 已在 Railway 生产环境变量中配置好但从未被代码引用。决定统一到 Fish Audio，不再维护 MiniMax 这套。
+
+### 做了什么
+- `core/tts.js`：`synthesizeWithOptions` 内部实现从 MiniMax（`https://api.minimax.chat/v1/t2a_v2`，JSON 响应体内 base64/hex 音频）改为 Fish Audio（`https://api.fish.audio/v1/tts`，`model: s2.1-pro-free` header，`prosody.speed` 控制语速，响应体直接是原始音频二进制，无需 JSON 解析/base64 解码）
+- 环境变量从 `MINIMAX_API_KEY` 改为 `FISH_API_KEY` + `FISH_VOICE_ID`（作为 `reference_id`），均已存在于 Railway，无需新增变量
+- 对外接口 `synthesize()` / `synthesizeSlow()` 签名不变，`server.js` 两处调用点（DJ 播报 / `/api/explain`）无需改动
+- 保留原有串行队列（`enqueueTtsTask`）+ 请求间隔节流（`TTS_MIN_GAP_MS`，沿用 MiniMax 时期的 2000ms 保守值，未验证 Fish Audio 实际限流阈值）
+
+### 验证
+- `node --check core/tts.js` 通过
+- 直接 require 真实模块调用 `synthesizeSlow()`（未经过 server.js），200 响应，本地生成合法 MP3（128kbps/44.1kHz），确认业务代码路径本身（非仅 curl 裸测试）可用
+
+### 遗留问题
+- `MINIMAX_API_KEY` 未从 Railway 删除（保留作回退用，当前代码已无引用）
+- Fish Audio 实际限流阈值未知，`TTS_MIN_GAP_MS=2000` 是沿用旧值的保守估计，未针对性验证
+- `s2.1-pro-free` 是限时免费模型（到 2026-07-底），到期后需评估按量付费或切回 MiniMax
+- 闽南话/福州话等方言混读效果未做针对性验证，只测试过普通话/英文场景
+
+---
+
+>>>>>>> codex/deploy-noon-air-v2-islands-tiles
 ## 2026-07-12 修复：/api/explain 的 explainClient 迁移到 DeepSeek
 
 ### 做了什么
@@ -5404,3 +5428,715 @@ Noon Air V2 = GEBCO 深度 + GSHHG 海岸 + Stage 14+15 色彩感知层
 
 ### 遗留问题
 - E7 预设草案中的 4 个待确认问题（平滑过渡、城市可配置性、输出通道、远距离裁剪）需 RW 审阅后决定。
+
+## 2026-07-11 exp/b6-2x-source-cache-setup 分支审计归档
+
+### 做了什么
+对 `exp/b6-2x-source-cache-setup`（27 commits，分叉点 `daeb0a4`，2026-06-22 停更）进行只读审计并形成归档结论。
+
+### 审计结论
+该分支**不是废弃的平行实验**，是 B6-2X 语义掩码管线的早期阶段，后续演化为 origin/main 上 `core/m1` / `core/sal` / `core/vc` 的 RDL 语义仲裁系统（`e0d1fc1` 之后）。
+
+B-6 分支与 RDL 的关系是**互补，不是替代**：
+- **RDL M0-M4**（已在 origin/main）：提供粗粒度 biome 分类（ocean / shallow / land / desert / forest / wetland / ice / urban）+ 不确定性量化（SAL probability map / winner_margin）
+- **B-6 独有**（RDL 未覆盖）：海洋深度分层（deep / mid / shelf / shallow 4 级）、独立极地冰盖掩码（南极 / 格陵兰分开）、河流代理（WDBII L01/L01+L02）、湖泊（GSHHG L2 等 4 个）、海岸线距离场，共 35 个 float32 2K 掩码，已生成 286MB npz 产物（`d5b_output/structure_masks_2048x1024.npz`）
+
+两者方法论不同：B-6 是确定性地理规则（ETOPO1 + GSHHG + hand-crafted bbox），RDL 是概率 SAL 语义仲裁（多信号加权投票 + uncertainty），因此 B-6 掩码可作为 RDL 管线的补充输入层。
+
+### 决定
+**保留分支，不删除，不合并。** 如果将来 RDL 语义系统需要接入海洋分层 / 极地冰盖 / 河流 / 湖泊这些细粒度维度，B-6 的掩码和生成脚本（`scripts/generate_b6_structure_masks.py`）是现成的数据源。
+
+### 改动文件
+- `devlog.md`
+
+### 遗留问题
+- 未将 B-6 掩码实际接入 RDL 管线，未验证互补假设之外的具体接入方式
+- 接入方案（如作为 SAL 额外信号源、或 VC coastline_smoother 的额外约束层）留给真正要做的时候
+
+## 2026-07-11 HZ提交 track_profile schema
+
+### 做了什么
+- 在 SQLite 初始化 schema 中建立 `track_profile` 表及其索引，为 Phase 1 标签体系预留结构化存储。
+- 覆盖曲目身份、规范化元数据、播放行为计数、可播放性、客观标签、声学/体感标签、审美语义标签、场景适配和记忆置信度字段。
+
+### 改动文件
+- `core/state.js`
+- `devlog.md`
+
+### 遗留问题
+- 仅建表，未写入数据，Phase 1 后续步骤：抽样打标/播放日志/transition_cost观测/shadow mode 待做
+
+## 2026-07-11 HZ 处理 Spotify refresh_token 过期（invalid_grant）
+
+### 起因
+- Spotify 官方通知，2026-07-20 起 refresh token 有效期改为 6 个月。过期后用旧 token 换 access_token 会返回 `invalid_grant` 错误。App 必须在这种情况下丢弃已存 token 并引导用户重新走登录授权。
+
+### 做了什么
+- `refreshUserToken()`：解析 Spotify 返回体，若 `data.error === 'invalid_grant'` 则打印 `console.error` 并抛出带 `.code = 'invalid_grant'` 的可识别 Error。
+- `getUserToken()`（两处 catch）+ `initializeUserToken()`（一处 catch）：捕获到 `error.code === 'invalid_grant'` 时调用 `clearUserToken()` 清零内存 + 持久层，使 `hasUserToken()` 正确返回 false，`/api/spotify/status` 恢复 `auth_url: '/auth/spotify'`。
+- 非 `invalid_grant` 错误（网络超时等）不触发清 token，避免误判。
+
+### 改动文件
+- `core/spotify.js`
+
+### 遗留问题
+- 未在真实 invalid_grant 场景做端到端验证（当前 refresh token 尚未过期，仅逻辑走查通过）。线上已重新走过一次授权（2026-07-11），下次真正过期预计在 2027-01 左右。
+
+---
+
+## 2026-07-11 选曲模型从 Qwen 切换到 DeepSeek
+
+### 起因
+运营决定将选曲模型从 Qwen (qwen-max / DashScope) 切换到 DeepSeek (deepseek-chat)。
+此前 Qwen key 本地曾出现 401 错误。
+
+### 做了什么
+- `core/claude.js` — OpenAI client 初始化的 apiKey 从 `DASHSCOPE_API_KEY` 改为 `DEEPSEEK_API_KEY`，baseURL 从 `dashscope.aliyuncs.com/compatible-mode/v1` 改为 `api.deepseek.com`，model 参数从 `qwen-max` 改为 `deepseek-chat`
+- `server.js` — 日志文案中 "直接入队(Qwen选曲)" 改为 "直接入队(DeepSeek选曲)"
+
+### 改动文件
+- `core/claude.js`
+- `server.js`
+
+### 遗留问题
+- 线上 Railway 尚未配置 `DEEPSEEK_API_KEY`，需手动添加
+- `DASHSCOPE_API_KEY` 相关代码和 env 暂时保留，未清理
+
+---
+
+## 2026-07-11 Phase 1 步骤2 — 抽样 200 首 DeepSeek 打标
+
+### 做了什么
+- 新建 `scripts/label-track-sample.js`，离线一次性脚本
+- 从 `loadPool()`（11,732 首全量曲库）中随机抽样 200 首，每艺人最多 3 首
+- `track_key` 复用 `normalizeSongKey` / `normalizeArtistKey`（core/search-utils.js），不自己写归一化
+- 打标模型使用 DeepSeek（deepseek-chat），system prompt 内置 10 首人工校准的 few-shot 示例
+- 封闭词表校验：mood_tags（30 词）/ texture_tags（35 词）/ negative_tags（14 词）/ scene_id（14 词）/ sequence_shape（10 词），出现表外词自动重试（最多 3 次）
+- 写入 `track_profile` 表（INSERT OR REPLACE，幂等），label_version=v1_2026-07-11，label_source=deepseek_sample_batch1
+- 生成人工复核 CSV：`output/track_label_review.csv`（198 行，含所有标签字段）
+
+### 执行结果
+- 写入 198 行（2 首因 track_key 重复跳过）
+- 总 API 调用 208 次，词表越界重试 2 次（"accordion" → 扩充 word list 后重试成功；"energetic" → 重试后替换为 closed-vocab 词）
+- API 失败 6 次（均为 DeepSeek 返回截断 JSON），重试后均恢复
+- 耗时约 4-5 分钟（3 并发）
+
+### 改动文件
+- `scripts/label-track-sample.js`（新建）
+- `output/track_label_review.csv`（新建）
+
+### 遗留问题
+- 未做 Spotify 可播放性校验（validated_playable / playability_checked_at 留空）
+- 未扩展到全库打标或多模型复核（后续步骤）
+- 未接入真实播放链路
+- CSV 中 scene_fit JSON 存在双引号转义问题（不影响读取，但格式不够干净，后续可优化）
+
+## 2026-07-11 订正抽样打标词表 + 清空重跑
+
+### 做了什么
+- 上一轮脚本的 5 个 VOCAB 常量与方案文档真实封闭词表不一致，导致 110 行 mood_tags 违规、94 行 texture_tags 违规
+- `DELETE FROM track_profile WHERE label_source = 'deepseek_sample_batch1'` 清空 198 行脏数据
+- 将 `MOOD_VOCAB`（16 词）、`TEXTURE_VOCAB`（15 词）、`NEGATIVE_VOCAB`（10 词）、`SCENE_VOCAB`（10 词）、`SEQUENCE_VOCAB`（9 词）全部替换为方案文档原文
+- SYSTEM_PROMPT 内嵌的 5 组词表同步替换，10 个 few-shot 示例的 `scene_fit` key 和 `sequence_shape` 值按语义映射到新词表
+- 重新运行 200 首 DeepSeek 打标（INSERT OR REPLACE），覆盖同一 CSV 输出路径
+
+### 执行结果
+- DELETE 影响 198 行，本轮写入 200 行
+- 词表越界重试 0 次（五组词表在常量、提示词、few-shot 示例三方完全自洽）
+- API 失败 4 次（均已重试通过）
+
+### 改动文件
+- `scripts/label-track-sample.js`（修改：5 个 VOCAB 常量 + SYSTEM_PROMPT 词表 + 10 个 few-shot 示例）
+- `output/track_label_review.csv`（覆盖）
+
+### 遗留问题
+- few-shot 示例的 scene_fit / sequence_shape 映射为语义近似，非方案文档原始映射
+
+## 2026-07-11 播放行为日志功能（play_events 写入）
+
+### 做了什么
+- 新增播放行为日志功能：前端在 skip / complete / replay 三类事件发生时调用 `/api/play-event`，后端写入 `play_events` 表
+- `core/state.js` 新增并导出 `insertPlayEvent(event)`，复用模块内已有 `db` 实例（不暴露 db 给 server）
+- `server.js` 的 `/api/play-event` 路由改为 `async`，`getEnvironmentSnapshot()` 加 `await`，写入改用 `state.insertPlayEvent(...)`
+- 前端 `pwa/index.html` 的 `advanceToNext` / `playPrevious` 改为传 `name` / `artist`（及 `prev_name` / `prev_artist`）原始字段，后端用 `normalizeSongKey` / `normalizeArtistKey` 拼出 `track_key`（格式 "归一化曲名::归一化艺人名"）
+- 通过真实 HTTP 调用验证三类事件均成功写入 `play_events` 表；并复刻前端播放状态机验证 `prev_track_key` 取的是紧邻当前曲目之前那首
+
+### 遇到的 4 处问题及修复
+1. **getDb 缺失**：原路由用 `require('./core/state').getDb()` 取 db 实例，但 `state.js` 从未导出 `getDb`，调用直接报错；改为在 `state.js` 内新增 `insertPlayEvent` 并导出，server 端通过 `state.insertPlayEvent(...)` 写入，不暴露 db
+2. **getEnvironmentSnapshot 缺 await**：`getEnvironmentSnapshot()` 是 async 函数，原代码未 `await`，snapshot 拿到的是 Promise 而非对象；路由改为 `async` 并对调用加 `await`
+3. **track_key 前端传对象而非字符串**：前端原把整个 `state.currentTrack` 对象当 `track_key` 传入，后端无法拼 key；改为前端传 `name` / `artist` 原始字段，后端用归一化函数拼 `"曲名::艺人"`
+4. **prev_track_key off-by-one**：`playSong` 在切歌时才把刚播完的曲目推入 `playedHistory`，故上报时刻 `playedHistory` 最后一个元素（length-1）才是紧邻当前曲目之前那首；原代码取 `length-2` 多跳一首，改为 `length-1`（判断条件 `>= 1`）
+
+### 遗留问题
+- `scene_id` 暂时固定为 `null`，尚未接入场景识别
+- 惩罚逻辑（基于 skip/complete 调整推荐权重）与 shadow mode（先记录不干预）属于后续步骤，本轮未实现
+- 前端 `replay` 事件在 `playPrevious` 中触发，依赖 `playedHistory` 历史，边界场景（历史不足）已做 null 兜底
+
+## 2026-07-12 transition_cost 观测计算（Phase 1 步骤4）
+
+### 做了什么
+- 在 play_events 观测模式下为每条播放记录补充 `transition_cost` 字段，纯观测、不用于任何候选过滤或队列决策
+- `core/state.js`：play_events 表新增 `transition_cost REAL` 列（schema 迁移）；`insertPlayEvent` 增加 `transition_cost` 参数并写入新列；新增并导出 `getTrackProfile(trackKey)`（查 track_profile 五音色字段，无则返回 null）
+- `server.js`：`/api/play-event` 在 `insertPlayEvent` 前补充计算逻辑——prev 为 null → null；两首都查到且五字段非 null → 按公式算；否则 → null
+- 公式（权重照抄方案文档）：`|energy_a-energy_b|*0.30 + |brightness_a-brightness_b|*0.20 + |density_a-density_b|*0.15 + |vocal_presence_a-vocal_presence_b|*0.15 + |emotional_weight_a-emotional_weight_b|*0.20`，其中 a=prev_track、b=current_track
+
+### 迁移方式
+- 初始化时用 `PRAGMA table_info(play_events)` 读取现有列名，仅当 `transition_cost` 不在列名列表时才执行 `ALTER TABLE play_events ADD COLUMN transition_cost REAL`
+- 外层 try/catch 捕获异常，仅当错误信息不匹配 `duplicate column` 时才 re-throw，保证重复启动不崩溃
+- 实测：首次启动加列成功；二次重启列已存在，日志无 error/duplicate/crash，服务正常存活
+
+### 遗留问题
+- 仅在两首都有 track_profile 数据时才能算出值，全库覆盖率取决于打标进度（当前 200 首抽样打标，未覆盖全曲库）
+- 未做场景阈值判断（方案文档"十、连贯性控制"的 deep_night≤0.25、work_focus≤0.30 等），不干预队列，属后续步骤
+
+## 2026-07-12 路径 B shadow mode 影子召回观测（Phase 1 步骤5）
+
+### 做了什么
+- 新增 shadow mode 观测：在真实路径 B 补货（fillQueueFromSpotifyPlaylists）完成后，另起 fire-and-forget 异步调用，跑在 track_profile 数据上计算一组"影子候选"，记录候选数量与真实选中结果的重合度，纯观测
+- `core/state.js`：初始化时 `CREATE TABLE IF NOT EXISTS shadow_recall_log`（reason / real_count / shadow_candidate_count / overlap_count / created_at）；新增 `getAllTrackProfiles()`（读 track_profile 全部行）和 `insertShadowRecallLog(...)` 并导出
+- `core/shadow-recall.js`（新建）：`runShadowRecall(reason, spotifyItems, queueFirstTrackKey)`，候选来源 = track_profile 全表；过滤1 = 排除 getRecentPlays(50) 归一化命中的；过滤2 = 以队列第一首为参照算 transition_cost，仅保留 ≤0.35（参照曲目不在 profile 或无参照则跳过该过滤）；统计 shadow_candidate_count 与 overlap_count 后写入日志
+- `server.js`：在 `setRefillHandler` 的 `fillQueueFromSpotifyPlaylists` 返回后，以 `runShadowRecall(...).catch(()=>{})` 挂载，绝不 await、绝不阻塞真实补货
+
+### 硬性约束遵守
+- 未修改 fillQueueFromSpotifyPlaylists / setRefillHandler 的返回值，未触碰任何真实队列内容
+- 影子计算整体包 try/catch，内部异常仅 console.error 后吞掉，不影响真实补货
+- 未做完整6层分层召回，未引入 scene_id 判断
+
+### 验证
+- `node -c` 三个文件语法检查通过
+- 本地起服务触发真实补货（startup-background / heartbeat），shadow_recall_log 出现真实记录（real_count=0 因测试环境 Spotify 歌单为空走回退；shadow_candidate_count=200 因队列首首不在 profile 跳过 transition_cost 过滤）
+- 独立脚本验证 transition_cost 过滤生效：参照曲目命中 profile 时候选从 200 降至 185，写入值与手算一致
+- 真实补货结果（队列内容、spotifyItems）与改动前完全一致——影子逻辑只读 track_profile 和 recentPlays，不写回队列
+
+### 遗留问题
+- 当前测试环境 Spotify 用户歌单为空，真实路径 B 返回空，overlap_count 恒为 0；需在真实有歌单环境才能观测到非零重合度
+- shadow_candidate_count 上限取决于 track_profile 打标进度（当前 200 首）
+
+---
+
+## [Phase 1] DeepSeek 模型迁移：deepseek-chat → deepseek-v4-flash
+
+### 起因
+- deepseek-chat 将于 2026-07-24 停用，需提前迁移到 deepseek-v4-flash 以延续选曲/打标能力
+
+### 做了什么
+- 模型名替换：`core/claude.js` 与 `scripts/label-track-sample.js` 中 `deepseek-chat` → `deepseek-v4-flash`（含日志文案同步）
+- 关闭思考模式：deepseek-v4-flash 默认开启 thinking，需显式关闭以保持与原 deepseek-chat（非思考）行为一致。Node.js openai SDK（openai@6.44.0）不支持 `extra_body` 参数（会被静默忽略），故改为在 `chat.completions.create({...})` 第一个参数对象中直接以顶层属性 `thinking: { type: 'disabled' }` 传入（与 model、messages 同级）
+
+### 验证
+- `node -c` 两个文件语法检查通过
+- 真实调用确认响应无 `reasoning_content` 字段：`response.choices[0].message` 的 keys 仅 `["role","content"]`，`reasoning_content in message` 为 false
+- 单次请求耗时约 1.08 秒，与 deepseek-chat 时期（几秒内）相当，远低于思考模式下的十几到几十秒，佐证思考模式已关闭
+- 返回内容正常解析为 JSON
+
+### 遗留问题
+- 无
+
+---
+
+## [Phase 1] 修复 Prompt 逻辑缺口并重跑 200 首打标（v2）
+
+### 起因
+- 上一轮 v1 打标发现两个逻辑缺口：① 11 首 negative_tags 非空但 scene_fit 最高分仍 ≥0.7，负面标签形同虚设；② genre_family 有 80+ 种值，含 k_pop/kpop 重复等过度细分
+
+### 做了什么
+- `scripts/label-track-sample.js` SYSTEM_PROMPT 追加两条规则：第8条（negative_tags 非空时 scene_fit 所有分数 ≤0.6）、第9条（genre_family 优先广义常见名，避免 k_pop/kpop 这类重复与 jazz_hop 等过度细分）
+- `validateLabels()` 在 negative_tags 词表检查后追加硬校验：negative_tags 非空且 scene_fit 最高分 >0.6 即报错，复用现有 MAX_RETRIES 重试机制
+- 重试计数拆分：vocabRetries（词表越界）与 ruleRetries（新规则）分别统计，summary 输出新增"新规则重试"行
+- LABEL_VERSION 升到 v2_2026-07-13（区分修过 Prompt 的版本），label_source 保持 deepseek_sample_batch1
+
+### 验证
+- `node -c` 语法检查通过
+- 清空重跑：`DELETE FROM track_profile WHERE label_source='deepseek_sample_batch1'` 影响 200 行；重跑后写入 200 行（v2 版本）
+- 执行日志：总 API 调用 206 次，词表越界重试 0 次，新规则重试 0 次，API 失败/超时 6 次（JSON 解析瞬时失败，均在第2-3次重试成功），成功写入 200 行
+- genre_family 分布：从 80+ 降到 56 种，k_pop/kpop 重复已消除（仅剩 k_pop 一种）
+
+### 遗留问题
+- 无
+
+## [Phase 2] 扩展抽样打标到 1000 首（batch2 新增 800）
+
+### 起因
+- 按方案文档"200→1000"扩展顺序，在现有 batch1（200 首）基础上新增 800 首，凑足 1000 首样本池
+- 沿用 batch1 的 v2 Prompt（含第8/9条规则）与 validateLabels 硬校验，验证更大规模下的词表稳定性
+
+### 做了什么
+- 新增脚本 `scripts/label-track-sample-batch2.js`（原 batch1 脚本未改动，git diff 为空）
+- 合并艺人配额逻辑：`sampleWithArtistLimit` 增加 `initialQuota` 参数，抽样前从 DB 读取 batch1（label_source='deepseek_sample_batch1'）各艺人已用配额，batch1+batch2 合并后每艺人 ≤3
+- 从候选池排除 batch1 已标的 200 首（按 track_key 去重），避免重复标注浪费调用
+- 参数：SAMPLE_SIZE=800、LABEL_SOURCE='deepseek_sample_batch2'、LABEL_VERSION 保持 v2_2026-07-13
+- 输出新建 `output/track_label_review_batch2.csv`（仅含新 800 首抽样，不覆盖 batch1 CSV）
+
+### 结果
+- 796/800 成功写入（label_source = deepseek_sample_batch2）
+- 2 首 DROPPED（词表越界重试耗尽）：brass / saxophone 的 texture_tag 越界（Trophies (Brasstracks Cover)、Careless Whisper）
+- 2 首 SKIP（与 batch1 track_key 碰撞，normalize 后安全跳过）：Love Theme From "The Godfather" / Nino Rota、不想睡 / 梁靜茹
+- 54 个艺人合并后恰好达到上限 3，无超限；词表越界重试 8 次、新规则重试 0 次、API 失败 12 次（均重试成功）
+
+### 遗留
+- 目标新增 800，实际写入 796，差 4 首（2 越界丢弃 + 2 碰撞跳过）
+
+## 2026-07-12 Spotify 译名兜底搜索（LLM 猜原标题）
+
+### 起因
+- 中文译名歌曲（如韩语/日语原曲）在 Spotify 常规标题搜索中搜不到：结构化查询 + 宽松查询两层链路全部返回 null
+- 例：`再次重逢的世界` / 少女时代、`月光神殿` / 吉田潔 均搜不到
+
+### 做了什么
+- `core/claude.js` 新增 `guessOriginalTitle(name, artist)`：复用现有 DeepSeek client（同 model `deepseek-v4-flash` + `thinking: { type: 'disabled' }`），给定中文标题+艺人，若判断为外语译名则给出 1-3 个原始语言标题（日文/罗马字/英文），否则返回空；输出严格 JSON `{ candidates: string[], confidence: 'high'|'medium'|'low'|'unknown' }`；解析失败/异常一律返回 `{ candidates: [], confidence: 'unknown' }`，不抛异常；已加入 `module.exports`
+- `core/spotify.js` 的 `searchTrack()` 末尾（原 `searchTrackCache.set(cacheKey, null)` 之前）插入第三层兜底：调用 `guessOriginalTitle` → 若 `confidence !== 'unknown'` 且 `candidates.length > 0`，对每个候选标题构造临时 song 对象（标题替换为候选值、艺人不变）→ 复用 `buildStructuredQueries` / `runSpotifySearch` / `scoreSpotifyTrack`（保持 `allowExactTitleWithoutArtist: true`）→ 取最高分且过阈值的结果；命中打印 `[spotify] 译名兜底命中` 日志；整段包 try/catch，异常当作没帮上忙
+- 未改动 `buildStructuredQueries` / `buildLooseTitleQueries` / `scoreSpotifyTrack` 任何打分逻辑，未改动调用方
+
+### 验证
+- `node -c core/claude.js` / `node -c core/spotify.js` 语法检查通过
+- 真实命中 2 例：
+  - `再次重逢的世界` / 少女时代 → `Into the New World` / Girls' Generation（日志：`译名兜底命中: "再次重逢的世界" → "Into the New World" / 少女时代`）
+  - `月光神殿` / 吉田潔 → `Moonlight Temple` / oxinym;Symoo（日志：`译名兜底命中: "月光神殿" → "Moonlight Temple" / 吉田潔`）
+- "不知道"场景正确跳过：`坨坨坨坨坨坨坨坨` / 虚构乐队XYZ → `unknown`（不瞎猜）；`晴天` / 周杰伦（华语原创）→ `unknown`（正确识别非译名）
+- `searchTrackCache` 正常缓存兜底结果：同一首连续调用两次，第一次 4324ms（含 DeepSeek 猜测 + Spotify 搜索），第二次 0ms 直接命中缓存，未再调 DeepSeek
+
+### 遗留
+- 这层兜底只在常规搜索（结构化 + 宽松）全部失败时触发，不影响正常搜索路径和延迟
+- 临时验证脚本（`scripts/_verify_spotify_fallback.js` / `_verify_guess.js` / `_verify_cache.js`）仍留在磁盘，可手动清理
+
+## 2026-07-12 反馈分数累加机制（Step A：数据层）
+
+### 起因
+- 喜欢/不喜欢目前是二值标记（feedback 文本列 'like'/'dislike'），无法表达"连续不喜欢应该扣更多分、很久以前的反馈应该衰减"的语义
+- 后续打分/排序模块需要可累加、带时间衰减的偏好信号
+
+### 做了什么
+- `song_feedback` 表新增两列：`score REAL DEFAULT 0`、`score_updated_at TEXT`（PRAGMA 检查 + ALTER TABLE，try/catch 忽略 duplicate column，与 transition_cost 迁移同模式）
+- 新增 `decayScore(score, scoreUpdatedAt, now)`：半衰期公式 `score * 0.5 ** (天数/180)`，score 或 score_updated_at 为 null 时当 0 处理
+- 新增 `adjustSongFeedbackScore(song, delta)`：读当前→按半衰期衰减→累加 delta（dislike=-1, like=+1）→写回 score 与 score_updated_at；行不存在时自动 INSERT（与 setSongFeedback 解耦）；结果四舍五入到 6 位小数
+- 新增 `getSongFeedbackScore(song)`：只读，按同样半衰期公式返回当前衰减后的分数（不修改数据），供后续打分模块调用
+- `server.js` 的 `/api/feedback` 中 `setSongFeedback(song, action)` 之后追加 `adjustSongFeedbackScore(song, action === 'dislike' ? -1 : 1)`，两函数并存互不影响
+- `module.exports` 导出 `adjustSongFeedbackScore`、`getSongFeedbackScore`
+
+### 验证
+- `node -c core/state.js` / `node -c server.js` 语法检查通过
+- 场景A 连续点击：dislike→-1，再 dislike→-2，再 like→-1
+- 场景B 衰减：初始 -1，score_updated_at 改到 180 天前 → getSongFeedbackScore = -0.4994（≈ -0.5）；改到 360 天前 → -0.2497（≈ -0.25）
+- 场景C UI 无变化：feedback 文本列独立更新为 'like'/'dislike'，score 列独立累加，前端高亮逻辑与"点击立即跳过"行为完全不变
+
+### 遗留
+- score 尚未接入打分/排序模块，仅完成数据层累加
+- 临时验证脚本（`scripts/verify_feedback_score*.js`）仍留在磁盘，可手动清理
+
+## 2026-07-12 候选打分模块（Step B：影子模式，4 指标）
+
+### 起因
+- Step A 已完成 feedback score 数据层累加，但 score 尚未接入任何打分/排序逻辑
+- 需要一套候选打分体系（freshness/continuity/feedback/playability 四维加权），先以影子模式只记录、不影响真实选曲，验证打分分布合理性后再决定是否接入真实选曲
+- transition_cost 公式此前散落两份副本（server.js 内嵌 + shadow-recall.js 内嵌），本次是第三次使用，必须先提取为共享模块避免第三份复制
+
+### 做了什么
+- **前置重构**：新建 `core/transition-cost.js`，导出 `transitionCost(a, b)`（五维度加权：energy 0.30 / brightness 0.20 / density 0.15 / vocal_presence 0.15 / emotional_weight 0.20，sum(|差值|*权重)，权重和=1）；任一对象缺失或任一字段为 null 时返回 null（不用 0 凑）。`server.js` 删除内嵌计算块改为 `require('./core/transition-cost')`；`core/shadow-recall.js` 删除原地定义改为 `require('./core/transition-cost')`
+- **新建 `core/candidate-rerank.js`**：
+  - `computeCandidateScore(candidateSong, currentTrackKey)` 返回四维 + blended：`freshness`（查 play_events MAX(created_at)，无记录 raw_days=null/score=1，有记录 score=min(1, log(1+days)/log(1+90))）、`continuity`（查 track_profile 两行算 transitionCost，任一缺失 raw_cost=null/score=0.5 中性值，都在则 score=1-cost）、`feedback`（调 getSongFeedbackScore 用原始歌名/艺人名，raw≤-3 → excluded=true/score=0，否则 score=clamp((raw+3)/6,0,1)）、`playability`（play_events 是否 EXISTS，出现过 score=1 否则 0）
+  - 加权混合：feedback.excluded → blended=null/excluded=true；否则 blended = freshness*0.40 + continuity*0.30 + feedback*0.20 + playability*0.10
+  - `logShadowRerank(candidates, currentTrackKey, reason)`：对前 30 个候选逐首 computeCandidateScore 并写入 shadow_rerank_candidates 表；整体 try/catch 吞异常
+- **`core/state.js` 追加**：`shadow_rerank_candidates` 表迁移（CREATE TABLE IF NOT EXISTS）；`getLastPlayAt(trackKey)`（play_events MAX(timestamp)）、`hasPlayEvent(trackKey)`（LIMIT 1 存在性）、`insertShadowRerankCandidate(row)`；均加入 module.exports
+- **`server.js` 挂载**：`setRefillHandler` 回调中 `runShadowRecall` 之后追加 `logShadowRerank(spotifyItems, queueFirstTrackKey, reason).catch(() => {})`，fire-and-forget，绝不 await、绝不修改返回值
+
+### 验证
+- 语法检查 `node -c` 五个文件全部通过
+- 前置重构：新旧 transitionCost 实现用 track_profile 真实数据对比 4 组参数对（含相邻行、首尾行、字段缺失、对象缺失），数值逐位相等
+- 打分逻辑：用 track_profile 前 5 行真实数据驱动 logShadowRerank，抽 #0 手算核对 freshness/continuity/feedback/playability 四字段与日志行完全一致
+- excluded 场景：构造 song_feedback.score≈-3 测试数据，确认 computeCandidateScore 返回 excluded=true/blended=null，日志行 feedback_excluded=1/blended_score=null
+- 真实选曲不变：logShadowRerank 为 fire-and-forget 且不返回任何业务值，setRefillHandler 回调的 `return spotifyItems` 路径完全不受影响
+
+### 遗留
+- 本模块仅写 shadow_rerank_candidates 观测表，未接入真实选曲/排序；需积累足够观测数据后评估四维权重与阈值是否合理
+- 验证脚本已移出项目目录（temp/），未提交
+
+## 2026-07-12 彩云天气接入（主力数据源 + OWM 降级兜底）
+
+### 起因
+- OpenWeatherMap 为城市级精度、10 分钟刷新，天气描述粒度粗（小雨/大雨无法区分）
+- 彩云天气提供 1 公里级、1 分钟级实时数据，skycon 枚举能区分小雨→大雨、轻度霾→重度霾等细粒度天气现象，更适合作为选曲的环境信号
+
+### 做了什么
+- **新建 `core/caiyun.js`**：`fetchCaiyunRealtime(lat, lon)`（GET api.caiyunapp.com/v2.6/{KEY}/{lon},{lat}/realtime，status!=='ok' 或请求失败一律 throw）；`mapSkyconToMain(skycon)`（彩云 skycon → 与 OWM 同套 main 枚举 Clear/Clouds/Rain/Snow/Haze/Fog/Dust）；`mapSkyconToDescription(skycon)`（枚举全部 skycon 值返回中文描述）
+- **`core/context.js` 的 `fetchWeatherByCoords` 前置彩云尝试**：CAIYUN_API_KEY 存在时先调彩云，成功则构造 weatherState 直接返回；失败（throw）则 `console.warn` 后继续走原有 OWM 逻辑，不 return / 不 throw
+- **日出日落改用天文计算**：复用 `core/astronomy.js` 已有的 `solarEvents(lat, lon, midday)`（返回 rise/set 毫秒时间戳），新增 `computeSunriseSunset(lat, lon)` 包装为 Unix 秒，与 OWM 的 `sys.sunrise/sunset` 同格式；OWM 路径仍用 API 返回的日出日落，不受影响
+- **`makeWeatherState` 透传附加字段**：新增可选参数 `source`/`skycon`/`raw`，仅在显式传入时挂载到返回对象，OWM 路径不传则不含这三个字段，向后兼容
+- **下游消费方完全透明**：`checkWeatherChange` 仅比较 `weather.main`，彩云映射后的 main 与 OWM 同枚举，比较逻辑无副作用；`fetchWeatherByCity` / `server.js` / `pwa/index.html` 均未改动
+
+### 踩坑
+- `makeWeatherState` 初始未透传 `source`/`skycon`/`raw` 三个附加字段，打回后修复：改为可选参数，仅在显式传入时挂载，OWM 路径不受影响
+- caiyun 分支最初传了 `cityLine:''`/`areaLine:''`，导致 `text` 字段开头带逗号（",阴,29.68°C"）；打回后改为传 `cityLine:'当前位置'`，`text` 正确显示为"当前位置，阴，29.68°C"
+
+### 验证
+- `node -c` 三个文件全部通过
+- 真实调用上海坐标 (31.2304, 121.4737)：走彩云路径，返回 main=Clouds/description=阴/temp≈29.68，source=skycon=raw 字段齐全，text 显示正常
+- 降级测试：临时置空 CAIYUN_API_KEY，自动回落 OWM，服务不报错，数据正常返回
+- 日出日落对比：天文计算（04:59/19:01）与 OWM API（04:58/19:00）差异在 1 分钟内
+
+### 遗留
+- 额度是代理商无限量，不用监控
+
+## 2026-07-12 七曜 rimGlow 色调偏移（deepNight 静态效果，第一步）
+
+### 起因
+- 方案文档七曜步骤一：按当前星期几给 deepNight 主题的 rimGlow 配色加轻微色相偏移，先做静态效果（不改变渐变结构），后续再考虑动态/动画化
+
+### 做了什么
+- **`pwa/earth3d.js` 新增 `SHICHIYOU_TINT` 常量表**：日/月/火/水/木/金/土七曜，各对应一个 HEX 色号（日曜暖金 #F2C879、月曜冷银蓝 #6D8796、火曜橙红 #C97A5A、水曜浅青蓝 #7FADC2、木曜深琥珀 #8A6D3B、金曜暖玫瑰金 #C9A0A5、土曜灰褐 #8B7D6B）
+- **新增 `applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18)` 混合函数**：用 `THREE.Color.lerp` 做 18% blend，返回 THREE.Color 对象（与现有 rimGlow uniform 的 `.value.set()` 赋值格式一致）
+- **`applyRimGlowThemeConfig` 增加 `themeName` 参数**：仅当 `themeName === 'deepNight'` 时，对 `outer.color` / `outer.colorNear` / `outer.colorFar` / `inner.color` 四个值包一层 `applyShichiyouTint`（取 `new Date().getDay()` 对应的曜色）；其他主题走原色，不受影响
+- **调用处传入 `resolvedTheme`**：`applyRimGlowThemeConfig(config.rimGlow, resolvedTheme)`，使主题判断生效
+
+### 踩坑 / 插曲
+- 截图验证时先误判为 chromium 连接问题，用 playwright 尝试时误装了 playwright/puppeteer 两个依赖，导致 package.json / package-lock.json 被污染；已撤除依赖、未纳入提交
+- 后续排查发现真实根因是 `assets/earth/bmng21k/` 纹理目录在当前工作副本中完全缺失，earth3d 请求的所有 BMNG tile 均 404，earth3d 无法进入 ready 状态，deepNight 主题无法应用，截图验证改为后续补做
+
+### 验证
+- `node --check pwa/earth3d.js` 通过（退出码 0）
+- 代码逻辑审查：七曜常量表、混合函数、主题门控、调用链均正确；非 deepNight 主题不受影响
+- 视觉截图对比**未做**（纹理资源缺失，环境无法渲染 earth3d）
+
+### 遗留
+- 18% 混合强度**未经过视觉验证**（纹理资源缺失导致无法截图）；截图对比待纹理就绪后补做
+- 若视觉上太淡可上调到 22-25%，太浓下调到 12-15%
+
+## 2026-07-12 纠正：七曜rimGlow纹理缺失误判
+
+### 起因
+上一条记录（七曜rimGlow色调偏移）里"纹理资源缺失导致无法视觉验证"的结论是错误的。
+
+### 纠正内容
+- `assets/earth/bmng21k/` 路由实际映射到 `d5b_processor_v3/source_cache/01_raw/NASA_BlueMarble_BMNG/topo_bathy/tiles_noon_air_v2_islands/`，该目录有23个真实瓦片文件（4k/16k两档+manifest.json），一直存在
+- 已用 Claude Preview 工具完整验证：
+  - 周日（日曜）rimGlow实际值 94b5c1，独立用THREE.Color.lerp算出的期望值同样是94b5c1，精确匹配
+  - 周三（水曜）实际值7fb1cf，期望值同样7fb1cf，精确匹配
+  - noon等非deepNight主题颜色不受影响，符合预期
+  - 截图确认深夜主题下地平线辉光效果克制、不张扬
+- 18%混合强度视觉效果合理，暂不需要调整
+
+### 改动文件
+- 无代码改动，仅devlog记录纠正
+
+## 2026-07-12 修复：七曜仪式窗口常数不同步
+
+### 起因
+`_tickCeremony()` 的 `inWindow` 判断用了 `s >= 86190`（对应 23:56:30 起），而 `getShichiyouCeremonyBlendFactor()` 用的是 90 秒窗口（对应 23:58:30 起）。两处魔法数字不一致，导致 ticker 在 23:56:30–23:58:30 这 2 分钟里白白空转（每秒重应用 rimGlow 但 blendFactor 仍是常态 0.18，无视觉变化）。
+
+### 做了什么
+- 提取模块级常量 `SHICHIYOU_CEREMONY_WINDOW_SECONDS = 90`
+- `getShichiyouCeremonyBlendFactor` 两处硬编码 `90` 改为引用该常量（浮现分支边界由 `<=` 改为 `<`，使 00:01:30 整点严格落在窗口外）
+- `_tickCeremony` 的 `inWindow` 改为 `s >= 86400 - SHICHIYOU_CEREMONY_WINDOW_SECONDS || s < SHICHIYOU_CEREMONY_WINDOW_SECONDS`，与 blendFactor 共用同一份常量
+- 仅改 `pwa/earth3d.js`，颜色计算逻辑、镜头/朝向均未动
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- 6 个时间点脚本 ALL PASS：23:56:30(inWindow=false) / 23:58:30(true) / 23:59:00(true,blend=0.12) / 00:00:30(true,blend=0.06) / 00:01:30(false) / 15:30:00(false)
+- 窗口边界 `86400 - 90 = 86310`（=23:58:30），与 blendFactor 的 90 秒窗口完全对齐
+
+### 遗留
+- 无
+
+## 2026-07-12 v1.3 天外来信补全：commentary 历史持久化 + 渐现动画 + 查看/导出
+
+### 起因
+v1.3 天外来信补全需求：commentary 消息渐现动画 + 历史持久化存储 + 查看/导出入口。不改 /api/explain 生成逻辑，不影响普通 DJ 对话气泡。
+
+### 做了什么
+- `core/state.js`：新增 `commentary_history` 表（id / text / song_name / song_artist / weather_text / theme_name / created_at，IF NOT EXISTS 保护）+ `insertCommentaryHistory()` / `getCommentaryHistory()` 两个函数并导出
+- `server.js`：`/api/explain` 成功路径在 `return res.json` 前调用 `insertCommentaryHistory`（try/catch 包裹，失败不影响主响应）；新增 `GET /api/commentary-history` 路由
+- `pwa/index.html`：CSS `@keyframes msgLetterFadeIn` 渐现动画（opacity 0→1 + translateY 6px→0 + blur 2px→0，1.1s ease-out）+ `.msg-entering` 类隔离（仅最新 commentary 消息生效，普通气泡/用户消息无动画）；消息面板顶部加低调历史按钮 + 历史面板（复用 `.msg-commentary` 样式）+ JSON 导出（Blob 下载）
+
+### 验证
+- `node --check core/state.js server.js` 通过
+- mock explainClient（Module._load 拦截 openai 模块注入假数据）走真实 HTTP 路径 POST /api/explain，确认 `insertCommentaryHistory` 被执行；sqlite3 直接查库确认记录落盘完整（id / text / song_name / song_artist / weather_text / theme_name / created_at 全字段正确）
+- `GET /api/commentary-history` 路由经实际 HTTP 请求验证返回真实记录
+
+### 插曲
+首轮报告声称已在 server.js 加入 `insertCommentaryHistory` 调用，实际未落盘（与 state.js 建表代码同态丢失——edit 替换未真正写入文件）。经打回后重新修复，并走真实 HTTP 路径重新验证通过。
+
+### 遗留
+- `explainClient` 使用 `DASHSCOPE_API_KEY`（当前 401 旧 key），后续可能需要迁移到 DeepSeek 或其他可用 LLM 源
+
+## 2026-07-12 v1.4 三层叠加引擎：七曜×节气×天气 → (intensity, warmth) 调性向量
+
+### 起因
+v1.4 需求：七曜×节气×天气三层叠加引擎，为 /api/explain 注入风格约束、视觉 rimGlow 调制、commentary_history 留痕。只改 core/state.js、server.js、pwa/earth3d.js，不碰选曲逻辑。
+
+### 做了什么
+- `core/state.js`：`commentary_history` 表加 `intensity_score` / `warmth_score` 两列（ALTER TABLE + try/catch 静默忽略重复列错误）；`insertCommentaryHistory` 签名扩展两参数，INSERT 时写入
+- `server.js`：新增 `SHICHIYOU_TONALITY`、`WEATHER_TONALITY`、节气映射表（temperatureFeeling→warmth / atmosphericMood→intensity）；加权合成 `intensity_final = 七曜*0.3 + 节气*0.3 + 天气*0.4`（warmth 同理）；三档 Prompt 注入（极克制 <0.4 / 中间 / 强烈 >0.6 + warmth 冷/暖倾向词）；`/api/explain` 调用 `insertCommentaryHistory` 传入分数
+- `pwa/earth3d.js`：`applyShichiyouTint` 改用 `intensity_final` 调制 blendRatio（`blendRatio = blendFactor * (0.7 + 0.6 * intensity_final)`）+ `warmth_final` 做 5% 冷暖偏移（偏暖 `#FFF5E6` / 偏冷 `#E6F0FF`）；`computeTonalityVector()` 从 `window.__rodioVisualState` 独立计算同逻辑，避免跨端不同步
+
+### 验证
+- 3 组分数手工计算 vs 代码输出逐行匹配（火曜+Rain+大暑 0.605/0.565、水曜+Clouds+秋分 0.40/0.45、土曜+Clear+冬至 0.42/0.435）全部 PASS
+- Prompt 注入：极克制档含禁用词+例句+冷金属倾向词；强烈档含倾向词+例句+暖光倾向词；中间档约束为空
+- visual uniform 验证 blendRatio 公式（3 组 blendRatio 计算全部 PASS）
+- DB 列验证：PRAGMA 确认 `intensity_score REAL` / `warmth_score REAL`，写入落盘一致
+
+### 真实 bug（本次打回修复）
+- **bug#1（阻断性）**：server.js 调用 `context.getShichiyou()` 但 `core/context.js` 的 `module.exports` 未导出该函数，导致 `/api/explain` 每次抛 `TypeError` 返回 500。修复：改用 `_now.getDay()` 直接取七曜索引（0-6），与 `SHICHIYOU_TONALITY` 的 key 对应，去掉所有 `.label.startsWith(...)` 判断链。验证：`typeof context.getShichiyou === 'undefined'` 确认根因；mock LLM + mock getEnvironmentSnapshot 后真实 HTTP POST /api/explain 返回 200，无异常。
+- **bug#2（回归性）**：`applyShichiyouTint` 架空 `blendFactor` 参数（v1.4 把 blendRatio 改成 `0.18 * (0.7 + 0.6 * intensity_final)`，完全忽略传入的 `blendFactor`）。零点交接仪式通过 `getShichiyouCeremonyBlendFactor()` 返回动态值（窗口内 0.18→0）作为第三参数传入，该参数被架空，仪式动画失效。修复：`blendRatio = blendFactor * tonalityMultiplier`，仪式窗口内 `blendFactor→0` 时 `blendRatio` 跟随→0，动画恢复。验证：仪式窗口 3 时间点 blendRatio 序列（23:59:15→0.0951 / 00:00:00→0.0000 / 00:00:30→0.0634）随 ceremonyBlendFactor 实时呼吸，修复前固定为 0.1903。
+
+### 遗留
+- 无
+
+---
+
+## batch3 扩容：标注总量达 ~4000 首
+
+### 起因
+batch3 扩容——在 batch1(200) + batch2(796) = 996 首基础上新增约 3000 首，总规模达到约 4000 首，扩充训练/推荐样本覆盖。
+
+### 做了什么
+- 新建 `scripts/label-track-sample-batch3.js`：以 batch2 为底版改造
+- 排除逻辑：从 `output/track_label_review.csv` + `output/track_label_review_batch2.csv` 两个 CSV 提取已标注 track_key（经 `normalizeSongKey::normalizeArtistKey` 重建），合并为 `excludedKeys` Set 做候选池排除
+- 艺人配额：合并 batch1+batch2 的艺人计数作 `mergedQuota` 传入 `sampleWithArtistLimit` 作 `initialQuota`，三批合并上限仍为每艺人 3 首
+- `SAMPLE_SIZE = 3000`；`LABEL_SOURCE = 'deepseek_sample_batch3'`；`label_version = 'v2_2026-07-13'`
+- `SYSTEM_PROMPT` 完全沿用 batch2 的 v2 版（含第 8/9 条规则），未改动
+- 新增 `csv-parse` 依赖（package.json / package-lock.json 已更新）
+- 输出 `output/track_label_review_batch3.csv`
+
+### 运行结果
+- 实际写入 2947 行（抽样 3000，duplicate key 跳过 50 首，2 首 DROPPED）
+- 总 API 调用 3060 次
+- 词表越界重试 11 次；新规则违规（negative_tags 非空但 scene_fit 高分）0 次；API 失败/超时 51 次（均通过重试恢复，仅 2 首最终 DROPPED）
+- duplicate key 跳过 50 首（抽样阶段同艺人同曲重复，运行时跳过）
+
+### 验证
+- 与 batch1/batch2 无重复 track_key（交叉重复均为 0，自身重复 0）
+- 三批合并 2457 个艺人，超过 3 首的艺人数为 0
+- label_version 全部 `v2_2026-07-13`
+
+### 人工复核
+- 按每 500 首抽 30 首规则，固定种子 `20260713` 随机抽 180 首（6 组 × 30 首）
+- 清单写入 `output/track_label_review_batch3_human_check.csv`
+
+### 三批累计
+- batch1(200) + batch2(796) + batch3(2947) = **3943 首**
+
+### 遗留
+- 2 首 DROPPED（3 次重试仍失败），可后续补标
+
+---
+
+## UI 清理：移除两组旧调试控制器（保留 Theme Tuner）
+
+### 起因
+清理旧调试 UI——两组旧调试控制器（时段选择按钮 + FAR/NEAR/AUDIT 面板）不再需要，只保留 localhost 开关控制的 Theme Tuner。不触碰 `pwa/earth3d.js`。
+
+### 做了什么
+**第一组（时段选择按钮 #theme-preview）**
+- 删除 CSS `.theme-preview` / `.theme-chip` / `.theme-chip.active`
+- 删除 HTML `#theme-preview` 容器及全部按钮
+- 删除 `TIME_OF_DAY_OPTIONS` 数组、`renderThemePreview()` 函数
+- 删除 `forcedThemeKey` 变量及全部 10 处引用、`applyForcedTheme()` 函数、`window.__claudioSetThemePreview` 赋值
+
+**第二组（FAR/NEAR/AUDIT 面板）**
+- 删除 CSS `.earth-audit-control` / `.rdl-zoom-control` 及子样式
+- 删除 HTML `#rdl-zoom-control` + `#earth-audit-control` 容器
+- 删除 `EARTH_AUDIT_REGIONS`、`renderEarthAuditControl()`、`setAuditDistance()`、`currentEarthAuditIndex`、`getActiveAuditRegion`、`setEarthAuditRegion`、`nudgeAuditView`、`applyAuditLocation`、`getBestThemeForLon`、`_AUDIT_THEME_HOURS`、`bindHoldButton`
+- 删除所有对应事件监听：`rdlZoomIn/Out/Reset`、`earthAuditPrev/Next/LightingToggle`、`data-audit-angle`、`data-audit-move`
+
+### 改了什么
+- `effectivePhase` 从 `forcedThemeKey` 判断简化为 `astronomy.solar?.phase || phaseKey`
+- 修复 4 处删除残留的悬空括号（state 对象多余 `]`、renderHero 后悬空 `}`、startButton 后悬空 `}`、renderProgress 前悬空 `}`）
+- 保留 `auditGlobeImageRefreshTimer` 变量声明（正常播放器 `loadGlobeImages` 仍在使用）
+
+### Theme Tuner 保护
+完整保留，未触碰任何配置项：Mode 下拉、Texture/Atmosphere/Lighting 滑块、Night Grade、Diagnose、Camera Presets (E7 debug)、Copy config 按钮、`window._earthTuner` 调试入口、localStorage 逻辑。
+
+### 验证
+- `node --check`（提取所有 `<script>` 内容）通过
+- grep 全部 30+ 关键词 → ALL CLEAR（forcedThemeKey / renderThemePreview / TIME_OF_DAY_OPTIONS / applyForcedTheme / __claudioSetThemePreview / EARTH_AUDIT_REGIONS / renderEarthAuditControl / setAuditDistance / currentEarthAuditIndex / rdlZoomIn/Out/Reset / earthAuditPrev/Next/LightingToggle 等）
+- Playwright + Chromium 浏览器验证：三组旧 UI 容器 `theme-preview` / `rdl-zoom-control` / `earth-audit-control` 均 ABSENT；无 JS 运行时错误（PAGEERROR: NONE）；Theme Tuner 脚本加载正常、`lil-gui` CDN 可达
+- `pwa/earth3d.js` 未触碰，Theme Tuner 调用的 `patchTheme` / `setTimeOfDay` / `getDebugState` 等接口完好
+
+### 规模
+- 净删除 481 行（484 删 / 3 加），文件从 5686 行降至 5205 行
+- commit: `6f22eeb`
+
+---
+
+## /api/explain 迁移：Qwen → DeepSeek v4-flash（修复 401）
+
+### 起因
+`/api/explain` 的 LLM 调用一直用 `DASHSCOPE_API_KEY` + `qwen-max`，此前返回 401。Qwen 已无免费额度，必须迁移。选择 `deepseek-v4-flash` 而非即将停用的 `deepseek-chat`，避免短期内二次迁移。
+
+### 做了什么
+- `server.js` 第 32-37 行 `explainClient` 初始化：从 DashScope 改为 DeepSeek（`DEEPSEEK_API_KEY` + `https://api.deepseek.com`）
+- 第 1544-1546 行 `model` 从 `qwen-max` 改为 `deepseek-v4-flash`，新增 `thinking: { type: 'disabled' }` 顶层属性关闭思考模式（与 model / messages 同级，不用 extra_body）
+
+### 没改什么
+- Prompt `messages` 原样不动
+- `explainAngles` 不变
+- `commentary_history` 写入逻辑不变
+- 三层调性引擎（七曜×节气×天气 → intensity/warmth）读写不变
+
+### 验证
+- `node --check server.js` 通过
+- grep 确认 `DASHSCOPE_API_KEY` / `qwen-max` 在 explain 路径已清零
+- 真实 HTTP 调用返回 200，`explain_text` 为流畅中文（坂本龍一《Merry Christmas Mr. Lawrence》→ "一个男人在雪地的废弃车站里，等一个永远不会回来的人，但他的手还是焐着一杯热茶"），耗时 2397ms（约 2.4 秒），响应无 `reasoning_content` 字段
+- `commentary_history` 写入正常（触发后历史计数 3→4）
+
+### 规模
+- `server.js`：4 insertions(+), 3 deletions(-)
+- commit: `4555dad`
+
+---
+
+## pwa/index.html 添加 MediaSession API（锁屏/通知栏媒体控制）
+
+### 起因
+手机锁屏和系统通知栏看不到当前播放的歌名/艺人，也无法直接从锁屏控制播放/暂停/切歌，必须解锁进 App 操作。
+
+### 做了什么
+`pwa/index.html` 三处改动：
+1. 初始化块注册 4 个 action handler（`play` / `pause` / `previoustrack` / `nexttrack`）。`play`/`pause` 分别写具体判断——NCM 模式走 `audio.paused` / `audio.play()` / `audio.pause()`，Spotify 模式走 `spotifyReady && state.playing` 判断后调 `spotifyToggle()`。**不复用 `togglePlay`**，避免锁屏状态与实际不同步导致反向操作。
+2. `renderHero` 末尾同步 metadata（`title` / `artist`，纯文字，不做 artwork 封面）。
+3. `renderControls` 中 `updatePlayIcon()` 后同步 `playbackState`（`playing` / `paused`）。
+
+### 验证
+- `node --check` 通过（主 script 140KB）
+- Playwright + 系统 Chrome 真实应用流验证：`metadata.title/artist` 与 `app state.currentTrack` 一致（那件瘋狂的小事叫愛情 / 袁泉）、切歌跟随正确（Super Shy / NewJeans）、`playbackState` `paused`↔`playing` 切换正确、4 个 action handler 全部注册成功
+- 页面无新增 JS 错误（仅一条预存的 DRM "No supported keysystem" 警告，与 MediaSession 无关）
+
+### 规模
+- `pwa/index.html`：33 insertions(+)
+- commit: `575d48c`
+
+---
+
+## pwa/index.html 删除孤立 CSS 属性块
+
+### 起因
+commit 991b09c 删除 `.earth-audit-label` 规则时漏删了中间 9 行属性值 + 闭括号 `}`，形成一段没有选择器的孤立 CSS 块（background/rgba、color、padding、font-family 等），破坏浏览器对后续样式的解析，导致 `#rdl-tile-preview` 的 `display: none` 被覆盖为可见。
+
+### 做了什么
+删除第 189-199 行这 11 行孤立的 CSS 属性块。
+
+### 验证
+- 全局 brace depth 扫描确认无其他孤立属性块残留
+- Playwright 浏览器验证 `#rdl-tile-preview` 的 `getComputedStyle().display` = `'none'`（修复前为 `block`），页面视觉恢复正常
+
+### 规模
+- `pwa/index.html`：11 deletions(-)
+- commit: `9500a0c`
+
+---
+
+## core/context.js 恢复彩云天气地名反向地理编码
+
+### 起因
+commit fb7fd03 引入彩云天气后，`fetchWeatherByCoords()` 彩云分支直接用 `'当前位置'` 占位符，未调用 `fetchCityLabelByCoords()` 做反向地理编码，而 OWM 分支一直在用，导致彩云路径下地名丢失。
+
+### 做了什么
+彩云分支改为 `Promise.all` 并行请求天气 + 地理编码，`city`/`cityLine`/`areaLine` 字段改用 `cityLabel` 返回值（`locationName` 也同步为 `cityLine` 回退值）。
+
+### 验证
+- 上海坐标 (31.2304, 121.4737) 真实调用返回 `cityLine='上海市'` `areaLine='南京东路街道'` `source='caiyun'`
+- Nominatim 失败时 `fetchCityLabelByCoords` 返回空对象，`city` 回退到 `'当前位置'`，天气数据不受影响
+
+### 规模
+- `core/context.js`：8 insertions(+), 4 deletions(-)
+- commit: `cf5b304`
+
+---
+
+## core/context.js 城市/区县地名解析两处修复
+
+### 起因
+1. `normalizeCityName` 在 `areaLine` 为空时本该返回调用方传入的 `''`，却硬编码返回 `'当前位置'`，导致彩云路径下 `areaLine` 错误显示为"当前位置"。
+2. 直辖市（上海/北京/天津/重庆）的 Nominatim 返回中 `state` 字段是"XX市"（市名），`city` 字段是"XX区"（区名），跟普通省份（`state="XX省"`）的语义相反，当前代码未做区分导致城市名错误地显示为区名。
+
+### 做了什么
+1. `normalizeCityName` 改为 `fallbackLabel` 挪到函数参数默认值，空值时直接返回调用方传入的 `fallbackLabel` 本身而不是硬编码 `'当前位置'`。
+2. `fetchCityLabelByCoords` CN 分支新增 `isMunicipality` 判断（白名单匹配上海/北京/天津/重庆），直辖区县名，`city=state`（市名），`district=city`（区名）。
+3. 彩云分支 `locationName` 从 `cityLabel.cityLine` 改为 `cityLabel.areaLine || cityLabel.cityLine`，避免 `locationName` 在渲染中遮蔽 `areaLine` 导致两行显示退化为单行。
+
+### 验证
+- 上海坐标 (31.2396, 121.3745) → `cityLine='上海市'` `areaLine='普陀区'`
+- 杭州坐标 (30.25, 120.15) → `cityLine='西湖区'` `areaLine='北山街道'`（不受影响）
+- 页面 `.hero-city` 两行 span 正确显示 `'上海市'` + `'普陀区'`
+
+### 已知限制（国际地址）
+JP/US/其他国家的 `fetchCityLabelByCoords` 分支目前各自有特定字段映射逻辑，未经过真实坐标逐一验证。已知问题包括：东京可能取不到具体区名（`city_district` 字段不稳定）、美国城市可能过粗（只有 state 没有 city）、欧洲国家缺乏专门分支（走通用 fallback 逻辑可能不准确）。这些在当前只面向中国用户的产品中影响较小，后续如果需要国际化可以再完善。
+
+### 规模
+- `core/context.js`：13 insertions(+), 8 deletions(-)
+- commit: `0172ed0`
+
+---
+
+## batch4 全量曲库标注 + 人工复核抽样
+
+### 起因
+Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=2947）后，对剩余全部曲库进行全量标注，覆盖未标注曲目。
+
+### 做了什么
+1. 新建 `scripts/label-track-sample-batch4.js`：全量遍历剩余曲库（候选池 7454 首），直接查 DB 排除 batch1/2/3 已标注的 track_key，天然支持断点续跑；去掉了 batch3 的抽样逻辑与每艺人配额上限；`LABEL_SOURCE='deepseek_sample_batch4'`；Summary 新增 `Processed: X / Y total candidates` 进度行。SYSTEM_PROMPT、5 个封闭词表、validateLabels、DeepSeek 调用参数、DB 字段写入逻辑均原样保留。
+2. 新建 `scripts/generate-batch4-human-check.js`：纯本地、无 API key 依赖，从 batch4 全量 CSV 中不放回随机抽样 240 行（30 组 × 8 首），输出 `output/track_label_review_batch4_human_check.csv`，列结构与 batch3 人工复核文件一致。
+
+### 运行结果
+- 候选池总数：7454 首
+- 成功写入（DB `track_profile`，`label_source='deepseek_sample_batch4'`）：7166 首
+- 跳过（duplicate key，候选池内重复 track_key）：269 首
+- 最终失败（API 失败/超时，耗尽重试）：125 首
+- 人工复核 CSV 抽样：240 首（30 组 × 8 首）
+- 注：脚本 Summary 中"写入 7173 行"为物理行计数（CSV 中 7 首曲目标签含字段内换行被拆成多物理行），经 track_key 比对确认 DB 实际唯一写入 7166 行，与 CSV 逻辑记录数完全一致。
+
+### 验证
+- `output/track_label_review_batch4.csv` 生成，track_key 与 DB 逐条比对 0 差异
+- `output/track_label_review_batch4_human_check.csv` 241 行（含表头），group 1-30 × seq_in_group 1-8 连续唯一
+- DB 写入行数（7166）与脚本输出 written 数一致
+
+### 规模
+- `scripts/label-track-sample-batch4.js`：新建
+- `scripts/generate-batch4-human-check.js`：新建
+- `output/track_label_review_batch4.csv`：新建（7166 条标注记录）
+- `output/track_label_review_batch4_human_check.csv`：新建（240 行抽样）
+- commit: `f071320`
+
+---
+
+## 2026-07-13 移动端 WebGL 性能优化
+
+### 起因
+外部评审（Evan）反馈 RodiO 在手机上渲染负载偏重。
+
+### 做了什么
+- `pwa/earth3d.js` 新增 `isMobileDevice()`（视口最短边 ≤820 或 `matchMedia('(pointer: coarse)')` 命中，可通过 `?lite=1` 强制覆盖），驱动三处降级：
+  - `renderer.setPixelRatio`：移动端封顶 1.5，桌面端维持封顶 2
+  - 5 处 `SphereGeometry`（earth/atmosphere/atmosphere2/RDL 瓦片球/云层）精度：移动端 64×64，桌面端维持 128×128
+  - `antialias`：移动端关闭，桌面端维持开启
+- 新增 `?debugWebGL=1` 调试参数，开启后打印 GPU 诊断信息（maxTextureSize、devicePixelRatio、GPU vendor/renderer 通过 `WEBGL_debug_renderer_info` 扩展读取）
+- 现有的 `isLowSpecularDevice()`（仅用于海洋高光贴图分辨率选择）保持独立未改动，语义不等价（无 `?lite=1` 覆盖），未复用
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- 逐条核对 diff：仅涉及 `pwa/earth3d.js`，`git status` 确认无 package.json/package-lock.json 变化
+
+### 规模
+- `pwa/earth3d.js`：40 insertions(+), 7 deletions(-)
+- commit: `32cf706`
+
+---
+
+## 2026-07-13 修复 track_profile.sequence_shape 字段缺失 + 回填
+
+### 起因
+核对 batch4 标注数据时发现：`core/state.js` 的 `track_profile` 建表语句从 Phase 1 起就漏掉了 `sequence_shape` 列——4 批标注脚本里 LLM 都正常生成了这个字段、也过了封闭词表校验、也写进了各自的 CSV，但 `INSERT` 语句没带这一列，导致这 11109 条记录的 sequence_shape 数据实际只存在于 CSV，数据库里一直是空的。
+
+### 做了什么
+- `core/state.js`：建表语句补上 `sequence_shape TEXT` 列（位于 `label_source` 之后、Housekeeping 之前）；新增 `PRAGMA table_info` 检查 + `ALTER TABLE ADD COLUMN` 迁移块（与既有的 `play_events.transition_cost`/`song_feedback.score` 迁移写法一致，重复启动忽略 duplicate column 报错）
+- 新建 `scripts/backfill-sequence-shape.js`：依次读取 4 批标注 CSV（`track_label_review.csv`/`_batch2.csv`/`_batch3.csv`/`_batch4.csv`），用 `normalizeSongKey`/`normalizeArtistKey` 算出 track_key，`UPDATE track_profile SET sequence_shape = ? WHERE track_key = ?` 回填
+
+### 验证
+- `node --check core/state.js` / `scripts/backfill-sequence-shape.js` 均通过
+- `SELECT COUNT(*) FROM track_profile WHERE sequence_shape IS NOT NULL` = 11109，等于 track_profile 总行数，100% 覆盖
+- 9 种 sequence_shape 取值分布合理（slow_opening/city_to_inner_room 占多数）
+- 回填脚本报告"匹配更新 11116"与 DB 非空数 11109 的 7 行差异，核实为 batch4 内部 7 组同曲不同版本（如宇多田ヒカル《First Love》原版与"(2022 Mix)"版）经 `normalizeSongKey` 归一化后 track_key 相同，非数据丢失
+
+### 规模
+- `core/state.js`：13 insertions(+)
+- `scripts/backfill-sequence-shape.js`：新建
+- commit: `f8d5fb5`

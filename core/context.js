@@ -2,7 +2,25 @@ const fs = require('fs')
 const path = require('path')
 const { Lunar } = require('lunar-javascript')
 const state = require('./state')
-const { getAstronomyContext } = require('./astronomy')
+const { getAstronomyContext, solarEvents } = require('./astronomy')
+const caiyun = require('./caiyun')
+
+// 用 astronomy 模块的太阳位置计算当日日出日落（毫秒时间戳 → Unix 秒）
+// 返回 { sunrise, sunset }，格式与 OpenWeatherMap 的 data.sys.sunrise/sunset 一致
+function computeSunriseSunset(lat, lon, nowMs = Date.now()) {
+  const midday = (() => {
+    const parts = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: 'numeric', day: 'numeric',
+    }).formatToParts(new Date(nowMs))
+    const map = {}
+    for (const p of parts) if (['year', 'month', 'day'].includes(p.type)) map[p.type] = Number(p.value)
+    return Date.UTC(map.year, map.month - 1, map.day, 4, 0, 0)
+  })()
+  const events = solarEvents(lat, lon, midday)
+  const toSec = (ms) => (typeof ms === 'number' ? Math.round(ms / 1000) : null)
+  return { sunrise: toSec(events.rise), sunset: toSec(events.set) }
+}
 
 const ROOT = path.join(__dirname, '..')
 let currentWeather = null
@@ -136,10 +154,10 @@ function formatClock(timestampSeconds) {
   })
 }
 
-function normalizeCityName(name, fallbackLabel) {
-  const value = String(name || fallbackLabel || '').trim()
-  if (!value) return '当前位置'
-  return value
+function normalizeCityName(name, fallbackLabel = '当前位置') {
+  const value = String(name || '').trim()
+  if (value) return value
+  return fallbackLabel
 }
 
 function makeLocationParts(cityLine, areaLine, fallbackLabel = '当前位置') {
@@ -168,13 +186,16 @@ function makeWeatherState({
   cloudiness = null,
   cityLine = '',
   areaLine = '',
+  source,
+  skycon,
+  raw,
 }) {
   const displayCity = normalizeCityName(city || locationName, '当前位置')
   const displayLocation = normalizeCityName(locationName || city, displayCity)
   const locationParts = cityLine || areaLine
     ? makeLocationParts(cityLine || displayCity, areaLine || displayLocation, displayCity)
     : makeEmptyLocationParts()
-  return {
+  const state = {
     main,
     description,
     temp,
@@ -189,6 +210,11 @@ function makeWeatherState({
     cloudiness,
     text: `${locationParts.cityLine}${locationParts.areaLine ? ' ' + locationParts.areaLine : ''}，${description}，${temp}°C`,
   }
+  // 透传附加字段（仅当显式传入时挂载，保持 OWM 路径向后兼容）
+  if (source !== undefined) state.source = source
+  if (skycon !== undefined) state.skycon = skycon
+  if (raw !== undefined) state.raw = raw
+  return state
 }
 
 function loadRecentRecommendedKeys() {
@@ -243,10 +269,15 @@ async function fetchCityLabelByCoords(lat, lon, fallbackLabel) {
 
     const country = addr.country_code?.toUpperCase()
 
-    // 中国：城市 + 区县
+    // 中国：城市 + 区县（直辖市 state 是"XX市"，取反：state 作城市名，city 作区县名）
     if (country === 'CN') {
-      const city = addr.city || addr.municipality || addr.state_district || addr.county || addr.state || ''
-      const district = addr.city_district || addr.district || addr.suburb || ''
+      const isMunicipality = /市$/.test(addr.state || '') && ['上海市','北京市','天津市','重庆市'].includes(addr.state)
+      const city = isMunicipality
+        ? addr.state
+        : (addr.city || addr.municipality || addr.state_district || addr.county || addr.state || '')
+      const district = isMunicipality
+        ? (addr.city || addr.city_district || addr.district || addr.suburb || '')
+        : (addr.city_district || addr.district || addr.suburb || '')
       return city || district ? makeLocationParts(city || district, district, '当前位置') : makeEmptyLocationParts()
     }
 
@@ -309,6 +340,46 @@ async function fetchWeatherByCoords(lat, lon) {
       areaLine: '',
     })
     return currentWeather
+  }
+
+  // 【彩云天气前置尝试】作为主力数据源；失败则降级到 OpenWeatherMap
+  if (process.env.CAIYUN_API_KEY) {
+    try {
+      const [caiyunData, cityLabel] = await Promise.all([
+        caiyun.fetchCaiyunRealtime(lat, lon),
+        fetchCityLabelByCoords(lat, lon, '当前位置'),
+      ])
+      const realtime = caiyunData.result.realtime
+      const main = caiyun.mapSkyconToMain(realtime.skycon)
+      const description = caiyun.mapSkyconToDescription(realtime.skycon)
+      const temp = realtime.temperature
+
+      // 日出日落：用 astronomy 模块的天文计算（与 OWM 的 sys.sunrise/sunset 同格式）
+      const { sunrise, sunset } = computeSunriseSunset(lat, lon)
+
+      const weatherState = makeWeatherState({
+        main,
+        description,
+        temp,
+        city: cityLabel.cityLine || '当前位置',
+        locationName: cityLabel.areaLine || cityLabel.cityLine || '当前位置',
+        cityLine: cityLabel.cityLine,
+        areaLine: cityLabel.areaLine,
+        sunrise,
+        sunset,
+        sunriseTs: sunrise,
+        sunsetTs: sunset,
+        source: 'caiyun',
+        skycon: realtime.skycon,
+        raw: realtime,
+      })
+      console.log(`[weather] 彩云天气命中: ${description} ${temp}°C (skycon=${realtime.skycon})`)
+      currentWeather = weatherState
+      return currentWeather
+    } catch (err) {
+      console.warn('[weather] 彩云天气调用失败，降级到 OpenWeatherMap:', err.message)
+      // 继续执行后续 OpenWeatherMap 逻辑，不 return / 不 throw
+    }
   }
 
   try {

@@ -24,6 +24,129 @@
     { name: 'Sydney', lon: 151.2, lat: -33.9, color: 0xff66ff }
   ]
 
+  // ─── 移动端 / Lite 模式判定与共享参数 ──────────────────────────────────
+  // URL 参数解析（模块顶层，只解析一次）
+  const urlParams = new URLSearchParams(window.location.search)
+  const LITE_MODE = urlParams.get('lite') === '1'
+  const DEBUG_WEBGL = urlParams.get('debugWebGL') === '1'
+
+  // 移动端判定：LITE_MODE 强制覆盖；否则视口最短边 ≤ 820 或触摸屏。
+  function isMobileDevice() {
+    if (LITE_MODE) return true
+    const minDim = Math.min(window.innerWidth, window.innerHeight)
+    if (minDim <= 820) return true
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true
+    return false
+  }
+
+  // 球体精度：移动端降级为 64 段，桌面保持 128 段。
+  const SPHERE_SEGMENTS = isMobileDevice() ? 64 : 128
+
+  // ─── 七曜 (Shichiyou) rimGlow tint ───────────────────────────────────────
+  // Per-weekday subtle hue offset applied to deepNight rimGlow colors only.
+  // 18% blend keeps the shift restrained while still perceptibly tinting the
+  // limb toward the day's planetary color (ref: Japanese day-of-week naming).
+  const SHICHIYOU_TINT = [
+    { name: '日曜', color: '#F2C879' },  // 0 周日，暖金
+    { name: '月曜', color: '#6D8796' },  // 1 周一，冷银蓝
+    { name: '火曜', color: '#C97A5A' },  // 2 周二，橙红
+    { name: '水曜', color: '#7FADC2' },  // 3 周三，浅青蓝
+    { name: '木曜', color: '#8A6D3B' },  // 4 周四，深琥珀
+    { name: '金曜', color: '#C9A0A5' },  // 5 周五，暖玫瑰金
+    { name: '土曜', color: '#8B7D6B' },  // 6 周六，灰褐
+  ]
+
+  // 七曜零点交接仪式的窗口半宽（秒）：23:58:30→00:00:00 隐退 + 00:00:00→00:01:30 浮现。
+  // getShichiyouCeremonyBlendFactor 与 _tickCeremony 共用，避免魔法数字不同步。
+  const SHICHIYOU_CEREMONY_WINDOW_SECONDS = 90
+
+  // ── v1.4: 三层叠加引擎调性映射表（与 server.js 保持一致）───────────────
+  // 七曜 → (intensity, warmth)，索引 = new Date().getDay()
+  const SHICHIYOU_TONALITY = {
+    0: { intensity: 0.7, warmth: 0.7 }, // 日曜
+    1: { intensity: 0.3, warmth: 0.4 }, // 月曜
+    2: { intensity: 0.8, warmth: 0.6 }, // 火曜
+    3: { intensity: 0.5, warmth: 0.5 }, // 水曜
+    4: { intensity: 0.4, warmth: 0.5 }, // 木曜
+    5: { intensity: 0.6, warmth: 0.6 }, // 金曜
+    6: { intensity: 0.3, warmth: 0.4 }, // 土曜
+  }
+  // 天气(weather.main) → (intensity, warmth)
+  const WEATHER_TONALITY = {
+    Clear:  { intensity: 0.6,  warmth: 0.6  },
+    Clouds: { intensity: 0.4,  warmth: 0.45 },
+    Rain:   { intensity: 0.35, warmth: 0.4  },
+    Snow:   { intensity: 0.25, warmth: 0.3  },
+    Haze:   { intensity: 0.3,  warmth: 0.35 },
+    Fog:    { intensity: 0.25, warmth: 0.4  },
+    Dust:   { intensity: 0.5,  warmth: 0.4  },
+  }
+  // 节气 seasonalQuality → (intensity, warmth)
+  const SEASON_TONALITY = {
+    temperature: { '炎热': 0.75, '温暖': 0.6, '清凉': 0.4, '寒冷': 0.25 },
+    mood: {
+      '燥烈': 0.75, '焦灼': 0.75,
+      '期待': 0.55, '生机': 0.55, '舒爽': 0.55,
+      '清新': 0.45, '潮湿': 0.45,
+      '萧瑟': 0.3, '收敛': 0.3, '沉静': 0.3, '等待': 0.3,
+    },
+  }
+
+  // 从 window.__rodioVisualState 读取天气/节气，合成 (intensity_final, warmth_final)
+  // 与 server.js 计算逻辑一致，前端独立计算避免跨端数据不同步。
+  function computeTonalityVector() {
+    const vs = window.__rodioVisualState || {}
+    const weekday = new Date().getDay()
+    const shichiyou = SHICHIYOU_TONALITY[weekday] || { intensity: 0.45, warmth: 0.5 }
+    const weatherMain = vs?.weather?.main || 'Clear'
+    const weather = WEATHER_TONALITY[weatherMain] || { intensity: 0.45, warmth: 0.5 }
+    const season = vs?.astronomy?.seasonalQuality || {}
+    const seasonWarmth = SEASON_TONALITY.temperature[season.temperatureFeeling] ?? 0.5
+    const seasonIntensity = SEASON_TONALITY.mood[season.atmosphericMood] ?? 0.45
+    const intensity_final = shichiyou.intensity * 0.3 + seasonIntensity * 0.3 + weather.intensity * 0.4
+    const warmth_final = shichiyou.warmth * 0.3 + seasonWarmth * 0.3 + weather.warmth * 0.4
+    return { intensity_final, warmth_final }
+  }
+
+  // Blend a base rimGlow color toward the weekday tint. Returns a THREE.Color
+  // (matching the .value.set() assignment format used by applyRimGlowThemeConfig).
+  // v1.4: blendFactor 是调用者传入的动态强度（仪式窗口内浮动，常态=0.18）
+  // intensity_final 只调制这个比例的倍率，不替换 blendFactor
+  function applyShichiyouTint(baseHexColor, tintHexColor, blendFactor = 0.18) {
+    const base = new THREE.Color(baseHexColor)
+    const tint = new THREE.Color(tintHexColor)
+    const { intensity_final, warmth_final } = computeTonalityVector()
+    // (blendFactor / 0.18) 归一化到相对常态基准的比例，再乘 tonalityMultiplier
+    // 化简后：blendRatio = blendFactor * (0.7 + 0.6 * intensity_final)
+    // 仪式期间 blendFactor→0 时 blendRatio 也→0，仪式动画不被架空
+    const tonalityMultiplier = 0.7 + 0.6 * intensity_final
+    const blendRatio = blendFactor * tonalityMultiplier
+    let result = base.lerp(tint, blendRatio)
+    // 冷暖偏移：warmth_final 偏离 0.5 时，tint 与中性锚点做 5% 额外混合
+    if (warmth_final > 0.52) {
+      result.lerp(new THREE.Color('#FFF5E6'), 0.05) // 偏暖：暖白
+    } else if (warmth_final < 0.48) {
+      result.lerp(new THREE.Color('#E6F0FF'), 0.05) // 偏冷：冷白
+    }
+    return result
+  }
+
+  // 七曜零点交接仪式：在 23:58:30→00:00:00 隐退、00:00:00→00:01:30 浮现
+  // 两个 90 秒窗口内，把 blend 从常态 BASE 线性降到 0（隐退）再升回 BASE（浮现），
+  // 形成 rimGlow 色相偏移的"呼吸式"过渡。窗口外保持常态 BASE。
+  function getShichiyouCeremonyBlendFactor(now = new Date()) {
+    const BASE = 0.18
+    const secondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+    const secondsUntilMidnight = 86400 - secondsSinceMidnight
+    if (secondsUntilMidnight <= SHICHIYOU_CEREMONY_WINDOW_SECONDS && secondsUntilMidnight > 0) {
+      return BASE * (secondsUntilMidnight / SHICHIYOU_CEREMONY_WINDOW_SECONDS) // 隐退：BASE → 0
+    }
+    if (secondsSinceMidnight < SHICHIYOU_CEREMONY_WINDOW_SECONDS) {
+      return BASE * (secondsSinceMidnight / SHICHIYOU_CEREMONY_WINDOW_SECONDS) // 浮现：0 → BASE
+    }
+    return BASE // 常态
+  }
+
   function lerp(a, b, t) {
     return a + (b - a) * t
   }
@@ -154,6 +277,7 @@
     let isDestroyed = false
     let visibilityChangeHandler = null
     let _sunUpdateInterval = null
+    let _ceremonyTimer = null   // 七曜零点交接仪式窗口内的 rimGlow 刷新定时器
     let earthMaterial = null
     let earthShaderUniforms = null   // retained from onBeforeCompile for per-theme uniform updates
     let atmosphereMaterial = null
@@ -195,8 +319,23 @@
     window.earth3d = earth3dApi
 
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isMobileDevice() })
+      renderer.setPixelRatio(isMobileDevice() ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2))
+
+      // GPU 诊断日志（仅 ?debugWebGL=1 时输出）
+      if (DEBUG_WEBGL) {
+        const gl = renderer.getContext()
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+        console.log('[WebGL Diagnostic]')
+        console.log('  maxTextureSize:', renderer.capabilities.maxTextureSize)
+        console.log('  devicePixelRatio:', window.devicePixelRatio)
+        console.log('  isMobileDevice:', isMobileDevice())
+        console.log('  GPU vendor:', debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unavailable')
+        console.log('  GPU renderer:', debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unavailable')
+        console.log('  SPHERE_SEGMENTS:', SPHERE_SEGMENTS)
+        console.log('  pixelRatio cap:', isMobileDevice() ? '1.5' : '2')
+        console.log('  antialias:', !isMobileDevice())
+      }
       renderer.setClearColor(0x000000, 0)
       if (typeof THREE.SRGBColorSpace !== 'undefined') {
         renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -1635,7 +1774,7 @@
         )
       }
       loadNormalMapTexture()
-      earthGeometry = new THREE.SphereGeometry(2, 128, 128)
+      earthGeometry = new THREE.SphereGeometry(2, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
       // Fresnel-based atmosphere shader: opacity = pow(1 - |dot(N,V)|, power) * scale
       // Produces a natural limb glow — transparent at center, bright only at the edge.
@@ -1716,7 +1855,7 @@
         // Unit sphere — actual radius (and therefore how much room the glow has to
         // bleed outward into space vs inward onto the terrain) is set per-theme via
         // the uRadius uniform above.
-        new THREE.SphereGeometry(1, 128, 128),
+        new THREE.SphereGeometry(1, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         atmosphereMaterial
       )
       atmosphere.frustumCulled = false
@@ -1742,7 +1881,7 @@
         side: THREE.BackSide,
       })
       atmosphere2 = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 128, 128),
+        new THREE.SphereGeometry(1, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         atmosphere2Material
       )
       atmosphere2.visible = false
@@ -2261,15 +2400,21 @@
       // Veil materials. Defaults reproduce earlyMorning's baked-in look exactly,
       // so themes that don't define rimGlow (i.e. every theme except earlyMorning
       // and deepNight) are unaffected — same pattern as applyCloudThemeConfig.
-      function applyRimGlowThemeConfig(rimGlowCfg) {
+      function applyRimGlowThemeConfig(rimGlowCfg, themeName) {
         if (!_emRimOverlayMat?.uniforms || !_emInnerVeilMat?.uniforms) return
         const outer = rimGlowCfg?.outer
         const inner = rimGlowCfg?.inner
         const sunLobe = rimGlowCfg?.sunLobe
+        // 七曜 tint: only deepNight gets the per-weekday hue offset (step 1 of
+        // the static effect). Other themes keep their authored colors untouched.
+        const _tintWeekday = (themeName === 'deepNight')
+          ? SHICHIYOU_TINT[new Date().getDay()]
+          : null
+        const _tintColor = (hex) => _tintWeekday ? applyShichiyouTint(hex, _tintWeekday.color, getShichiyouCeremonyBlendFactor()) : hex
         const ro = _emRimOverlayMat.uniforms
-        ro.uSkyHaloColor.value.set(outer?.color ?? '#9dd8ff')
-        ro.uSkyHaloColorNear.value.set(outer?.colorNear ?? '#f2faff')
-        ro.uSkyHaloColorFar.value.set(outer?.colorFar ?? '#598cbf')
+        ro.uSkyHaloColor.value.set(_tintColor(outer?.color ?? '#9dd8ff'))
+        ro.uSkyHaloColorNear.value.set(_tintColor(outer?.colorNear ?? '#f2faff'))
+        ro.uSkyHaloColorFar.value.set(_tintColor(outer?.colorFar ?? '#598cbf'))
         ro.uSkyHaloWidth.value    = outer?.width        ?? 0.30
         ro.uCoreFraction.value    = outer?.coreFraction  ?? 0.43
         ro.uCorePower.value       = outer?.corePower     ?? 9.4
@@ -2279,7 +2424,7 @@
         ro.uSoftComposite.value   = outer?.softComposite ? 1.0 : 0.0
         ro.uRimOffsetY.value        = outer?.rimOffsetY   ?? 0.004
         const rv = _emInnerVeilMat.uniforms
-        rv.uInnerVeilColor.value.set(inner?.color ?? '#d9f0ff')
+        rv.uInnerVeilColor.value.set(_tintColor(inner?.color ?? '#d9f0ff'))
         rv.uInnerVeilWidth.value    = inner?.width    ?? 0.16
         rv.uInnerVeilStrength.value = inner?.strength ?? 0.36
         rv.uInnerVeilFalloff.value  = inner?.falloff  ?? 1.8
@@ -2622,7 +2767,7 @@
       let   _rdlInspectRegion = null // region id forced visible for audit/inspection mode
       let   _currentAuditViewAngle = 'top'
 
-      const _rdlSphereGeom = new THREE.SphereGeometry(2.003, 128, 128)
+      const _rdlSphereGeom = new THREE.SphereGeometry(2.003, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
 
       const _rdlVertShader = `
         varying vec2 vUv;
@@ -3007,8 +3152,8 @@
           void main() {
             vec2 c = gl_PointCoord - vec2(0.5);
             float d2 = dot(c, c) * 4.0;           // 0 at center, 1 at sprite edge
-            float core = exp(-d2 * 7.0);          // tight bright core
-            float halo = exp(-d2 * 2.0) * 0.30;   // wide faint glow gradient
+            float core = exp(-d2 * 30.0);                   // pin-sharp bright core — gone by d2≈0.15
+            float halo = exp(-d2 * 3.5) * 0.22;        // medium-wide glow, soft falloff
             float tw = 0.86 + 0.14 * sin(uTime * 1.1 + vPhase)
                      + 0.05 * sin(uTime * 3.1 + vPhase * 1.7);
             float a = (core + halo) * tw * uOpacity;
@@ -3070,7 +3215,7 @@
             // Second harmonic for variety — some stars shimmer faster
             twinkle += 0.06 * sin(uTime * 3.7 + phase * 2.3);
 
-            gl_FragColor = vec4(tex.rgb * twinkle * uOpacity, tex.a * uOpacity);
+            gl_FragColor = vec4(tex.rgb * twinkle, tex.a) * uOpacity;
           }
         `,
         transparent: true,
@@ -3083,24 +3228,31 @@
         starSphereMaterial
       )
       scene.add(starSphere)
-      loader.load('/assets/textures/stars/starmap_2020_8k.jpg', (tex) => {
-        if ('colorSpace' in tex) {
-          tex.colorSpace = THREE.SRGBColorSpace
-        } else {
-          tex.encoding = THREE.sRGBEncoding
+      starSphere.frustumCulled = false
+      loader.load('/assets/textures/stars/starmap_2020_8k.jpg',
+        (tex) => {
+          if ('colorSpace' in tex) {
+            tex.colorSpace = THREE.SRGBColorSpace
+          } else {
+            tex.encoding = THREE.sRGBEncoding
+          }
+          tex.anisotropy = 1
+          starSphereMaterial.uniforms.uStarTexture.value = tex
+          starSphereMaterial.uniformsNeedUpdate = true
+          starSphereLoaded = true
+          starSphereMaterial.uniforms.uOpacity.value = STAR_SPHERE_OPACITY[currentTheme || pendingTheme] ?? 0
+          if (stars?.material) {
+            stars.material.opacity = PROCEDURAL_STARS_OPACITY[currentTheme || pendingTheme] ?? 0
+            stars.material.needsUpdate = true
+          }
+          requestRenderUpdate()
+          console.log('[earth3d] star texture loaded')
+        },
+        undefined,
+        () => {
+          console.warn('[earth3d] star texture load failed — procedural stars kept as fallback')
         }
-        tex.anisotropy = 1
-        starSphereMaterial.uniforms.uStarTexture.value = tex
-        starSphereMaterial.uniformsNeedUpdate = true
-        starSphereLoaded = true
-        starSphereMaterial.uniforms.uOpacity.value = STAR_SPHERE_OPACITY[currentTheme || pendingTheme] ?? 0
-        if (stars?.material) {
-          stars.material.opacity = 0
-          stars.material.needsUpdate = true
-        }
-        requestRenderUpdate()
-        console.log('[earth3d] star texture loaded')
-      })
+      )
 
       // Cloud shell — ShaderMaterial to avoid grey-film from linear alphaMap.
       // smoothstep crushes low-luminance areas to zero alpha; power sharpens edges.
@@ -3243,7 +3395,7 @@
         side: THREE.FrontSide,
       })
       cloudMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(2.018, 128, 128),
+        new THREE.SphereGeometry(2.018, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
         cloudMaterial
       )
       cloudMesh.renderOrder = 0
@@ -3391,6 +3543,27 @@
         lateEvening:               0.18,
         deepNight:                 0.32,
         night:                     0.22,
+      }
+
+      // Procedural sprite-star overlay opacity per theme.
+      // These foreground glow-dots now coexist with the texture starmap
+      // (rather than being zeroed on load), so values are tuned lower than
+      // the historical config.lighting.stars to keep them as subtle bright accents
+      // on top of the dense background starfield.
+      // Read via PROCEDURAL_STARS_OPACITY[theme] with a daytime-safe fallback.
+      const PROCEDURAL_STARS_OPACITY = {
+        dawn:                      0.12,
+        sunrise:                   0.02,
+        earlyMorning:              0,
+        morning:                   0,
+        noon:                      0,
+        afternoon:                 0,
+        goldenApproach:            0.01,
+        sunset:                    0.05,
+        evening:                   0.12,
+        lateEvening:               0.20,
+        deepNight:                 0.28,
+        night:                     0.24,
       }
 
       const THEME_VISUAL_CONFIG = {
@@ -5258,13 +5431,13 @@
         // when the map loads): the map is the faint background sky, the
         // sprites are the bright foreground stars with glow gradients.
         if (stars?.material) {
-          stars.material.opacity = config.lighting.stars
+          stars.material.opacity = PROCEDURAL_STARS_OPACITY[resolvedTheme] ?? 0
         }
         if (cloudMaterial?.uniforms && cloudTexture) {
           console.log('[cloud] applyTheme gate:', JSON.stringify({ resolvedTheme, cfgClouds: config.clouds, hasCfg: !!config, cfgTextureExists: !!(config && config.clouds && config.clouds.texture) }))
           applyCloudThemeConfig(config.clouds)
         }
-        applyRimGlowThemeConfig(config.rimGlow)
+        applyRimGlowThemeConfig(config.rimGlow, resolvedTheme)
         updateSkyTheme(resolvedTheme)
         updateEarlyMorningSkyPlane(resolvedTheme)
         applyOceanTint(resolvedTheme)
@@ -5829,6 +6002,18 @@
       // _rdlZoomLevel drives the RDL regional overlay opacity.
       const _RDL_FOV_NORMAL = 28
       const _RDL_FOV_MIN    = 8
+      // ── Camera Narrative Presets (E7) ──────────────────────────────────
+      const CAMERA_PRESETS = {
+        globe:      { label: 'Globe',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 4.8,  lookAtY: 0.0  },
+        heroClose:  { label: 'Hero Close', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 48, cameraOffsetY: 0.0, cameraOffsetZ: 5.5,  lookAtY: 0.0  },
+        hemisphere: { label: 'Hemisphere', lat: 35.0,   lon: 110.0,   centerMode: false, fov: 22, cameraOffsetY: 0.5, cameraOffsetZ: 5.5,  lookAtY: -0.3 },
+        horizon:    { label: 'Horizon',    lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.0,  lookAtY: -0.5 },
+        lowOrbit:   { label: 'Low Orbit',  lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 3.5,  lookAtY: -0.8 },
+        cityFocus:  { label: 'City Focus', lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 8,  cameraOffsetY: 0.6, cameraOffsetZ: 3.0,  lookAtY: -1.0 },
+        oceanView:  { label: 'Ocean View', lat: -10.0,  lon: -140.0,  centerMode: false, fov: 24, cameraOffsetY: 0.3, cameraOffsetZ: 5.0,  lookAtY: -0.2 },
+        deepSpace:  { label: 'Deep Space', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 80.0, lookAtY: 0.0  },
+      }
+
       const _AUDIT_VIEW_ANGLES = {
         top: { y: 0.0, z: 4.8, lookY: -1.4 },
         oblique: { y: 1.35, z: 5.05, lookY: -1.2 },
@@ -5909,6 +6094,28 @@
       })
 
       _sunUpdateInterval = setInterval(updateSunPosition, 60000)
+
+      // 七曜零点交接仪式：每秒轮询，仅在 23:58:30–00:01:30 窗口内且 deepNight
+      // 主题下，重新应用 rimGlow 配色（blendFactor 随仪式窗口实时呼吸）。
+      // 窗口外不触碰颜色，避免无效重绘。
+      let _ceremonyWasActive = false
+      const _tickCeremony = () => {
+        if (currentTheme !== 'deepNight') { _ceremonyWasActive = false; return }
+        const now = new Date()
+        const s = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+        const inWindow = s >= 86400 - SHICHIYOU_CEREMONY_WINDOW_SECONDS || s < SHICHIYOU_CEREMONY_WINDOW_SECONDS // 23:58:30–00:01:30（不含 00:01:30 整点）
+        if (inWindow) {
+          const cfg = getThemeVisualConfig('deepNight')
+          if (cfg?.rimGlow) applyRimGlowThemeConfig(cfg.rimGlow, 'deepNight')
+          _ceremonyWasActive = true
+        } else if (_ceremonyWasActive) {
+          // 刚离开窗口：恢复常态 BASE（blendFactor 回到 0.18）
+          const cfg = getThemeVisualConfig('deepNight')
+          if (cfg?.rimGlow) applyRimGlowThemeConfig(cfg.rimGlow, 'deepNight')
+          _ceremonyWasActive = false
+        }
+      }
+      _ceremonyTimer = setInterval(_tickCeremony, 1000)
 
       visibilityChangeHandler = () => {
         if (document.hidden) return
@@ -6108,6 +6315,34 @@
           requestRenderUpdate()
           return _currentAuditViewAngle
         },
+        applyCameraPreset(key) {
+          const preset = CAMERA_PRESETS[key]
+          if (!preset) { console.warn('[earth3d] unknown camera preset:', key); return false }
+
+          // camera position & FOV
+          camera.position.set(0, preset.cameraOffsetY, preset.cameraOffsetZ)
+          camera.fov = preset.fov
+          camera.lookAt(0, preset.lookAtY, 0)
+          camera.updateProjectionMatrix()
+
+          // earth orientation via rodioVisualState → getTargetOrientation()
+          useAuditCenterTarget = Boolean(preset.centerMode)
+          window.__rodioVisualState = {
+            ...(window.__rodioVisualState || {}),
+            lon: preset.lon,
+            lat: preset.lat,
+          }
+
+          const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
+          earth.quaternion.copy(target)
+          atmosphere.rotation.set(0, 0, 0)
+
+          performSceneRefresh()
+          updateSunPosition()
+          requestRenderUpdate()
+
+          return true
+        },
         getDebugState() {
           return buildDebugState()
         },
@@ -6119,6 +6354,7 @@
           isDestroyed = true
           renderer.setAnimationLoop(null)
           if (_sunUpdateInterval) { clearInterval(_sunUpdateInterval); _sunUpdateInterval = null }
+          if (_ceremonyTimer) { clearInterval(_ceremonyTimer); _ceremonyTimer = null }
           if (visibilityChangeHandler) {
             document.removeEventListener('visibilitychange', visibilityChangeHandler)
             visibilityChangeHandler = null
