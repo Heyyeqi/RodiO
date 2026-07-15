@@ -400,14 +400,14 @@ function insertPlayEvent(event) {
 function getTrackProfile(trackKey) {
   if (!trackKey) return null
   return db.prepare(
-    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight FROM track_profile WHERE track_key = ?'
+    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight, rhythmic_motion FROM track_profile WHERE track_key = ?'
   ).get(trackKey) || null
 }
 
 // Phase 1 step 5: 读取 track_profile 全部行（影子召回候选来源）
 function getAllTrackProfiles() {
   return db.prepare(
-    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight FROM track_profile'
+    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight, rhythmic_motion FROM track_profile'
   ).all()
 }
 

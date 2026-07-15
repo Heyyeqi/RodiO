@@ -9,6 +9,7 @@ const {
   normalizeBaseText,
   normalizeCompareText,
   normalizeSongKey,
+  normalizeArtistKey,
   stripTitleNoise,
   titleMatchScore,
 } = require('./search-utils')
@@ -138,11 +139,19 @@ function normalizePlaylistTrackItem(item, playlist) {
   const artistName = artists.join('; ')
   if (!artistName) return null
 
+  const trackKey = `${normalizeSongKey(track.name)}::${normalizeArtistKey(artistName)}`
+  const profile = state.getTrackProfile(trackKey)
+  const rhythmicMotion = (profile && typeof profile.rhythmic_motion === 'number')
+    ? profile.rhythmic_motion
+    : 0.344
+
   return {
     song_info: {
       id: track.id || null,
       name: track.name,
       artist: artistName,
+      rhythmic_motion: rhythmicMotion,
+      duration_ms: track.duration_ms || null,
     },
     requested_song_info: {
       id: track.id || null,
@@ -829,6 +838,7 @@ async function searchTrack(songOrName, artist) {
         name: best.track.name || song.name,
         artists: (best.track.artists || []).map(a => a.name).filter(Boolean),
         album: best.track.album?.name || null,
+        duration_ms: best.track.duration_ms || null,
       }
       searchTrackCache.set(cacheKey, result)
       return result
@@ -851,6 +861,7 @@ async function searchTrack(songOrName, artist) {
         name: best.track.name || song.name,
         artists: (best.track.artists || []).map(a => a.name).filter(Boolean),
         album: best.track.album?.name || null,
+        duration_ms: best.track.duration_ms || null,
       }
       searchTrackCache.set(cacheKey, result)
       return result
@@ -897,6 +908,7 @@ async function searchTrack(songOrName, artist) {
           name: fallbackBest.track.name || song.name,
           artists: (fallbackBest.track.artists || []).map(a => a.name).filter(Boolean),
           album: fallbackBest.track.album?.name || null,
+          duration_ms: fallbackBest.track.duration_ms || null,
         }
         console.log(`[spotify] 译名兜底命中: "${song.name}" → "${fallbackBest.track.name}" / ${song.artist}`)
         searchTrackCache.set(cacheKey, result)

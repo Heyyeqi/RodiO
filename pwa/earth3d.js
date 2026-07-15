@@ -15,6 +15,262 @@
     },
   }
   let EARTH_MODE = 'NOON_AIR_V2_ISLANDS'
+
+  // ── Level 1 Motion ──
+  // playback-state-linked Earth rotation, gated by ?earthCandidate=level1motion
+  // ⚠ candidate feature: no effect unless URL param is present
+  let _level1Motion = (function _initLevel1Motion() {
+    const m = {
+      enabled: false,
+      lonOffset: 0,
+      currentSpeed: 0,
+      normalSpeed: 0.00001,  // degrees/frame → ~0.0006 °/s at 60 fps (barely perceptible)
+      targetSpeed: 0,
+      lastAudioCurrentTime: -1,
+      lastWasPlaying: false,
+    }
+    if (typeof window !== 'undefined') {
+      m.enabled = new URLSearchParams(window.location.search).get('earthCandidate') === 'level1motion'
+    }
+    return m
+  })()
+
+  function _updateLevel1Motion() {
+    if (!_level1Motion.enabled) return
+    const vs = window.__rodioVisualState || {}
+    const dur = vs.duration || 0
+    const cur = vs.progress || 0
+    const isPlaying = !!vs.playing
+    const nearEnd = isPlaying && dur > 15 && (dur - cur) <= 15
+    const trackChanged = cur < _level1Motion.lastAudioCurrentTime - 1
+    const justStarted = !_level1Motion.lastWasPlaying && isPlaying
+
+    if (trackChanged) {
+      _level1Motion.lonOffset = 0
+      _level1Motion.currentSpeed = 0
+      _level1Motion.targetSpeed = 0
+    }
+
+    _level1Motion.lastAudioCurrentTime = cur
+    _level1Motion.lastWasPlaying = isPlaying
+
+    // Determine target speed
+    if (nearEnd) {
+      const remaining = Math.max(0.5, dur - cur)
+      _level1Motion.targetSpeed = _level1Motion.normalSpeed * (remaining / 15)
+    } else if (isPlaying) {
+      _level1Motion.targetSpeed = _level1Motion.normalSpeed
+    } else {
+      _level1Motion.targetSpeed = 0
+    }
+
+    // Smooth speed transition — slower deceleration for near-end / pause, moderate for play
+    const smoothing = nearEnd ? 0.001 : (isPlaying ? 0.004 : 0.006)
+    _level1Motion.currentSpeed += (_level1Motion.targetSpeed - _level1Motion.currentSpeed) * smoothing
+
+    // Accumulate offset
+    _level1Motion.lonOffset += _level1Motion.currentSpeed
+
+    // Expose via existing __rodioVisualState channel
+    if (!window.__rodioVisualState) window.__rodioVisualState = {}
+    window.__rodioVisualState._level1LonOffset = _level1Motion.lonOffset
+  }
+  // ── /Level 1 Motion ──
+
+  // ── Precomputed Rotation Schedule ──
+  // gated by ?earthCandidate=precomputeschedule
+  // 按 rhythmic_motion 预计算旋转方案，精确落点（回到起始朝向）
+  let _precomputeMotion = (function _initPrecomputeMotion() {
+    const m = { enabled: false, schedule: null, _lastTrackKey: '', scheduleCompletedAt: null }
+    if (typeof window !== 'undefined') {
+      m.enabled = new URLSearchParams(window.location.search).get('earthCandidate') === 'precomputeschedule'
+    }
+    return m
+  })()
+
+  // 远近切换预设（与 precompute 旋转绑定，不加入 CAMERA_PRESETS）
+  const ZOOM_FAR  = { cameraOffsetZ: 10.5, fov: 28 }   // 远景：完整地球 + 明显黑边
+  const ZOOM_NEAR = { cameraOffsetZ: 4.8,  fov: 28 }   // 近景：默认 globe 视角
+
+  function buildSchedule(trackKey, rhythmicMotion, durationSec) {
+    const rm = typeof rhythmicMotion === 'number' ? rhythmicMotion : 0.344
+    const x = Math.max(0, Math.min(1, (rm - 0.05) / (0.95 - 0.05)))
+    const shaped = Math.pow(x, 1.6)
+    const totalLaps = 0.15 + shaped * (3.0 - 0.15)
+    let Tru = 12, Trd = 15
+    if (Tru + Trd > durationSec) {
+      const scale = durationSec / (Tru + Trd) * 0.8
+      Tru *= scale; Trd *= scale
+    }
+    const totalDeg = totalLaps * 360
+    const v = totalDeg / (durationSec - 0.5 * Tru - 0.5 * Trd)
+    return {
+      trackKey, duration: durationSec, totalLaps, direction: 1,
+      Tru, Trd, v,
+    }
+  }
+
+  function smoothstepDist(u) { return u*u*u - 0.5*u*u*u*u }
+
+  function scheduleAngle(t, sched) {
+    const { v, Tru, Trd, duration, direction, totalLaps } = sched
+    let dist
+    if (t <= 0) dist = 0
+    else if (t < Tru) dist = v * Tru * smoothstepDist(t / Tru)
+    else if (t < duration - Trd) dist = 0.5*v*Tru + v*(t - Tru)
+    else if (t < duration) {
+      const rampUpDist = 0.5*v*Tru
+      const cruiseDist = v*(duration - Trd - Tru)
+      const remaining = duration - t
+      const rdDoneFrac = 0.5 - smoothstepDist(remaining / Trd)
+      dist = rampUpDist + cruiseDist + v*Trd*rdDoneFrac
+    } else {
+      dist = totalLaps * 360
+    }
+    return direction * dist
+  }
+
+  function scheduleZoomProgress(t, sched) {
+    const { Tru, Trd, duration } = sched
+    if (t <= 0) return 0
+    if (t < Tru) return smoothstepDist(t / Tru) / 0.5
+    if (t < duration - Trd) return 1
+    if (t < duration) {
+      const remaining = duration - t
+      return smoothstepDist(remaining / Trd) / 0.5
+    }
+    return 0
+  }
+
+  function _updatePrecomputeMotion() {
+    if (!_precomputeMotion.enabled) return
+    const vs = window.__rodioVisualState || {}
+    const isPlaying = !!vs.playing
+    const cur = vs.progress || 0
+    const dur = vs.currentTrack?.duration_ms ? vs.currentTrack.duration_ms / 1000 : (vs.duration || 0)
+    const trackKey = vs.currentTrack ? `${String(vs.currentTrack.name || '').trim()}::${String(vs.currentTrack.artist || '').trim()}` : ''
+
+    // 检测切歌 → 重建 schedule
+    const trackChanged = trackKey && trackKey !== _precomputeMotion._lastTrackKey
+    if (trackChanged && dur > 0) {
+      const rm = vs.currentTrack?.rhythmic_motion
+      _precomputeMotion.schedule = buildSchedule(trackKey, rm, dur)
+      _precomputeMotion._lastTrackKey = trackKey
+      _precomputeMotion.scheduleCompletedAt = null
+    }
+
+    if (!_precomputeMotion.schedule) {
+      if (!window.__rodioVisualState) window.__rodioVisualState = {}
+      window.__rodioVisualState._precomputeLonOffset = 0
+      return
+    }
+
+    const elapsed = Math.min(cur, _precomputeMotion.schedule.duration)
+    const angleDeg = scheduleAngle(elapsed, _precomputeMotion.schedule)
+
+    const zoomProgress = scheduleZoomProgress(elapsed, _precomputeMotion.schedule)
+    const targetZ = ZOOM_FAR.cameraOffsetZ + (ZOOM_NEAR.cameraOffsetZ - ZOOM_FAR.cameraOffsetZ) * zoomProgress
+    const targetFov = ZOOM_FAR.fov + (ZOOM_NEAR.fov - ZOOM_FAR.fov) * zoomProgress
+
+    if (!window.__rodioVisualState) window.__rodioVisualState = {}
+    window.__rodioVisualState._precomputeLonOffset = angleDeg
+    window.__rodioVisualState._precomputeTargetZ = targetZ
+    window.__rodioVisualState._precomputeTargetFov = targetFov
+
+    if (elapsed >= _precomputeMotion.schedule.duration && !_precomputeMotion.scheduleCompletedAt) {
+      _precomputeMotion.scheduleCompletedAt = performance.now() / 1000
+    }
+  }
+  // ── /Precomputed Rotation Schedule ──
+
+  // ── Grammar Motion Primitive: Latitude Drift ──
+  // sinusoidal ±rangeDeg/2 latitude oscillation, gated by ?earthCandidate=cameraGrammarV1
+  // ⚠ candidate feature: no effect unless URL param is present
+  let _gramMotion = (function _initGramMotion() {
+    const m = { enabled: false, startTime: 0 }
+    if (typeof window !== 'undefined') {
+      const candidateParam = new URLSearchParams(window.location.search).get('earthCandidate')
+      m.enabled = candidateParam === 'cameraGrammarV1' || candidateParam === 'cameraGrammarAuto'
+    }
+    return m
+  })()
+
+  // ── earthCandidate=cameraGrammarAuto: 自动构图+运动原语选择 ──
+  const GRAM_AUTO_TIERS = [
+    { max: 0.25, composition: 'homeGlobe',     primitive: 'hold' },
+    { max: 0.5,  composition: 'portraitMarble', primitive: 'longitudeDrift' },
+    { max: Infinity, composition: 'farOrbit',   primitive: 'diagonalDrift' },
+  ]
+
+  // 'hold' | 'latitudeDrift' | 'longitudeDrift' | 'diagonalDrift'
+  let _gramActivePrimitive = 'latitudeDrift'
+  // 桥接：createEarth3D() 内定义 MOTION_PRIMITIVES 后赋值，使模块级 _updateGramMotion 可读
+  let _gramMotionPrimitives = null
+  // 桥接：createEarth3D() 内 _gramTransition / _gramSettledZ，供 _updateGramMotion 判断过渡状态
+  let _gramTransitionRef = null
+  let _gramSettledZRef = null
+
+  function _updateGramMotion() {
+    if (!_gramMotion.enabled) return
+    if (!_gramMotion.startTime) _gramMotion.startTime = performance.now() / 1000
+    const elapsed = (performance.now() / 1000) - _gramMotion.startTime
+    const prim = _gramActivePrimitive
+    let latOffset = 0, lonOffset = 0
+
+    if (prim === 'latitudeDrift' || prim === 'diagonalDrift') {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.latitudeDrift)
+        ? _gramMotionPrimitives.latitudeDrift
+        : { rangeDeg: 6, periodSec: 40 }
+      const phase = (elapsed % cfg.periodSec) / cfg.periodSec
+      latOffset = Math.sin(phase * Math.PI * 2) * (cfg.rangeDeg / 2)
+    }
+    if (prim === 'longitudeDrift' || prim === 'diagonalDrift') {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.longitudeDrift)
+        ? _gramMotionPrimitives.longitudeDrift
+        : { degPerSec: 0.8 }
+      lonOffset = (elapsed * cfg.degPerSec) % 360
+    }
+
+    if (!window.__rodioVisualState) window.__rodioVisualState = {}
+    window.__rodioVisualState._gramLatOffset = latOffset
+    window.__rodioVisualState._gramLonOffset = lonOffset
+
+    // rollDrift: swing around the composition's base rollDeg
+    let rollOffset = 0
+    if (prim === 'rollDrift') {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.rollDrift) || { rangeDeg: 6, periodSec: 35 }
+      rollOffset = Math.sin((elapsed % cfg.periodSec) / cfg.periodSec * Math.PI * 2) * (cfg.rangeDeg / 2)
+    }
+    window.__rodioVisualState._gramRollOffset = rollOffset
+
+    // breathe: low-frequency camera distance oscillation, only when no active transition
+    if (prim === 'breathe' && !_gramTransitionRef && _gramSettledZRef !== null) {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.breathe) || { amplitudePct: 0.025, periodSec: 30 }
+      const breatheFactor = 1 + Math.sin((elapsed % cfg.periodSec) / cfg.periodSec * Math.PI * 2) * cfg.amplitudePct
+      window.__rodioVisualState._gramBreatheTargetZ = _gramSettledZRef * breatheFactor
+    } else {
+      window.__rodioVisualState._gramBreatheTargetZ = undefined
+    }
+
+    // targetShift: horizontal NDC anchor swing, only writes offset (no camera touch)
+    let ndcOffsetX = 0
+    if (prim === 'targetShift') {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.targetShift) || { rangeNdc: 0.15, periodSec: 25 }
+      ndcOffsetX = Math.sin((elapsed % cfg.periodSec) / cfg.periodSec * Math.PI * 2) * cfg.rangeNdc
+    }
+    window.__rodioVisualState._gramNdcOffsetX = ndcOffsetX
+
+    // orbitalArc: camera orbits around Y axis; only compute angle here, never touch camera
+    if (prim === 'orbitalArc' && !_gramTransitionRef && _gramSettledZRef !== null) {
+      const cfg = (_gramMotionPrimitives && _gramMotionPrimitives.orbitalArc) || { rangeDeg: 30, periodSec: 12 }
+      const thetaDeg = Math.sin((elapsed % cfg.periodSec) / cfg.periodSec * Math.PI * 2) * (cfg.rangeDeg / 2)
+      window.__rodioVisualState._gramOrbitalArcDeg = thetaDeg
+    } else {
+      window.__rodioVisualState._gramOrbitalArcDeg = undefined
+    }
+  }
+  // ── /Grammar Motion Primitive ──
+
   const DEBUG_MARKERS_ENABLED = false
   const DEBUG_CITIES = [
     { name: 'Shanghai', lon: 121.4737, lat: 31.2304, color: 0xff3300 },
@@ -317,6 +573,7 @@
     let bootstrapDayAtlasState = 'idle'
     const earth3dApi = (window.earth3d && typeof window.earth3d === 'object') ? window.earth3d : {}
     window.earth3d = earth3dApi
+    console.log('[earth3d] api object assigned to window.earth3d:', typeof window.earth3d)
 
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isMobileDevice() })
@@ -878,7 +1135,12 @@
           const width = this.atlasCanvas.width
           const height = this.atlasCanvas.height
           if (!width || !height || !this.atlasContext) return
-          if (bootstrapDayAtlasImage && bootstrapDayAtlasState === 'ready') {
+          // 仅在远景(4k) LOD 下用低清全球底图占位；近景(8k/16k)下拉伸的底图
+          // 跟高精度区域瓦片色调差异明显，改用纯色填充避免被误认为渲染错误。
+          const useBootstrapImage = bootstrapDayAtlasImage
+            && bootstrapDayAtlasState === 'ready'
+            && this.lodConfig?.lod === '4k'
+          if (useBootstrapImage) {
             this.atlasContext.drawImage(bootstrapDayAtlasImage, 0, 0, width, height)
           } else {
             this.atlasContext.fillStyle = '#020514'
@@ -919,6 +1181,11 @@
             } else {
               stats.misses += 1
               this.cacheMisses += 1
+              // 之前该瓦片连续失败被永久放弃，但现已重新进入可见范围——
+              // 重置计数器，给一次全新的 4 次重试预算。
+              if ((this.tileRetryCount.get(key) || 0) > 4) {
+                this.tileRetryCount.delete(key)
+              }
               this.loadTileAsync(tile)
             }
             if (this.loadingTiles.has(key)) stats.pending += 1
@@ -958,12 +1225,20 @@
                 texture.dispose()
                 return
               }
-              configureEarthTexture(texture)
-              this.addToCache(key, texture)
-              this.drawTile(tile, texture)
-              this.activeTiles.set(key, tile)
-              if (!permanentlyUnavailable && isReady) {
-                renderer.render(scene, camera)
+              const applyTile = () => {
+                configureEarthTexture(texture)
+                this.addToCache(key, texture)
+                this.drawTile(tile, texture)
+                this.activeTiles.set(key, tile)
+                if (!permanentlyUnavailable && isReady) {
+                  renderer.render(scene, camera)
+                }
+              }
+              const img = texture.image
+              if (img && typeof img.decode === 'function') {
+                img.decode().then(applyTile).catch(applyTile)
+              } else {
+                applyTile()
               }
             },
             undefined,
@@ -2571,7 +2846,14 @@
         _emInnerVeilMat.uniforms.uRimRadius.value.set(rimRx, rimRy)
       }
 
-      const VISUAL_TARGET_NDC = new THREE.Vector2(0.25, -0.24)
+      function _getVisualTargetNdc() {
+        const vs = window.__rodioVisualState || {}
+        const gramNdcOffsetX = _gramMotion.enabled ? (vs._gramNdcOffsetX || 0) : 0
+        return new THREE.Vector2(
+          (Number.isFinite(vs._targetNdcX) ? vs._targetNdcX : 0.25) + gramNdcOffsetX,
+          Number.isFinite(vs._targetNdcY) ? vs._targetNdcY : -0.24
+        )
+      }
       const visualRaycaster = new THREE.Raycaster()
       const visualTargetDir = new THREE.Vector3(0, 0, 1)
       const auditCenterDir = new THREE.Vector3(0, 0, 1)
@@ -2591,7 +2873,7 @@
         earth.getWorldPosition(earthCenterWorld)
 
         const sphere = new THREE.Sphere(earthCenterWorld, 2)
-        visualRaycaster.setFromCamera(VISUAL_TARGET_NDC, camera)
+        visualRaycaster.setFromCamera(_getVisualTargetNdc(), camera)
 
         const hit = new THREE.Vector3()
         const intersection = visualRaycaster.ray.intersectSphere(sphere, hit)
@@ -4983,11 +5265,15 @@
 
       function getTargetOrientation(targetDirOverride = null) {
         const vs = window.__rodioVisualState || {}
+        const level1Offset = _level1Motion.enabled ? (vs._level1LonOffset || 0) : 0
+        const precomputeOffset = _precomputeMotion.enabled ? (vs._precomputeLonOffset || 0) : 0
+        const gramLatOffset = _gramMotion.enabled ? (vs._gramLatOffset || 0) : 0
+        const gramLonOffset = _gramMotion.enabled ? (vs._gramLonOffset || 0) : 0
         const lon = normalizeLon(
-          Number.isFinite(vs.lon) ? vs.lon : 121.4737
+          (Number.isFinite(vs.lon) ? vs.lon : 121.4737) + level1Offset + precomputeOffset + gramLonOffset
         )
         const lat = clamp(
-          Number.isFinite(vs.lat) ? vs.lat : 31.2304,
+          (Number.isFinite(vs.lat) ? vs.lat : 31.2304) + gramLatOffset,
           -80,
           80
         )
@@ -5004,6 +5290,13 @@
         }
 
         targetNorth.normalize()
+
+        const gramRollDeg = _gramMotion.enabled ? (vs._gramRollDeg || 0) : 0
+        const gramRollOffset = _gramMotion.enabled ? (vs._gramRollOffset || 0) : 0
+        const totalRollDeg = gramRollDeg + gramRollOffset
+        if (totalRollDeg !== 0) {
+          targetNorth.applyAxisAngle(targetNormal, totalRollDeg * Math.PI / 180)
+        }
 
         return quaternionFromBasis(
           targetPoint,
@@ -6004,14 +6297,15 @@
       const _RDL_FOV_MIN    = 8
       // ── Camera Narrative Presets (E7) ──────────────────────────────────
       const CAMERA_PRESETS = {
-        globe:      { label: 'Globe',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 4.8,  lookAtY: 0.0  },
-        heroClose:  { label: 'Hero Close', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 48, cameraOffsetY: 0.0, cameraOffsetZ: 5.5,  lookAtY: 0.0  },
-        hemisphere: { label: 'Hemisphere', lat: 35.0,   lon: 110.0,   centerMode: false, fov: 22, cameraOffsetY: 0.5, cameraOffsetZ: 5.5,  lookAtY: -0.3 },
-        horizon:    { label: 'Horizon',    lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.0,  lookAtY: -0.5 },
-        lowOrbit:   { label: 'Low Orbit',  lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 3.5,  lookAtY: -0.8 },
-        cityFocus:  { label: 'City Focus', lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 8,  cameraOffsetY: 0.6, cameraOffsetZ: 3.0,  lookAtY: -1.0 },
-        oceanView:  { label: 'Ocean View', lat: -10.0,  lon: -140.0,  centerMode: false, fov: 24, cameraOffsetY: 0.3, cameraOffsetZ: 5.0,  lookAtY: -0.2 },
-        deepSpace:  { label: 'Deep Space', lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 80.0, lookAtY: 0.0  },
+        globe:           { label: 'Globe',           lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 4.8,  lookAtY: 0.0  },
+        heroClose:       { label: 'Hero Close',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 48, cameraOffsetY: 0.0, cameraOffsetZ: 5.5,  lookAtY: 0.0  },
+        hemisphere:      { label: 'Hemisphere',      lat: 35.0,   lon: 110.0,   centerMode: false, fov: 22, cameraOffsetY: 0.5, cameraOffsetZ: 5.5,  lookAtY: -0.3 },
+        horizon:         { label: 'Horizon',         lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.0,  lookAtY: -0.5 },
+        lowOrbit:        { label: 'Low Orbit',       lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 3.5,  lookAtY: -0.8 },
+        cityFocus:       { label: 'City Focus',      lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 8,  cameraOffsetY: 0.6, cameraOffsetZ: 3.0,  lookAtY: -1.0 },
+        oceanView:       { label: 'Ocean View',      lat: -10.0,  lon: -140.0,  centerMode: false, fov: 24, cameraOffsetY: 0.3, cameraOffsetZ: 5.0,  lookAtY: -0.2 },
+        deepSpace:       { label: 'Deep Space',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 80.0, lookAtY: 0.0  },
+        eastAsiaHeroV1:  { label: 'East Asia Hero',  lat: 31.23,  lon: 121.47,  centerMode: false, fov: 23, cameraOffsetY: 0.0, cameraOffsetZ: 5.2,  lookAtY: 0.0, targetNdcX: 0.05, targetNdcY: -0.05, screenOffsetY: 16 },
       }
 
       const _AUDIT_VIEW_ANGLES = {
@@ -6023,6 +6317,233 @@
         tilt: { y: 0.82, z: 6.1, lookY: -1.52 },
         global: { y: 0.18, z: 7.85, lookY: -0.72 },
       }
+      // ── Camera Grammar V1: Composition / Motion Primitive / Envelope ──
+      const CAMERA_COMPOSITIONS = {
+        homeGlobe: null,  // special: delegates to CAMERA_PRESETS.globe
+        portraitMarble: {
+          lat: 31.23, lon: 121.47,
+          earthDiameterPct: 0.72,
+          anchorNdcX: 0.0, anchorNdcY: -0.08,
+          fov: 27,
+        },
+        farOrbit: {
+          lat: 31.23, lon: 121.47,
+          earthDiameterPct: 0.32,
+          anchorNdcX: 0.0, anchorNdcY: 0.0,
+          fov: 28,
+        },
+        terminatorPortrait: {
+          lat: 31.23, lon: 121.47,
+          earthDiameterPct: 0.72,
+          anchorNdcX: 0.0, anchorNdcY: -0.08,
+          fov: 27,
+        },
+        polarDiagonal: {
+          lat: 68, lon: 90,
+          earthDiameterPct: 0.6,
+          anchorNdcX: 0.0, anchorNdcY: 0.0,
+          fov: 26,
+          rollDeg: 10,
+        },
+        cityAnchor: {
+          lat: 31.23, lon: 121.47,
+          earthDiameterPct: 0.65,
+          anchorNdcX: 0.0, anchorNdcY: -0.15,
+          fov: 27,
+        },
+        oceanExpanse: {
+          lat: -10.0, lon: -140.0,
+          earthDiameterPct: 0.55,
+          anchorNdcX: 0.15, anchorNdcY: 0.1,
+          fov: 26,
+        },
+        horizonSkim: {
+          lat: 25.0, lon: 121.0,
+          cameraOffsetY: 1.6, cameraOffsetZ: 3.7,
+          anchorNdcX: 0.0, anchorNdcY: -0.3,
+          fov: 13,
+          lookAtY: -0.5,
+        },
+        limbHero: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetY: 1.0, cameraOffsetZ: 4.2,
+          anchorNdcX: 0.0, anchorNdcY: -0.35,
+          fov: 26,
+          lookAtY: -0.8,
+        },
+        deepSpace: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 80.0,
+          fov: 28,
+        },
+      }
+      const MOTION_PRIMITIVES = {
+        hold: {},
+        latitudeDrift: { rangeDeg: 6, periodSec: 40 },
+        longitudeDrift: { degPerSec: 0.8 },
+        diagonalDrift: {},  // reuses latitudeDrift + longitudeDrift params, no duplicate values
+        breathe: { amplitudePct: 0.025, periodSec: 30 },
+        rollDrift: { rangeDeg: 6, periodSec: 35 },
+        targetShift: { rangeNdc: 0.15, periodSec: 25 },
+        orbitalArc: { rangeDeg: 30, periodSec: 12 },
+      }
+      _gramMotionPrimitives = MOTION_PRIMITIVES  // 桥接到模块级 _updateGramMotion
+
+      // ── earthCandidate=cameraGrammarAuto: 自动构图+运动原语驱动 ──
+      let _gramAutoPilot = (function () {
+        const m = { enabled: false, lastTrackKey: '', returnedHome: false }
+        if (typeof window !== 'undefined') {
+          m.enabled = new URLSearchParams(window.location.search).get('earthCandidate') === 'cameraGrammarAuto'
+        }
+        return m
+      })()
+
+      function _updateGramAutoPilot() {
+        if (!_gramAutoPilot.enabled) return
+        const vs = window.__rodioVisualState || {}
+        const cur = vs.currentTrack
+        const trackKey = cur ? `${String(cur.name || '').trim()}::${String(cur.artist || '').trim()}` : ''
+        if (!trackKey) return
+        const dur = cur?.duration_ms ? cur.duration_ms / 1000 : (vs.duration || 0)
+        const progress = vs.progress || 0
+
+        // 切歌检测
+        if (trackKey !== _gramAutoPilot.lastTrackKey) {
+          _gramAutoPilot.lastTrackKey = trackKey
+          _gramAutoPilot.returnedHome = false
+          const rm = typeof cur?.rhythmic_motion === 'number' ? cur.rhythmic_motion : 0.344
+          const tier = GRAM_AUTO_TIERS.find((t) => rm <= t.max)
+          transitionToComposition(tier.composition, { duration: 5, envelope: 'easeInOutCubic' })
+          earth3dApi.setGramPrimitive(tier.primitive)
+          return
+        }
+
+        // 收束+回锚点: 歌曲剩余不到12秒时切回 homeGlobe + hold
+        const nearEnd = dur > 20 && (dur - progress) <= 12
+        if (nearEnd && !_gramAutoPilot.returnedHome) {
+          _gramAutoPilot.returnedHome = true
+          earth3dApi.setGramPrimitive('hold')
+          transitionToComposition('homeGlobe', { duration: Math.max(3, dur - progress), envelope: 'easeInOutCubic' })
+        }
+      }
+
+      const CAMERA_SEQUENCES = {
+        approach: [
+          { compositionKey: 'farOrbit', opts: { duration: 4, envelope: 'easeInOutCubic' } },
+          { compositionKey: 'portraitMarble', opts: { duration: 5, envelope: 'easeInOutCubic' } },
+          { compositionKey: 'homeGlobe', opts: { duration: 5, envelope: 'easeInOutCubic' } },
+        ],
+        retreat: [
+          { compositionKey: 'homeGlobe', opts: { duration: 4, envelope: 'easeInOutCubic' } },
+          { compositionKey: 'portraitMarble', opts: { duration: 5, envelope: 'easeInOutCubic' } },
+          { compositionKey: 'farOrbit', opts: { duration: 5, envelope: 'easeInOutCubic' } },
+        ],
+        flyby: [
+          { compositionKey: 'limbHero', opts: { duration: 4, envelope: 'easeInOutCubic' } },
+          { compositionKey: 'horizonSkim', opts: { duration: 8, envelope: 'easeInOutCubic' } },
+        ],
+      }
+      const MOTION_ENVELOPES = {
+        linear: (t) => t,
+        easeInOutCubic: (t) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2,
+        easeOutCubic: (t) => 1 - Math.pow(1-t, 3),
+      }
+
+      function computeCameraOffsetZForComposition(earthDiameterPct, fovDeg) {
+        const earthRadius = earth.geometry.parameters.radius  // 真实几何体半径（2.0）
+        const fovRad = fovDeg * Math.PI / 180
+        const alpha = Math.atan(earthDiameterPct * Math.tan(fovRad / 2))
+        return earthRadius / Math.sin(alpha)
+      }
+
+      // ── Grammar Transition Engine ──
+      let _gramLastLookAtY = 0  // records last applied lookAtY, used as fromLookAtY for next transition
+      let _gramSettledZ = null   // settled camera.position.z after transition ends, used by breathe primitive
+      let _gramTransition = null  // { fromY, fromZ, fromFov, fromLookAtY, toY, toZ, toFov, toLookAtY, toNdcX, toNdcY, toRollDeg, toLat, toLon, startTime, duration, envelope }
+      let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
+      _gramSettledZRef = _gramSettledZ
+      _gramTransitionRef = _gramTransition
+
+      function transitionToComposition(compositionKey, opts = {}, _isSequenceStep = false) {
+        if (!_isSequenceStep) _gramSequenceQueue = []   // 外部手动调用，清空任何排队中的序列
+        const duration = opts.duration ?? 4
+        const envelopeName = opts.envelope ?? 'easeInOutCubic'
+        const comp = compositionKey === 'homeGlobe'
+          ? CAMERA_PRESETS.globe
+          : CAMERA_COMPOSITIONS[compositionKey]
+        if (!comp) return false
+
+        const usesPercentFormula = compositionKey !== 'homeGlobe' && Number.isFinite(comp.earthDiameterPct)
+        const targetZ = usesPercentFormula
+          ? computeCameraOffsetZForComposition(comp.earthDiameterPct, comp.fov)
+          : comp.cameraOffsetZ
+        const targetY = compositionKey === 'homeGlobe'
+          ? comp.cameraOffsetY
+          : (Number.isFinite(comp.cameraOffsetY) ? comp.cameraOffsetY : 0)
+        const targetFov = comp.fov
+        const targetNdcX = compositionKey === 'homeGlobe' ? undefined : comp.anchorNdcX
+        const targetNdcY = compositionKey === 'homeGlobe' ? undefined : comp.anchorNdcY
+        const targetRollDeg = compositionKey === 'homeGlobe' ? 0 : (comp.rollDeg || 0)
+        const targetLookAtY = compositionKey === 'homeGlobe' ? comp.lookAtY : (comp.lookAtY || 0)
+
+        _gramTransition = {
+          fromY: camera.position.y, fromZ: camera.position.z, fromFov: camera.fov,
+          fromX: camera.position.x, toX: 0,
+          fromLookAtY: _gramLastLookAtY,
+          toY: targetY, toZ: targetZ, toFov: targetFov, toLookAtY: targetLookAtY,
+          toNdcX: targetNdcX, toNdcY: targetNdcY, toRollDeg: targetRollDeg,
+          toLat: comp.lat ?? (compositionKey === 'homeGlobe' ? CAMERA_PRESETS.globe.lat : 31.2304),
+          toLon: comp.lon ?? (compositionKey === 'homeGlobe' ? CAMERA_PRESETS.globe.lon : 121.4737),
+          startTime: performance.now() / 1000,
+          duration,
+          envelope: MOTION_ENVELOPES[envelopeName] || MOTION_ENVELOPES.easeInOutCubic,
+        }
+        _gramTransitionRef = _gramTransition
+        return true
+      }
+
+      function _updateGramTransition() {
+        if (!_gramTransition) return
+        const now = performance.now() / 1000
+        const t = Math.min(1, (now - _gramTransition.startTime) / _gramTransition.duration)
+        const e = _gramTransition.envelope(t)
+        camera.position.y = _gramTransition.fromY + (_gramTransition.toY - _gramTransition.fromY) * e
+        camera.position.z = _gramTransition.fromZ + (_gramTransition.toZ - _gramTransition.fromZ) * e
+        camera.position.x = _gramTransition.fromX + (_gramTransition.toX - _gramTransition.fromX) * e
+        camera.fov = _gramTransition.fromFov + (_gramTransition.toFov - _gramTransition.fromFov) * e
+        const lookAtY = _gramTransition.fromLookAtY + (_gramTransition.toLookAtY - _gramTransition.fromLookAtY) * e
+        camera.lookAt(0, lookAtY, 0)
+        _gramLastLookAtY = lookAtY
+        camera.updateProjectionMatrix()
+        if (t >= 1) {
+          const vs = window.__rodioVisualState
+          if (_gramTransition.toNdcX !== undefined) vs._targetNdcX = _gramTransition.toNdcX
+          if (_gramTransition.toNdcY !== undefined) vs._targetNdcY = _gramTransition.toNdcY
+          vs._gramRollDeg = _gramTransition.toRollDeg
+          vs.lat = _gramTransition.toLat
+          vs.lon = _gramTransition.toLon
+          updateVisualTargetDir()  // NDC 锚点变更后重算视觉目标方向
+          _gramTransition = null
+          _gramSettledZ = camera.position.z
+          _gramTransitionRef = _gramTransition
+          _gramSettledZRef = _gramSettledZ
+
+          if (_gramSequenceQueue.length > 0) {
+            const next = _gramSequenceQueue.shift()
+            transitionToComposition(next.compositionKey, next.opts || {}, true)   // 第三个参数=true
+          }
+        }
+      }
+
+      function playSequence(steps) {
+        if (!Array.isArray(steps) || !steps.length) return false
+        _gramSequenceQueue = steps.slice(1)
+        const first = steps[0]
+        transitionToComposition(first.compositionKey, first.opts || {}, true)   // 第三个参数=true
+        return true
+      }
+      // ── /Grammar Transition Engine ──
+
       renderer.domElement.addEventListener('wheel', (e) => {
         e.preventDefault()
         _rdlZoomLevel = Math.max(0, Math.min(1, _rdlZoomLevel - e.deltaY * 0.0008))
@@ -6048,6 +6569,33 @@
             stars.material.uniforms.uTime.value = starSphereMaterial.uniforms.uTime.value
           }
         }
+        _updateLevel1Motion()
+        _updatePrecomputeMotion()
+        if (_precomputeMotion.enabled) {
+          const vs = window.__rodioVisualState || {}
+          if (Number.isFinite(vs._precomputeTargetZ)) {
+            camera.position.z += (vs._precomputeTargetZ - camera.position.z) * 0.08
+            camera.fov += (vs._precomputeTargetFov - camera.fov) * 0.08
+            camera.updateProjectionMatrix()
+          }
+        }
+        _updateGramMotion()
+        _updateGramAutoPilot()
+        if (Number.isFinite(window.__rodioVisualState?._gramBreatheTargetZ)) {
+          camera.position.z = window.__rodioVisualState._gramBreatheTargetZ
+          camera.updateProjectionMatrix()
+        }
+        if (_gramActivePrimitive === 'targetShift' && _gramMotion.enabled) {
+          updateVisualTargetDir()
+        }
+        if (Number.isFinite(window.__rodioVisualState?._gramOrbitalArcDeg) && _gramSettledZ !== null) {
+          const thetaRad = window.__rodioVisualState._gramOrbitalArcDeg * Math.PI / 180
+          camera.position.x = _gramSettledZ * Math.sin(thetaRad)
+          camera.position.z = _gramSettledZ * Math.cos(thetaRad)
+          camera.lookAt(0, _gramLastLookAtY, 0)
+          camera.updateProjectionMatrix()
+        }
+        _updateGramTransition()
         const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
         const isAnimating = earth.quaternion.angleTo(target) > 0.0002
         earth.quaternion.slerp(target, 0.02)
@@ -6331,6 +6879,15 @@
             ...(window.__rodioVisualState || {}),
             lon: preset.lon,
             lat: preset.lat,
+            _targetNdcX: Number.isFinite(preset.targetNdcX) ? preset.targetNdcX : undefined,
+            _targetNdcY: Number.isFinite(preset.targetNdcY) ? preset.targetNdcY : undefined,
+          }
+
+          // CSS screen offset
+          if (Number.isFinite(preset.screenOffsetY) && preset.screenOffsetY !== 0) {
+            renderer.domElement.style.transform = `translateY(${preset.screenOffsetY}px)`
+          } else {
+            renderer.domElement.style.transform = ''
           }
 
           const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
@@ -6343,8 +6900,41 @@
 
           return true
         },
+        transitionToComposition(key, opts) {
+          return transitionToComposition(key, opts)
+        },
+        playSequence(sequenceKey, customSteps) {
+          const steps = customSteps || CAMERA_SEQUENCES[sequenceKey]
+          if (!steps) return false
+          return playSequence(steps)
+        },
+        setGramLatDrift(enabled) {
+          _gramActivePrimitive = enabled ? 'latitudeDrift' : 'hold'
+          return _gramActivePrimitive
+        },
+        setGramPrimitive(key) {
+          const valid = ['hold', 'latitudeDrift', 'longitudeDrift', 'diagonalDrift', 'breathe', 'rollDrift', 'targetShift', 'orbitalArc']
+          if (valid.includes(key)) {
+            _gramActivePrimitive = key
+            return _gramActivePrimitive
+          }
+          return _gramActivePrimitive
+        },
         getDebugState() {
           return buildDebugState()
+        },
+        // read-only camera z for validation / debugging
+        getCameraZ() {
+          return camera ? camera.position.z : null
+        },
+        // debug breathe/transition state
+        getGramDebug() {
+          return {
+            settledZRef: _gramSettledZRef,
+            transitionRef: _gramTransitionRef ? 'active' : null,
+            activePrim: _gramActivePrimitive,
+            motionEnabled: _gramMotion.enabled,
+          }
         },
         logStateSnapshot(label, extra = {}) {
           return logThemeStateSnapshot(label || 'manual', extra)
@@ -6656,6 +7246,38 @@
         },
       })
       window.__earth3dBootStage = 'after-api-export'
+
+      // ── earthCandidate 旁路激活（必须在模块完全初始化后执行） ──
+      if (new URLSearchParams(window.location.search).get('earthCandidate') === 'eastAsiaHeroV1') {
+        try {
+          console.log('[earth3d] bootStage:', window.__earth3dBootStage)
+          console.log('[earth3d] isReady:', window.earth3d?.isReady)
+          console.log('[earth3d] applying camera preset: eastAsiaHeroV1')
+          earth3dApi.applyCameraPreset('eastAsiaHeroV1')
+          updateVisualTargetDir()   // NDC 锚点变更后重算视觉目标方向
+          console.log('[earth3d] eastAsiaHeroV1 applied, _targetNdcX:', window.__rodioVisualState?._targetNdcX, '_targetNdcY:', window.__rodioVisualState?._targetNdcY)
+        } catch (e) {
+          console.error('[earth3d] eastAsiaHeroV1 activation FAILED:', e.message, e.stack)
+        }
+      }
+
+      // ── earthCandidate: cameraGrammarV1 (RodiO 动态地球镜头系统 A轮) ──
+      if (new URLSearchParams(window.location.search).get('earthCandidate') === 'cameraGrammarV1') {
+        try {
+          console.log('[earth3d] bootStage:', window.__earth3dBootStage)
+          console.log('[earth3d] isReady:', earth3dApi.isReady)
+          console.log('[earth3d] cameraGrammarV1 activating...')
+          // 初始化 lat/lon 为默认值（与 CAMERA_PRESETS.globe 一致）
+          const vs = window.__rodioVisualState
+          vs.lat = 31.2304
+          vs.lon = 121.4737
+          // 过渡到 portraitMarble 构图（4s easeInOutCubic）
+          transitionToComposition('portraitMarble', { duration: 4, envelope: 'easeInOutCubic' })
+          console.log('[earth3d] cameraGrammarV1 transition started → portraitMarble (4s)')
+        } catch (e) {
+          console.error('[earth3d] cameraGrammarV1 activation FAILED:', e.message, e.stack)
+        }
+      }
 
       // ── Star system debug API (dev/audit only) ─────────────────────────────
       window.earth3dDebug = {

@@ -1104,6 +1104,31 @@
   let pendingVoice = null
   let pendingVoiceTouchHandler = null
   let hasRequestedLocation = false
+  let _songEndWatchdogTimer = null
+
+  function armSongEndWatchdog(durationSeconds, trackRef) {
+    clearSongEndWatchdog()
+    if (!durationSeconds || durationSeconds <= 0) return
+    const trackKey = trackRef ? `${String(trackRef.name || '').trim()}::${String(trackRef.artist || '').trim()}` : ''
+    if (!trackKey) return
+    const graceMs = (durationSeconds + 5) * 1000
+    _songEndWatchdogTimer = setTimeout(() => {
+      const currentKey = state.currentTrack
+        ? `${String(state.currentTrack.name || '').trim()}::${String(state.currentTrack.artist || '').trim()}`
+        : ''
+      if (currentKey === trackKey && state.playing) {
+        console.warn('[watchdog] 歌曲应已播完但未检测到自动切歌，强制推进')
+        advanceToNext('complete')
+      }
+    }, graceMs)
+  }
+
+  function clearSongEndWatchdog() {
+    if (_songEndWatchdogTimer) {
+      clearTimeout(_songEndWatchdogTimer)
+      _songEndWatchdogTimer = null
+    }
+  }
 
   async function reportSpotifyPlaybackFailure(uri, reason, status) {
     if (!uri) return
@@ -1206,6 +1231,13 @@
       artist: Array.isArray(track.artists) ? track.artists.map(a => a.name).filter(Boolean).join('; ') : null,
     }
     if (!nextTrack.name) return
+    // 保留 SSE play_audio 阶段已注入的 rhythmic_motion / duration_ms
+    // (syncCurrentTrackFromSpotifyState 在 SDK state_changed 时被调用,会覆盖 SSE 写入的富数据)
+    if (state.currentTrack &&
+        (state.currentTrack.id === nextTrack.id || state.currentTrack.name === nextTrack.name)) {
+      if (state.currentTrack.rhythmic_motion != null) nextTrack.rhythmic_motion = state.currentTrack.rhythmic_motion
+      if (state.currentTrack.duration_ms != null) nextTrack.duration_ms = state.currentTrack.duration_ms
+    }
     spotifyCurrentUri = track.uri || spotifyCurrentUri
     state.currentTrack = nextTrack
     renderHero()
@@ -1292,6 +1324,8 @@
         state.playing = !s.paused
         state.progress = s.position / 1000
         state.duration = s.duration / 1000
+        // 拿到真实 duration 后修正看门狗定时器
+        if (s.duration > 0) armSongEndWatchdog(state.duration, state.currentTrack)
         renderControls()
         renderProgress()
         // 只在“先前正在播放、现在已经结束”的情况下推进下一首
@@ -2493,6 +2527,7 @@
       spotifyPlay(item.spotify_uri).then(ok => {
         if (ok) {
           state.playing = true
+          armSongEndWatchdog(state.duration, state.currentTrack)
           renderControls()
           if (autoExplain) maybeAutoExplain(item)
           prefetchNextExplain()
@@ -2541,6 +2576,7 @@
       audio.load()
       audio.play().then(() => {
         state.playing = true
+        armSongEndWatchdog(state.duration, state.currentTrack)
         renderControls()
         if (autoExplain) maybeAutoExplain(item)
         prefetchNextExplain()
@@ -2727,6 +2763,7 @@
   }
 
   async function advanceToNext(reason = 'auto') {
+    clearSongEndWatchdog()
     if (reason !== 'auto' && state.currentTrack) {
       const dur = state.duration || 0
       const prog = state.progress || 0
@@ -3125,6 +3162,11 @@
         pendingSpotifyItem = { item: localQueue[0], options: { recordHistory: true, autoExplain: true } }
         initSpotifyPlayer().catch(() => {})
       }
+      return
+    }
+    // Spotify 准备中，等待连接
+    if (pendingSpotifyItem) {
+      appendDj('Spotify 正在准备，马上开始。')
       return
     }
     // NCM 模式
@@ -5261,6 +5303,34 @@
       presetBtns[k] = function () { e3d.applyCameraPreset?.(k) }
       fPreset.add(presetBtns, k).name('▶ ' + k)
     })
+
+    // ── Camera Grammar V1 (dev debug) ─────────────────────────────────────
+    var fGrammar = gui.addFolder('Camera Grammar V1 (debug)')
+    fGrammar.close()
+    var gramCompositions = ['homeGlobe', 'portraitMarble', 'farOrbit', 'terminatorPortrait', 'polarDiagonal', 'cityAnchor', 'oceanExpanse', 'horizonSkim', 'limbHero', 'deepSpace']
+    var gramBtns = {}
+    gramCompositions.forEach(function (k) {
+      gramBtns[k] = function () {
+        var vs = window.__rodioVisualState
+        if (!vs) window.__rodioVisualState = vs = {}
+        if (!Number.isFinite(vs.lat)) vs.lat = 31.2304
+        if (!Number.isFinite(vs.lon)) vs.lon = 121.4737
+        e3d.transitionToComposition?.(k, { duration: 3, envelope: 'easeInOutCubic' })
+      }
+      fGrammar.add(gramBtns, k).name('▶ ' + k)
+    })
+    var gramSequences = ['approach', 'retreat', 'flyby']
+    var gramSeqBtns = {}
+    gramSequences.forEach(function (k) {
+      gramSeqBtns[k] = function () {
+        e3d.playSequence?.(k)
+      }
+      fGrammar.add(gramSeqBtns, k).name('⟳ ' + k)
+    })
+    var gramPrimitiveCtl = { primitive: 'latitudeDrift' }
+    fGrammar.add(gramPrimitiveCtl, 'primitive', ['hold', 'latitudeDrift', 'longitudeDrift', 'diagonalDrift', 'breathe', 'rollDrift', 'targetShift', 'orbitalArc'])
+      .name('Motion Primitive')
+      .onChange(function (v) { e3d.setGramPrimitive?.(v) })
 
     // ── Copy config snippet ───────────────────────────────────────────────
     gui.add({
