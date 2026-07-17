@@ -6682,6 +6682,7 @@
           lat: 31.23, lon: 121.47,
           earthDiameterPct: 0.32,
           anchorNdcX: 0.0, anchorNdcY: 0.0,
+          lookAtY: -1.6,
           fov: 28,
         },
         terminatorPortrait: {

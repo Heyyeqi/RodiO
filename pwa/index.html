@@ -109,18 +109,6 @@
     overflow: hidden;
   }
 
-  .topbar {
-    height: 28px;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: "JetBrains Mono", monospace;
-    font-size: 9px;
-    letter-spacing: 0.38em;
-    color: var(--text-dim);
-  }
-
   .hero {
     position: relative;
     flex: 1;
@@ -234,10 +222,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;   /* 从"居中"改成"顶部对齐" */
     text-align: center;
-    padding-top: 0;
-    padding-bottom: 60px;
+    padding-top: 28px;             /* 贴着 ON AIR 那一行往下留一点小间距 */
+    padding-bottom: 0;
   }
 
   .hero-title {
@@ -337,8 +325,6 @@
     align-items: center;
     justify-content: center;
     gap: 32px;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
   }
 
   .control-btn {
@@ -462,31 +448,16 @@
   /* 主页底部切换按钮 */
   .page1-footer {
     height: 36px;
-    border-top: 1px solid var(--line);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
-    transition: background 120ms ease;
-  }
-
-  .page1-footer:hover {
-    background: var(--surface);
   }
 
   .page1-footer-bar {
-    width: 56px;
-    height: 1.5px;
-    background: var(--line);
-    border-radius: 1px;
-    transition: background 180ms ease;
-    pointer-events: none;
-  }
-
-  .page1-footer:hover .page1-footer-bar {
-    background: var(--accent);
+    display: none;
   }
 
   .queue-panel {
@@ -931,15 +902,13 @@
     <!-- 第一页：主播放页 -->
     <div class="page" id="page1">
       <div class="panel-layer">
-        <div class="topbar">RodiO</div>
-
         <section class="hero">
           <div class="hero-meta">
             <div class="hero-time" id="hero-time">00:00</div>
             <div class="hero-city" id="hero-city"></div>
             <div class="hero-onair">
               <span class="hero-onair-dot"></span>
-              ON AIR
+              RodiO
             </div>
           </div>
 
