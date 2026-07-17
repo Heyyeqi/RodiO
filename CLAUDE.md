@@ -2,15 +2,16 @@
 
 > 每次对话开始前必须读取本文件。
 > 每次任务完成后必须在 `devlog.md` 末尾追加一条记录（格式见文末）。
+> **规划与现状**：`docs/roadmap/STATUS.md` 是当前建设任务的唯一现状真相来源（Stage 0 审计结论、差距矩阵、优先级队列、GitHub Issue 映射）。开始任何建设任务前先读它；`00_Ultimate_Build_Plan_v1.0.md`/`01_P4_Touch_the_Earth_v1.0.md` 是同目录下的产品愿景与当前阶段执行计划。
 
 ---
 
 ## 项目简介
 
-RodiO 是一个个人 AI 电台应用。核心体验是：由 AI（Qwen）根据当前时间、天气、天文节气、用户偏好自动选曲，并生成 DJ 播报语音（MiniMax TTS），形成连续的沉浸式收听流。
+RodiO 是一个个人 AI 电台应用。核心体验是：由 AI（DeepSeek）根据当前时间、天气、天文节气、用户偏好自动选曲，并生成 DJ 播报语音（MiniMax TTS），形成连续的沉浸式收听流。
 
 - 线上地址：https://web-production-a5193.up.railway.app
-- 仓库：Heyyeqi/RodiO（main 分支，唯一分支）
+- 仓库：Heyyeqi/RodiO，**主干直入策略**：所有建设任务直接小步提交到 main，不开长期功能分支；通过 GitHub Issue + Milestone 追踪任务边界（见 `docs/roadmap/STATUS.md` §2、§5）。`wip/easter-themes` 等少数归档分支例外保留，见 STATUS.md 分支状态表。
 - 部署方式：Railway + Procfile（`web: node server.js`）
 
 ---
@@ -21,7 +22,7 @@ RodiO 是一个个人 AI 电台应用。核心体验是：由 AI（Qwen）根据
 |---|---|
 | 运行时 | Node.js / CommonJS |
 | Web 服务 | Express + HTTP + WebSocket (ws) |
-| AI 选曲 | Qwen via DashScope（OpenAI 兼容接口），模块为 `core/claude.js` |
+| AI 选曲 | DeepSeek（`deepseek-v4-flash`，OpenAI 兼容接口），模块为 `core/claude.js`；内部部分变量/函数名（如 `triggerQwenEnhancer`）仍沿用 Qwen 命名，为历史遗留，不影响功能 |
 | 音乐源 | Spotify Web API（主力）+ 网易云 NCM（备用/降级） |
 | TTS | MiniMax TTS，串行队列控制，本地缓存 |
 | 状态存储 | SQLite（better-sqlite3），模块为 `core/state.js` |
@@ -72,17 +73,17 @@ Spotify 搜索失败时降级到 NCM；Phase 1 补货失败时降级到 Qwen。
 
 ---
 
-## 已知问题（截至 2025-05-13）
+## 已知问题（截至 2026-07-17，部分行未随代码演进更新，遇到时请先复核再信任）
 
 | 问题 | 位置 | 状态 |
 |---|---|---|
-| NCM cookie 过期导致播放中断 | `pwa/index.html:1994` | 未修复 |
-| Spotify Phase 1 补货偶发返回空 | `server.js:1082` | 未定位根因 |
-| Spotify device 失效后 reinit 不稳定 | `pwa/index.html:1217` | 未修复 |
+| NCM cookie 过期导致播放中断 | `pwa/index.html:1994` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
+| Spotify Phase 1 补货偶发返回空 | `server.js:1082` | 已在 `2ca0d3b fix(spotify): retry Phase 1 playlist refill when a pull comes back empty` 修复，此行过期，待确认后移除 |
+| Spotify device 失效后 reinit 不稳定 | `pwa/index.html:1217` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
 | MiniMax TTS 限流控制是否真正生效 | `core/tts.js` | 未验证 |
-| 浏览器 autoplay 限制影响 DJ 语音 | `pwa/index.html:2082` | 未修复 |
-| /api/explain 接口 Qwen 或 TTS 任一失败即 500 | `server.js:1417` | 未处理降级 |
-| 星星渲染被 canvas clipping 遮挡 | `pwa/index.html` | 未修复 |
+| 浏览器 autoplay 限制影响 DJ 语音 | `pwa/index.html:2082` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
+| /api/explain 接口 DeepSeek 或 TTS 任一失败即 500 | `server.js:1417` | 未处理降级（AI provider 名称已更新，问题本身状态未复核） |
+| 星星渲染被 canvas clipping 遮挡 | `pwa/index.html` | **疑似已过期**：2026-07-17 Stage 0 审计（见 `docs/roadmap/STATUS.md` §1.1）发现全代码库零 clipping 痕迹，星空两层材质均 AdditiveBlending+depthWrite:false，物理上不可能被此机制遮挡，且近期星空/Deep Space 渲染工作正常。待用户肉眼最终复核后关闭，见 [GitHub Issue #13](https://github.com/Heyyeqi/RodiO/issues/13) |
 
 ---
 
