@@ -5,7 +5,7 @@
 > devlog.md 记录"做了什么"；本文件记录"现在处于什么状态、接下来该做什么"。
 > 无论在哪个分支、隔了多久回来，先读这份文件，再读 devlog.md 最近几条。
 
-最后更新：2026-07-17（P4 Stage 0 Unified Current-State Audit 完成后）
+最后更新：2026-07-17（第二轮补充审计：选歌模块v2 / 祈求系统 / Earth收口 / RDL细节 / 彩蛋清单）
 
 ---
 
@@ -16,7 +16,15 @@
 | `00_Ultimate_Build_Plan_v1.0.md` | 最终产品愿景，全部建设域（A-U），永久性北极星，几乎不改 | 极低 |
 | `01_P4_Touch_the_Earth_v1.0.md` | 当前阶段（P4）的具体执行计划：Stage 0-7 | 阶段完成时更新 |
 | `02_Living_Earth_Plan_v1.0.md` | P4 的技术细节参考（运动参数、星空分层数值等），部分已被 P4 取代 | 很低，仅作参考 |
+| `03_RDL_Proposal_v1.0.md` | Regional Detail Layer 完整技术方案（三层LOD、BMNG+GEBCO+GSHHG+Mapbox、执行红线） | 很低 |
+| `04_AI_Companion_Essay.pdf` | 产品哲学源起："音乐是AI进入生活的入口"，含产品护栏清单 | 极低 |
+| `05_Product_Vision_v4.md` | 最完整的产品愿景原文（九段时光、天体层、彩蛋系统~50条、天外来信、祈求系统全文） | 很低，仅作参考 |
+| `06_Song_Selection_Module_v2.md` | 选歌模块v2完整工程方案（Mood Intent JSON、track_profile schema、transition_cost、skip反馈） | 阶段完成时更新 |
+| `07_Song_Selection_Multi_AI_Assessment.md` | 九份AI对选歌模块的评估意见整合底稿，v2方案的决策依据 | 很低，仅作参考 |
+| `source_appendix/` | 历史规划文档（v3.1 Master Pack 8份 + 开发路线v3），已被上述文件取代或归类为历史参考，不直接决定当前执行顺序 | 不更新 |
 | `STATUS.md`（本文件） | 实时现状、差距矩阵、优先级、GitHub Issue 映射 | **每次任务完成后更新** |
+
+> 注：`03_Sky_Visual_System_Implementation_v3.1.md`（Master Pack 原08份文件之一）截至本次更新未被提供给 Claude Code 直接审阅，仅有 Ultimate Build Plan 对其的二手综述。涉及 Sky LUT/11时段锚点具体参数时，应要求用户补充该文件原文，不要假设已完整掌握。
 
 ---
 
@@ -84,6 +92,37 @@
 
 ---
 
+## 3.5 第二轮补充审计（2026-07-17，用户提供8份额外文档后）
+
+用户提供了此前未被 Ultimate Build Plan 直接读取的原始文档（RDL完整方案、AI陪伴哲学原文、产品方案v4原文、选歌模块v2工程方案、选歌模块多AI评估底稿、v3.1 Master Pack 8份原文件）。逐份核实后发现两处此前 GitHub 追踪完全遗漏的实质性缺口：
+
+### 选歌模块 v2 — 最重要的发现
+
+`RodiO_选歌模块_实施方案_v2.md` 不在 Ultimate Build Plan 整合的18份来源文件之列，此前**完全没有对应的GitHub追踪**。代码审计（Explore agent 全量核查 `core/mood-intent.js`/`core/candidate-rerank.js`/`core/transition-cost.js`/`core/shadow-recall.js`/`core/state.js`）确认：
+
+- **Phase 1 五项清单全部完成**：track_profile schema（约30字段）、11,109首全库打标（batch1-4）、播放事件日志（`play_events`表）、transition_cost观测模式、路径B shadow mode
+- **完全处于Shadow Mode**：`server.js` `setRefillHandler`（约1202-1237行）里，Mood Intent/候选打分/shadow recall全部fire-and-forget只写日志表，`resolveDjSelection()`真实选曲路径**完全未被触碰**，仍是旧 Qwen/DeepSeek 直接路径
+- **缺失**：skip_penalty分层半衰期（spec要求track/artist/tag/scene四层，现状只有单一180天衰减）；discovery_candidates三表晋升管线（零实现，全代码库grep零匹配）
+- 已建 issue [#19](https://github.com/Heyyeqi/RodiO/issues/19)（Phase1确认+Phase2 graduation监控）、[#20](https://github.com/Heyyeqi/RodiO/issues/20)（缺失模块）
+
+### 祈求/"此刻"系统 — 确认零实现
+
+`grep -n "此刻\|祈求\|prayer\|moment-input\|whisper" pwa/index.html` 零匹配。此前 issue #16（天外来信+选曲风格调优）容易让人误以为祈求系统已存在只需调优，实际上*输入入口*完全不存在，天外来信生成（`/api/explain`）和祈求提交是两回事。已建 issue [#21](https://github.com/Heyyeqi/RodiO/issues/21)。
+
+### 其余归档项
+
+- Earth Visual Foundation 从未做过正式收口验收（Ultimate Build Plan §27清单Day/Night/Ocean/Cloud/Atmosphere长期挂空）→ issue [#22](https://github.com/Heyyeqi/RodiO/issues/22)
+- RDL 完整三阶段技术方案（此前只有模糊backlog条目）→ issue [#23](https://github.com/Heyyeqi/RodiO/issues/23)
+- 产品方案v4第十四节约50条彩蛋清单存档 + §20.3收缩规则预审查 → issue [#24](https://github.com/Heyyeqi/RodiO/issues/24)
+
+### 产品护栏（来自AI陪伴哲学原文，非任务，写入原则）
+
+> RodiO 的克制必须写进产品规则，不能只靠个人审美自觉：不做信息流；不做社区广场；不做直播和K歌入口；不做无限刷新推荐；每日推荐数量有限；AI主动触发次数有限；推荐理由字数有限；用户可以一键关闭主动陪伴；所有主动推荐必须可解释。
+
+已同步写入 `CLAUDE.md` 设计原则章节。
+
+---
+
 ## 4. 当前优先级队列
 
 按 Ultimate Build Plan 的依赖拓扑（§26.2）与本次审计结果排序：
@@ -99,16 +138,21 @@
 6. P4 Stage 6：白天背景第一轮
 7. P4 Stage 7：运动方向产品化（Motion Profiles 正式化）
 8. 天外来信风格调优（对应用户诉求，非架构工作）
+9. 选歌模块v2 Phase1完成确认 + Phase2 graduation监控（issue #19）——检查shadow日志是否已达标，可能已默默满足毕业条件
+10. 此刻入口 + 祈求系统实现（issue #21）——确认零实现的真实产品缺口
 
 ### P2 — 需要更多前置调研
-9. 选曲审美模型系统化（§15.3-15.4）
-10. 画面流畅度/渲染延迟专项审计
-11. RDL 集成到 earth3d.js（前提：近景模糊成为真实痛点）
+11. 选曲审美模型系统化（§15.3-15.4）
+12. 画面流畅度/渲染延迟专项审计
+13. RDL 集成到 earth3d.js（前提：近景模糊成为真实痛点）
+14. 选歌模块v2缺口：skip_penalty分层衰减 + discovery_candidates pipeline（issue #20）
+15. Earth Visual Foundation 正式收口验收（issue #22）
 
 ### P3 — 长期/冻结
-12. Agent Mesh / CI 自动化
-13. Astronomy Bridge 剩余字段（日食/流星雨/极光/潮汐）
-14. Journey/Surprise、彩蛋与节日系统
+16. Agent Mesh / CI 自动化
+17. Astronomy Bridge 剩余字段（日食/流星雨/极光/潮汐）
+18. Journey/Surprise、彩蛋与节日系统（issue #24，含完整~50条清单存档）
+19. RDL 完整三阶段技术方案存档（issue #23）
 
 ---
 
@@ -129,5 +173,11 @@
 | [#16](https://github.com/Heyyeqi/RodiO/issues/16) | 天外来信 + 选曲风格调优（非架构工作） | AI Voice and Selection Style Tuning | P1 | Backlog |
 | [#17](https://github.com/Heyyeqi/RodiO/issues/17) | 画面流畅度 + 镜头切换渲染延迟专项审计 | Performance and Rendering Polish | P2 | Backlog |
 | [#18](https://github.com/Heyyeqi/RodiO/issues/18) | 长期backlog: RDL集成 / Astronomy剩余字段 / Agent Mesh / 彩蛋 | Long-Term Backlog | P3 | Backlog |
+| [#19](https://github.com/Heyyeqi/RodiO/issues/19) | 选歌模块v2 Phase1完成确认 + Phase2 graduation监控标准 | Song Selection v2 — Phase 2 Graduation | P1 | Backlog |
+| [#20](https://github.com/Heyyeqi/RodiO/issues/20) | 选歌模块v2缺口: skip_penalty分层衰减 + discovery_candidates pipeline | Song Selection v2 — Phase 2 Graduation | P2 | Backlog |
+| [#21](https://github.com/Heyyeqi/RodiO/issues/21) | 此刻入口 + 祈求系统实现 | Companion and Prayer System | P1 | Backlog |
+| [#22](https://github.com/Heyyeqi/RodiO/issues/22) | Earth Visual Foundation 正式收口验收 | Earth Visual Foundation Formal Closure | P2 | Backlog |
+| [#23](https://github.com/Heyyeqi/RodiO/issues/23) | RDL 技术方案存档：BMNG+GEBCO+GSHHG 三层LOD具体路线 | Long-Term Backlog | P3 | Backlog |
+| [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
 
 - 每次开始一个任务，先把对应 issue 在看板上拖到 In Progress；完成验收后拖到 Done，并在本文件和 devlog.md 都留下记录。
