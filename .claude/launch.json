@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rodio",
+      "runtimeExecutable": "/Users/rw-mac/.local/bin/node",
+      "runtimeArgs": ["server.js"],
+      "port": 8081
+    },
+    {
+      "name": "rodio-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8082", "--directory", "pwa"],
+      "port": 8082
+    }
+  ]
+}

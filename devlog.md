@@ -6140,3 +6140,823 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - `core/state.js`：13 insertions(+)
 - `scripts/backfill-sequence-shape.js`：新建
 - commit: `f8d5fb5`
+
+---
+
+## 2026-07-16 修复 Night 球体竖向条纹占位伪影
+
+### 做了什么
+- 审计确认条纹来自 16K atlas 瓦片尚未加载时的近黑色空白占位层；Night 的 daybase 夜间分级会进一步压暗这些空白列。
+- 修改 atlas 基础层：8K/16K LOD 也先铺现有 8K 全球底图，高清瓦片到达后逐格覆盖，避免占位列直接暴露在球体上。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 本地浏览器复现并刷新验证，Night 主题可正常加载；未观察到新的资源加载错误。
+
+### 遗留问题
+- 当前工作区原有的 Earth/Night 未提交改动仍保留，未做整理、提交或覆盖。
+
+---
+## 2026-07-16 修复 Night 球面规则多边形伪影
+
+### 做了什么
+- 复核用户最新截图后确认，残留图案呈规则球面网格状，不是 16K atlas 空白占位列。
+- 定位到 `oceanTintMesh`：它使用半径 `2.002` 的透明 64×64 球体，与地球表面过近，Night 深色渲染下会暴露出重复的深度/网格伪影。
+- Night-base 主题已经由地球 shader 完成海洋分级，因此关闭这层冗余透明叠加；非 Night-base 主题保持原逻辑。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 本地预览已重新加载并切换到 `night` 模式，确认新逻辑生效。
+
+### 遗留问题
+- 当前工作区其他 Earth/Night 未提交改动仍保留，未做整理、提交或覆盖。
+
+---
+## 2026-07-16 修复 Earth 近中远景辉光状态丢失
+
+### 做了什么
+- 审计确认 early morning 从远景返回 homeGlobe 后辉光消失，是镜头过渡目标值错误，不是主题配置丢失。
+- 原逻辑把 homeGlobe 与远景一起归入 `RIM_BOOST_COMPOSITIONS`，但目标强度使用 `FAR_VIEW_RIM` 的全 0 值，导致远景返回 homeGlobe 后外圈和内侧辉光都保持为 0。
+- 改为统一的近/中/远景辉光距离体系：近景 `1.0`、中景 `0.82`、远景 `0.55`；主题配置继续作为颜色和基础强度来源。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 本地预览切换 earlyMorning，并执行 homeGlobe → farOrbit → deepSpace → homeGlobe 流程，过渡逻辑正常运行。
+
+### 遗留问题
+- 当前工作区其他 Earth/Night 未提交改动仍保留，未做整理、提交或覆盖。
+
+---
+## 2026-07-16 修复远景 Fresnel 辉光断崖
+
+### 做了什么
+- 确认远景 `atmosphere2` 使用的 Fresnel 指数 `power=2.6`、`powerOuter=2.2` 衰减过陡，导致部分可见轮廓角度的辉光接近于零。
+- 保留原有 `opacity=0.30`、`sunInfluence=0.08` 和外层强度，仅将指数调整为 `power=1.6`、`powerOuter=1.2`，让 12/3/6/9 点轮廓的亮度过渡更连续。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 本地页面已重新加载，远景 Fresnel 配置已进入运行时代码。
+
+### 遗留问题
+- 仍需在实际大视口下对 12/3/6/9 点分别做一次视觉确认，再决定是否继续微调 1.6/1.2 的平滑程度。
+
+---
+## 2026-07-16 修复远景 atmosphere2 悬崖光
+
+### 做了什么
+- 对照历史调参记录确认，悬崖光的关键来源不是 Fresnel 指数，而是远景切换时无条件重新打开 `atmosphere2` 二级大气壳。
+- 统一使用 Rim Overlay 的主题（包括 `earlyMorning`）在近、中、远景均关闭 `atmosphere2`，避免二级 Fresnel 壳与主辉光叠加形成突兀亮带。
+- 保留非 Rim Overlay 主题的远景 `atmosphere2` 路径，以及此前已降低的远景 Fresnel 指数作为兼容兜底。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要在浏览器中用 `earlyMorning` 依次检查 homeGlobe、farOrbit、deepSpace，并确认四个轮廓方向没有二级壳亮带。
+
+---
+## 2026-07-16 强制清理清晨主题残留大气层
+
+### 做了什么
+- 增加运行时保险：所有使用 Rim Overlay 的主题每次更新都强制隐藏 `atmosphere2`，避免旧远景状态残留。
+- 将 `earth3d.js` 查询版本从 v19 升到 v20，避免浏览器继续命中旧缓存代码。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 刷新后若光柱仍存在，需要继续单独关闭 screen-space Rim Overlay，以区分它是否来自投影后处理层。
+
+---
+## 2026-07-16 第一批修复清晨地球整体光圈形态
+
+### 做了什么
+- 将清晨 screen-space 外圈与内侧 veil 的轮廓计算改为基于投影椭圆的闭合距离场，不再使用单侧弧线向上扩散的计算方式。
+- 关闭柱状结构的来源：旧弧线在地球偏低或缩小时可能扩展成垂直光柱；新结构只围绕地球完整可见轮廓生成低强度空气光。
+- 外圈和内侧 veil 均降低到温和强度，保留全地球轮廓连续可见；本批次尚未接入太阳方向光束或 Bloom。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要用户先验收地球整体光圈是否连续、柔和，以及矩形光柱是否消失；太阳方向散射光放在下一批。
+
+---
+## 2026-07-16 第二批加入清晨太阳方向散射光
+
+### 做了什么
+- 保持第一批闭合椭圆地球光圈不变，在其外侧增加低强度太阳散射项。
+- 复用现有 `sunLight.position`，把太阳方向投影到 Rim Overlay 的屏幕坐标中，散射光沿地球中心指向太阳方向展开。
+- 对散射光设置窄宽度、有限长度和低强度上限，避免重新形成垂直光柱；仅在 `earlyMorning` 启用。
+- 本批次未接入 Bloom，避免把基础光圈或散射光整体放大。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要用户验收太阳散射方向、长度和强度；确认后再决定是否进入 Bloom 实验批次。
+
+---
+## 2026-07-17 修复夜晚光圈被清晨降亮系数误伤
+
+### 做了什么
+- 确认第一批闭合光圈重构中的固定 `0.55 / 0.60` 系数同时作用于 Night / deepNight，导致夜晚轮廓光过弱。
+- 改为主题级光圈强度：`earlyMorning` 保持柔和降亮，其他 Rim Overlay 主题恢复各自配置强度。
+- 夜晚继续使用闭合连续轮廓，不恢复容易形成柱状结构的旧单侧弧线算法。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要重新验收 earlyMorning、night、deepNight 的近中远景光圈强度，再继续 Bloom 实验。
+
+---
+## 2026-07-17 第一批自然夜晚辉光参数
+
+### 做了什么
+- 以 `sunset / sunrise / dawn` 的自然弥散感为视觉基准，先调整 `evening / lateEvening / night / deepNight`。
+- 放宽外圈辉光宽度、降低核心对比、减缓衰减曲线，让轮廓从硬描边变成连续的空气晕。
+- 同步放宽内侧 veil 的衰减，避免内外两层叠成一条亮带。
+- 保持地球全轮廓光圈、闭合投影轮廓和无 Bloom 的约束不变。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v21`
+
+### 遗留问题
+- 等待验收四个夜晚/傍晚模式的近景、中景、远景；白天模式暂未修改。
+
+---
+## 2026-07-17 第二批夜晚辉光改为光晕优先
+
+### 做了什么
+- 仅调整 `deepNight` 和 `night`，没有修改 `evening / lateEvening` 或白天模式。
+- 大幅降低轮廓核心光，扩大并减缓外部空气光晕，让辉光不再依赖一条高对比边缘线。
+- 将夜晚内侧 veil 降到接近不可见，避免内外两条轮廓叠成带子。
+- 保留完整闭合地球光圈，不恢复旧 Fresnel 层，也未开启 Bloom。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v22`
+
+### 遗留问题
+- 需要用户单独验收 `deepNight / night` 的带子感、光圈可见度及近中远景连续性。
+
+---
+## 2026-07-17 夜晚辉光增加弥散能量并抑制边缘带
+
+### 做了什么
+- 确认夜晚问题同时包含“整体光能偏弱”和“轮廓局部对比过高”两个因素。
+- 仅针对 `deepNight / night` 提高整体辉光增益，不直接提高轮廓核心亮度。
+- 新增外侧光晕边缘抑制，让弥散光的能量峰值离开地球精确轮廓，减少带子感。
+- `evening / lateEvening`、白天模式和 Bloom 均未修改。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v23`
+
+### 遗留问题
+- 需要重新验收夜晚光圈的可见度、边缘带减弱程度以及近中远景连续性。
+
+---
+## 2026-07-17 夜晚辉光恢复渐变轮廓
+
+### 做了什么
+- 根据 `v23` 验收结果，撤销过强的外侧边缘抑制，避免远景地球完全失去光圈。
+- 以 `sunset` 的自然渐变作为参考，保留低强度接触光，并提高宽外部冷色空气晕的能量。
+- `night / deepNight` 使用更宽的渐变宽度和更低对比的核心比例；其他模式未修改。
+- 保留闭合轮廓和无 Bloom 约束。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v24`
+
+### 遗留问题
+- 需要验收夜晚近景与远景是否同时满足“看得到光圈”和“没有明显带子”。
+
+---
+## 2026-07-17 夜晚弥散光最后一轮能量微调
+
+### 做了什么
+- 保持 `v24` 的渐变形状与低核心对比不变，仅提高 `night / deepNight` 外部弥散光能量约 10%～15%。
+- 根据相机距离增加轻微远景补偿，避免小地球的光圈完全不可见。
+- 远景补偿只作用于整体弥散光，不提升核心轮廓，因此不会重新制造硬带。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v25`
+
+### 遗留问题
+- 需要用户验收夜晚近景和远景的光圈可见度；若通过，再推广到 `evening / lateEvening`。
+
+---
+## 2026-07-17 夜晚暗面与下缘环境补光
+
+### 做了什么
+- 在 `v25` 的渐变结构上增加极低强度的暗面/下缘环境补光。
+- 补光只作用于宽外部光晕，不提高核心轮廓，因此不会把带子重新拉出来。
+- 继续保持夜晚闭合光圈、远景可见度和无 Bloom 约束。
+- `evening / lateEvening` 与白天模式未修改。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v26`
+
+### 遗留问题
+- 需要验收整个地球轮廓的连续可见性；通过后再推广到傍晚模式。
+
+---
+## 2026-07-17 远景夜晚辉光补偿
+
+### 做了什么
+- 仅对 `deepSpace` 组合在 `night / deepNight` 下增加外侧弥散光补偿，避免远景小地球融入星空。
+- 补偿只作用于外部光晕，不提高核心轮廓和内侧 veil；`approach`、`homeGlobe` 及其他模式保持原标定。
+- 继续保留主题级距离补偿，新增组合级补偿约 50%，避免全局抬亮夜晚。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 脚本缓存版本更新为 `rdl-overlay-gate-v27`
+
+### 遗留问题
+- 等待用户对比验收 `deepSpace` 与 `approach`；若远景仍偏暗，再只微调远景外侧光晕，不扩大到其他构图。
+
+---
+## 2026-07-17 修正远景夜晚辉光过度衰减
+
+### 做了什么
+- 定位到 `deepSpace` 夜晚光晕同时受到远景系数 `0.55` 和夜晚低对比配置的双重衰减。
+- 仅对 `deepSpace + night/deepNight` 恢复远景辉光的 authored distance scale；`approach`、近景和白天远景保持原规则。
+- 缓存版本更新为 `rdl-overlay-gate-v28`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要在当前 Chrome 页面强刷后验收 `deepSpace/deepNight` 与 `approach/deepNight` 的实际视觉差异。
+
+---
+## 2026-07-17 远景夜晚辉光改为宽柔弥散
+
+### 做了什么
+- 仅对 `deepSpace + night/deepNight` 将外侧光晕宽度提升到至少 `0.42`，并将外侧 halo 强度提高约 35%。
+- 保持核心轮廓和内侧 veil 不变，避免重新出现硬带或悬崖光。
+- `approach`、`homeGlobe`、白天模式继续使用原有参数。
+- 缓存版本更新为 `rdl-overlay-gate-v29`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后验收 `deepSpace`：应看到更宽、更柔的地球边缘光晕，而不是更亮的细线。
+
+---
+## 2026-07-17 加强远景夜晚包围式光晕
+
+### 做了什么
+- 针对验收结果，将 `deepSpace + night/deepNight` 的外晕宽度从至少 `0.42` 提升到 `0.52`。
+- 外侧 halo 补偿从约 `1.35` 提升到约 `1.70`，让缩小后的地球仍能读出一圈柔光。
+- 核心轮廓、内侧 veil、`approach` 和近景参数保持不变。
+- 缓存版本更新为 `rdl-overlay-gate-v30`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后确认远景是否达到“被一圈光包围”的感觉；若过亮，只回调 halo 强度，不回退宽度。
+
+---
+## 2026-07-17 扩大远景夜晚大气外晕
+
+### 做了什么
+- 针对 `deepSpace + night/deepNight`，将外晕宽度从至少 `0.52` 扩大到 `0.68`。
+- 外侧 halo 补偿从约 `1.70` 提升到约 `2.20`，增强小比例地球的包围感。
+- 核心轮廓不增亮，`approach`、近景和白天模式不变。
+- 缓存版本更新为 `rdl-overlay-gate-v31`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后验收外晕是否达到包围感；若出现明显光带，再优先降低 halo 强度而保留宽度。
+
+---
+## 2026-07-17 激进测试远景夜晚大气光晕
+
+### 做了什么
+- 按验收要求，仅对 `deepSpace + night/deepNight` 将外晕宽度测试值设为 `3.0`。
+- 外侧 halo 测试值设为原配置的 `5.0` 倍。
+- 核心轮廓和其他构图不变。
+- 缓存版本更新为 `rdl-overlay-gate-v32`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 这是一次激进视觉探针，需要强刷后观察是否出现过宽泛光、光柱或背景污染。
+
+---
+## 2026-07-17 远景光晕扩大并降低边缘亮度
+
+### 做了什么
+- 根据 v32 验收，确认问题是亮度集中在边缘形成白色硬环，而不是完全没有光。
+- 将 `deepSpace + night/deepNight` 外晕宽度测试值从 `3.0` 提升到 `6.0`。
+- 将外侧 halo 测试值从 `5.0` 降到 `2.5`，把光能摊到更大的范围。
+- 核心轮廓和其他构图不变。
+- 缓存版本更新为 `rdl-overlay-gate-v33`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后确认是否从“白色硬环”变为“大范围低亮度包围光”。
+
+---
+## 2026-07-17 极限扩大远景外晕宽度
+
+### 做了什么
+- 按验收要求，仅将 `deepSpace + night/deepNight` 外晕宽度从 `6.0` 提升到 `36.0`。
+- 保持 halo `2.5`、核心轮廓和其他构图不变，单独验证外晕范围是否是远景偏弱的根因。
+- 缓存版本更新为 `rdl-overlay-gate-v34`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后观察是否出现大面积背景泛白；若仍然没有明显扩大，说明 shader 的宽度单位受其他归一化限制，需要改渲染模型而不是继续放大数值。
+
+---
+## 2026-07-17 修复远景外晕范围被固定裁剪
+
+### 做了什么
+- 定位到外晕 shader 的固定 `endFade` 将地球外部可见范围锁死在约 `0.18` 投影半径，导致 `width 6 → 36` 没有视觉变化。
+- 改为让外晕裁剪范围随 `width` 增长，并将最大范围限制在 `0.80`，避免星空整体泛白。
+- 保留当前 `deepSpace` 测试值：宽度 `36.0`、halo `2.5`。
+- 缓存版本更新为 `rdl-overlay-gate-v35`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要强刷后验收外晕是否真正扩大；重点观察地球外侧是否出现连续柔和过渡，以及星空是否保持干净。
+
+---
+## 2026-07-17 隔离深空大外晕并修复其他构图污染
+
+### 做了什么
+- 定位到 `uSkyHaloWidth = 36` 属于共享 rim shader uniform，导致离开 `deepSpace` 后其他构图也可能继承极端宽度。
+- 新增独立的 `uHaloExtent` 控制实际外部裁剪范围：仅 `deepSpace + night/deepNight` 使用大范围 `0.80`。
+- 非 `deepSpace` 强制使用普通宽度上限 `0.30` 和普通外晕范围 `0.18`。
+- 缓存版本更新为 `rdl-overlay-gate-v36`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- `deepSpace` 当前仍是激进测试值，下一轮根据截图把圆环改成更自然的渐变包围光。
+## 2026-07-17 HZ修复远景光圈隔离与自然弥散
+
+### 做了什么
+- 将 deepSpace 的远景光圈改为独立开关，不再用超大 Fresnel 宽度直接铺成厚圆环。
+- 将“光线扩展范围”和“边缘衰减宽度”拆开：远景使用更大的可见范围，但保留柔和衰减。
+- 每次主题/构图应用时强制关闭远景专用状态，避免 deepSpace 的光圈污染其他模式和角度。
+- 将 deepSpace 的额外亮度从 2.5 倍收回到 1.45 倍，保持可见但避免发白。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 需要在浏览器强制刷新后验收 deepSpace、approach、homeGlobe、earlyMorning 和 night 五个组合。
+
+## 2026-07-17 HZ将深空光圈与普通构图彻底隔离
+
+### 做了什么
+- 确认污染源是 `atmosphere2` 这层厚 Fresnel 球壳，而不是单纯的 rim 宽度。
+- 将厚球壳改为仅 `deepSpace + night/deepNight` 启用的专用体系。
+- 切回 `homeGlobe`、中景或其他远景时，立即隐藏并将球壳透明度清零，避免残留成“保龄球”圆环或地平线光带。
+- 将普通构图的 atmosphere2 过渡目标固定为 0，避免动画过程再次把旧光圈带回来。
+- 缓存版本更新为 `rdl-overlay-gate-v38`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- 待浏览器强制刷新后验收 `deepSpace`、`homeGlobe`、`approach` 和其他中远景切换。
+
+### 遗留问题
+- 如果普通构图仍有宽弧，下一步只调共享 rim overlay 的普通分支，不再触碰 deepSpace 专用球壳。
+
+## 2026-07-17 HZ保护deepSpace专用光圈不被通用清理误关
+
+### 做了什么
+- 修正渲染循环中的通用 `atmosphere2` 清理逻辑：普通构图继续强制清零，`deepSpace + night/deepNight` 保留专用球壳。
+- 避免 deepSpace 光圈在渲染更新、缩放或审计视角刷新时被误关。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+
+### 遗留问题
+- 需要浏览器强制刷新后确认 deepSpace 保持定稿效果，同时 homeGlobe、approach 不再出现厚圆环。
+
+## 2026-07-17 HZ修复非deepSpace远景构图的宽光圈（根因：范围未随距离分级，而非泄漏）
+
+### 做了什么
+- 新增 `earth3dApi.getRimOverlayDebug()` 运行时调试接口，暴露 `_currentCompositionKey`、`atmosphere2` 状态、rim overlay 全部关键 uniform，配合截图逐构图验证。
+- 用该接口逐一核对 deepSpace/homeGlobe/portraitMarble/farOrbit/cityAnchor 等构图后确认：此前的 `atmosphere2` 隔离和 `uFarGlowEnabled`/`uHaloExtent` 门控本身完全正确——非 deepSpace 构图下这两个值稳定为 0/0.18，没有泄漏，之前的判断方向没有错。
+- 但定位到另一个此前未发现的根因：`uHaloExtent`/`uSkyHaloWidth` 是投影半径（`uRimRadius`）的固定比例（0.18/0.30），只有 `uHaloStrength` 等亮度类 uniform 按 `getRimGlowDistanceScale()` 的 near/mid/far 分级缩放，范围本身完全没有随构图分级。`farOrbit`/`portraitMarble`（"approach" 序列途经的构图）会显示整颗地球，同样比例的范围在视觉上就读成一圈明显光环——即使数值上完全"正常"，这才是普通构图仍有宽弧的真实原因。
+- 修复：在 `transitionToComposition()` 里让 `uHaloExtent`/`uSkyHaloWidth` 复用已有的 `rimDistanceScale`（far=0.55/mid=0.82/near=1.0）一起缩放，与亮度用同一套距离分级，而不是只缩放亮度、放任范围不变。`homeGlobe`（near=1.0）与 `deepSpace` 专用分支数值完全不变，没有再全局放大或引入新参数。
+- 用 debug 接口 + 截图复核验收矩阵：deepNight/night 的 homeGlobe、deepSpace、portraitMarble、farOrbit、cityAnchor，earlyMorning/sunset 的 homeGlobe，以及完整 `approach` 序列端到端播放，均确认光圈变窄、连续、无断崖，deepSpace 效果不受影响。
+- 缓存版本更新为 `rdl-overlay-gate-v39`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `.claude/launch.json`（新增 `rodio-static` 纯静态预览配置；本地 `node server.js` 因 `better-sqlite3` 与当前 Node 版本 ABI 不匹配暂时无法启动，与本次改动无关，验证时改用静态服务器绕开）
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过
+- `git diff --check` 通过
+- 浏览器运行时逐项验收（非仅静态检查）：deepNight/night × {homeGlobe, deepSpace, portraitMarble, farOrbit, cityAnchor}，earlyMorning/sunset × homeGlobe，以及完整 approach 序列，均截图 + `getRimOverlayDebug()` 数值双重确认，12/3/6/9点方向连续、无断崖或保龄球环。
+
+### 遗留问题
+- 本地 `node server.js` 因 `better-sqlite3` 原生模块 ABI 不匹配无法启动（需要 `npm rebuild better-sqlite3` 或对齐 Node 版本），建议单独修复；本轮验证未涉及后端功能。
+- `getRimOverlayDebug()` 保留在 `earth3dApi` 上作为长期调试钩子，如不需要可后续移除。
+- oceanExpanse/polarDiagonal/terminatorPortrait 三个 far 构图沿用同一套分级逻辑，本轮未逐一截图，理论上同样受益，建议下次连带验收。
+
+## 2026-07-17 HZ修复主题切换晚于构图切换时光圈范围被重置（真实复现场景）
+
+### 做了什么
+- 用户反馈 `?earthCandidate=cameraGrammarV1` 下 deepNight 仍有宽光圈，截图疑似"home globe"。核对 `earth3d.js:7781` 发现 `cameraGrammarV1` 启动后会自动过渡到 `portraitMarble`——用户截图实际是 `portraitMarble`，不是 `homeGlobe`，`homeGlobe` 本身没有问题（direct 测试确认与修复前一致，干净）。
+- 定位真正原因：`applyRimGlowThemeConfig()`（由 `applyTheme()` 调用，每次主题切换都会跑）会无条件把 `uSkyHaloWidth`/`uHaloExtent` 写回主题的原始 authored 值，完全不看当前构图。上一轮的修复只让 `transitionToComposition()` 按 `rimDistanceScale` 分级这两个值——如果主题切换发生在构图切换**之后**（真实场景里非常常见：比如相机已经停在 `portraitMarble`，之后时钟走到 deepNight 触发主题切换），`applyRimGlowThemeConfig` 会把刚分级好的窄范围重新盖回原始宽范围。
+- 修复：让 `applyRimGlowThemeConfig()` 内部也按当前 `_currentCompositionKey` 做同样的 near/mid/far 分级，而不是直接写 authored 值，两处入口统一用同一套分级结果。
+- 修复过程中的一个自曝问题：第一版修复让 `applyRimGlowThemeConfig` 调用了 `getRimGlowDistanceScale()`，但该函数和它依赖的 `const RIM_GLOW_DISTANCE_SCALE` 原本声明在文件后段（~6660 行），而 `applyRimGlowThemeConfig` 在启动阶段最早一次 `applyTheme()` 调用（~6030 行，早于 6660 行）就会执行到，导致 `ReferenceError: Cannot access 'RIM_GLOW_DISTANCE_SCALE' before initialization`，整个 3D 渲染在浏览器里直接崩溃降级成 canvas 兜底画面。已将 `RIM_GLOW_DISTANCE_SCALE` 和 `getRimGlowDistanceScale()` 一并移到 `_currentCompositionKey` 声明处（~625 行），确保任何调用时机都已初始化完成；用真实浏览器重新走了一遍 `cameraGrammarV1` 启动流程确认不再崩溃、`window.earth3d` 正常挂载。
+- 缓存版本更新为 `rdl-overlay-gate-v40`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过，`git diff --check` 通过。
+- 浏览器运行时复现原 bug 场景（构图先到 `portraitMarble`/`farOrbit`，主题**之后**才切换）：修复前 `uHaloExtent`/`uSkyHaloWidth` 会被重置回 0.18/0.32（宽），修复后稳定保持分级值 0.099/0.165（窄），截图确认光圈变窄且连续。
+- 回归检查：`homeGlobe`（同样"主题晚于构图"顺序）保持 0.18/0.30 不变；`deepSpace` 保持 `uFarGlowEnabled=1`、`uHaloExtent=0.8` 不变，专属大光圈未受影响。
+- 修复 TDZ 崩溃后，完整重跑一遍 `?earthCandidate=cameraGrammarV1` 真实启动路径，确认 `window.earth3d.isReady` 正常变为 true，无 fallback 降级。
+
+### 遗留问题
+- 本地 `node server.js` 仍因 `better-sqlite3` ABI 不匹配无法启动，本轮同样用静态服务器绕开验证。
+- 建议后续留意：`applyTheme()` 和 `transitionToComposition()` 两处都各自复制了一份 `isFarNightGlow` 判断逻辑（加上 `updateEarlyMorningGlowMode()` 共三处），目前手动保持一致，如果以后再改分级规则，三处都要同步改，长期看值得抽成一个共享函数。
+
+## 2026-07-17 HZ用真实入口（localhost:8080 + cameraGrammarV1）复核光圈修复，未发现新问题
+
+### 做了什么
+- 按要求用真实运行中的 `node server.js`（localhost:8080）而非静态兜底服务器复核，先修好 `.claude/launch.json` 里 `rodio` 配置指向的 node 可执行文件（`/opt/homebrew/opt/node/bin/node` 是 v26，与已编译的 `better-sqlite3`（NODE_MODULE_VERSION 127）不匹配；改成 PATH 里实际匹配的 `/Users/rw-mac/.local/bin/node` v22.23.0）。因为 8080 端口已经被用户自己启动的实例占用，本轮实际测试仍是连到用户已运行的那个真实实例，配置修复留作以后备用。
+- 用浏览器扩展（非静态预览工具）连上真实页面，通过 `earth3dApi.getRimOverlayDebug()` 逐步确认构图键，不依赖截图猜测。发现自动化标签页 `document.visibilityState` 恒为 `hidden`（`requestAnimationFrame` 三秒内 0 次回调），说明相机补间/`updateEarlyMorningRimProjection` 这类挂在渲染循环上的更新不会推进；但 `uHaloExtent`/`uSkyHaloWidth`/`uFarGlowEnabled` 是在 `transitionToComposition`/`applyRimGlowThemeConfig` 里同步赋值、不依赖渲染循环，因此这三个值的读数依然可信。
+- 按要求顺序全部走了一遍并用 `getRimOverlayDebug()` 逐步取值：启动（`portraitMarble`，`cameraGrammarV1` 自动过渡）→ 切 `deepNight` → 切 `homeGlobe` → 切 `portraitMarble` → 切 `farOrbit` → 切 `deepSpace`；随后反向重复：`night`/`sunset` 主题先切、构图后切。两种顺序下同一目标状态的 `uHaloExtent`/`uSkyHaloWidth`/`uFarGlowEnabled` 完全一致。
+- 结论：上一轮（v39→v40）的修复在真实入口下依然成立，未发现需要修改代码的新问题。
+
+### 当前真实构图键与最终 uniform 值（deepNight，除标注外）
+| 构图 | uFarGlowEnabled | uHaloExtent | uSkyHaloWidth | 视觉 |
+|---|---|---|---|---|
+| homeGlobe | 0 | 0.18 | 0.30 | 细、贴边、自然 |
+| portraitMarble | 0 | 0.099 | 0.165 | 细、连续 |
+| farOrbit | 0 | 0.099 | 0.165 | 细、连续、无保龄球环 |
+| deepSpace | 1 | 0.80 | 0.58 | 专用宽柔光晕，未受污染 |
+
+反向顺序（先切 `night`/`sunset` 主题、再切构图）取到的同构图数值与上表一致，仅颜色/基础强度随主题不同。
+
+### 写入路径清单（现行行号）
+1. `applyRimGlowThemeConfig()`（[earth3d.js:2843](pwa/earth3d.js:2843)）——`applyTheme()` 调用，写 `uHaloExtent`/`uSkyHaloWidth`/`uFarGlowEnabled`（[earth3d.js:2868-2872](pwa/earth3d.js:2868)，已按 `_currentCompositionKey` 分级）及 `uCoreStrength`/`uHaloStrength`/`uInnerVeilStrength`/`uSunLobeStrength` 的**目标基准值**（未分级，供 ② 的补间读取）。
+2. `transitionToComposition()`（[earth3d.js:6770](pwa/earth3d.js:6770)）——写 `uHaloExtent`/`uSkyHaloWidth`/`uFarGlowEnabled`（[earth3d.js:6867-6869](pwa/earth3d.js:6867)，同一套分级公式）为瞬时值；`uHaloStrength` 等强度类只记录 from/to，不在此处立即写入。
+3. `_updateGramTransition()`（[earth3d.js:6909](pwa/earth3d.js:6909)）——挂在 `renderer.setAnimationLoop` 上每帧调用，把 ② 记录的 from/to 按缓动函数插值写入 `uHaloStrength`/`uCoreStrength`/`uSunLobeStrength`/`uInnerVeilStrength`（[earth3d.js:6918-6921](pwa/earth3d.js:6918)）。这是唯一依赖渲染循环的写入点。
+调用顺序上 ①②互不阻塞、谁后调用谁生效，这也是上一轮 bug 的根源；本轮验证确认现在两处用的是同一套 `getRimGlowDistanceScale()` 分级结果，顺序互换不再影响终值。
+
+### 改动文件
+- `.claude/launch.json`（修正本地 node 可执行文件路径，未涉及 8080 端口，未影响用户正在运行的实例）
+- `devlog.md`
+
+### 验证
+- 真实服务器（用户已运行的 localhost:8080 实例）+ 真实 URL `?earthCandidate=cameraGrammarV1`，真实播放中（John Mayer《Slow Dancing in a Burning Room》）。
+- 完整走了正向和反向两种切换顺序，`homeGlobe`/`portraitMarble`/`farOrbit`/`deepSpace` 四个构图截图+数值双重确认，均符合预期（见上表），`deepSpace` 未被污染，`homeGlobe`/`portraitMarble`/`farOrbit` 未再出现宽弧光。
+
+### 遗留问题
+- 与上一轮相同：`isFarNightGlow`/`isFarCompositionNow` 判断逻辑在三处手动保持一致，长期看值得抽成共享函数。
+- 自动化浏览器标签页 `visibilityState` 恒为 hidden、`requestAnimationFrame` 不触发，导致相机补间类调试只能靠等待真实经过的画面变化或多次读数间接确认，无法主动强制推进；这是测试环境限制，不是应用本身的问题。
+
+## 2026-07-17 HZ收紧homeGlobe自身的光圈范围（用户实测对比后确认的新问题）
+
+### 做了什么
+- 用户在真实页面上直接点了 Camera Grammar V1 面板的 `homeGlobe` 按钮做真人肉眼对比：点之前看到的其实是 `portraitMarble`（`cameraGrammarV1` 启动自动切的，这轮修复后是紧的），点了 `homeGlobe` 之后反而觉得变宽了。核对 `getRimOverlayDebug()` 确认 `homeGlobe` 当时是 `uHaloExtent=0.18`/`uSkyHaloWidth=0.30`——这是 `homeGlobe` 从这几轮修复开始就没变过的原始基准值（因为 `homeGlobe` 的距离分级 `near=1.0`，等于没缩放），不是本轮引入的新退化，但确实是用户没打算接受的宽度。
+- 和用户确认目标：不采用直接套用 `far` 分级比例（0.55，太紧，会显得局促），改成单独给 `homeGlobe` 一个 ×0.75 的 near 专用缩放，只影响 `uHaloExtent`（0.18→0.135）和 `uSkyHaloWidth`（0.30→0.225），不动亮度类 uniform（`uHaloStrength` 等仍用原来的 `near=1.0`），也不碰 `portraitMarble`/`farOrbit`/`deepSpace` 现有逻辑。
+- 实现：新增 `RIM_GLOW_EXTENT_NEAR_SCALE = 0.75` 常量和 `getRimGlowExtentScale(compositionKey, rimDistanceScale)` 小函数（只在 `compositionKey === 'homeGlobe'` 时返回 0.75，其余原样返回 `rimDistanceScale`），分别接入 `applyRimGlowThemeConfig()` 和 `transitionToComposition()` 两处写入点，替换掉原来直接使用 `rimDistanceScale`/`rimDistanceScaleNow` 计算 width/extent 的地方——刻意和"亮度用的分级值"分开成两个独立旋钮，避免又把强度也带着改了。
+- 缓存版本更新为 `rdl-overlay-gate-v41`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过，`git diff --check` 通过。
+- 静态服务器逐项确认：`homeGlobe`（deepNight/night 两个主题、两种调用顺序）稳定给出 `uHaloExtent=0.135`、`uSkyHaloWidth=0.225`，`uHaloStrength` 等亮度值不变；`portraitMarble`/`farOrbit`（0.099/0.165）、`deepSpace`（`uFarGlowEnabled=1`、0.8/0.58）三个构图逐一复核，数值和上一轮完全一致，未被本次改动影响。
+- 截图确认 `homeGlobe` 视觉上比上一版更贴边、更细，且亮度感知没有明显变化（因为没动强度类参数）。
+
+### 遗留问题
+- 用户要求先看截图确认这版 ×0.75 是否够、要不要继续收紧或放宽，尚未拿到反馈，可能还有下一轮。
+- 其余同上一轮：三处 `isFarNightGlow` 判断仍手动保持一致，长期值得抽成共享函数。
+
+## 2026-07-17 HZ收束Home Globe普通构图辉光并隔离Deep Space
+
+### 做了什么
+- 定位普通构图灰白宽带的直接原因：`uSkyHaloWidth` 大于或接近 `uHaloExtent`，Gaussian 在 `endFade` 裁剪处仍保留较高能量，导致自然渐隐被读成一圈发白带子。
+- 保留现有构图级可见范围和亮度标定，仅将普通构图的能量衰减宽度收为原计算值的 `0.45`，让辉光在裁剪前自然降到接近零；`homeGlobe` 的 extent 仍为 `0.135`，`portraitMarble` 仍为 `0.099`。
+- 新增 `resolveRimGlowRange()` 统一主题应用和构图切换两条写入路径，并新增 `isDeepSpaceNightGlow()` 统一 Deep Space 判断，避免同一规则继续在多处手工复制。
+- `deepSpace + night/deepNight` 继续使用独立的 `width=0.58 / extent=0.80` 专用辉光，普通构图继续强制关闭 `atmosphere2`，没有改动地球纹理、天空配色或光照参数。
+- 前端脚本缓存版本更新为 `rdl-overlay-gate-v43`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过。
+- `git diff --check` 通过。
+- 真实 `localhost:8080/?earthCandidate=cameraGrammarV1` 浏览器回归通过：`morning/afternoon × homeGlobe/portraitMarble` 的灰白宽带变为薄而连续的贴边渐隐。
+- `deepNight + deepSpace` 专用宽光晕保持可见；`deepSpace → homeGlobe → afternoon` 返回链路无第二层球壳残留。
+- `sunset + homeGlobe` 的方向性暖光保留，说明本轮只收束基础环形辉光，没有误伤主题 sunLobe。
+- 以 `1952×1270` 参考视口复核，控制台无新增 warning/error。
+
+### 遗留问题
+- 等待用户在原 Chrome 页面强制刷新后做最终肉眼验收；若仍需微调，应只改 `RIM_GLOW_FALLOFF_WIDTH_SCALE`，不要再联动 Deep Space 专用参数或天空渐变。
+
+## 2026-07-17 HZ补齐十个主题的 Deep Space 地球辉光
+
+### 做了什么
+- 按“近中景淡、远景更醒目”的统一尺度体系审核 `dawn`、`sunrise`、`earlyMorning`、`morning`、`noon`、`afternoon`、`goldenApproach`、`sunset`、`evening`、`lateEvening` 十个主题；确认它们原先只有近中景 Rim Overlay，Deep Space 没有启用独立的第二层 3D 大气外壳。
+- 将 Deep Space 从“仅 `night/deepNight` 特例”扩展为十二主题共用的远景辉光系统；为十个主题分别配置与地球明暗、时段色温匹配的外壳颜色、透明度、范围和强度。白昼主题使用较弱的冷白/浅蓝外晕，黎明、日出、黄金时段和日落保留对应暖色倾向，晚间随地表变暗逐步增强。
+- 保留 `night/deepNight` 已经确认的参数不变；近景和中景继续走原有 Rim Overlay 与距离分级，不继承 Deep Space 的宽外壳。
+- Deep Space 现在由同一个主题 profile 同时驱动 3D `atmosphere2` 与屏幕空间远景范围，避免两套辉光各自取值、切换主题后互相覆盖。
+- 前端脚本缓存版本更新为 `rdl-deepspace-theme-glow-v44`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- `node --check pwa/earth3d.js` 通过，`git diff --check` 通过。
+- 静态核对十个主题均已进入 `DEEP_SPACE_GLOW_PROFILES`，且 Deep Space 的外壳、远景范围和强度均只从该 profile 取值；普通构图仍明确关闭第二层外壳。
+- 内嵌浏览器能够加载 v44 脚本与主题切换面板，但本次会话的 WebGL 地球层未正常呈现；Chrome 控制连接也不可用，因此没有将降级画面冒充最终视觉验收。
+
+### 遗留问题
+- 需要在用户当前正常呈现 WebGL 地球的 Chrome 页面强制刷新后，对十个主题做最终肉眼验收；后续如需微调，只调整各主题的 `DEEP_SPACE_GLOW_PROFILES`，不再改近中景体系。
+
+## 2026-07-17 HZ收口 Deep Space 绝对辉光强度
+
+### 做了什么
+- 根据用户提供的十二主题连续截图复核，确认 `evening` 与 `lateEvening` 的远景 halo 被各自偏低的近中景参数压到约 `0.065`，切换到 `night` 时跳升到约 `0.167`；`dawn` 则继承了 `0.70` 的近景核心强度，形成偏硬白圈。
+- 将 Deep Space 的 `coreStrength`、`haloStrength`、`innerStrength` 改为 `DEEP_SPACE_GLOW_PROFILES` 内的绝对值，不再乘用各主题近中景 halo；普通构图继续使用原主题参数。
+- 补成 `evening 0.12 → lateEvening 0.14 → night 0.16675` 的外晕阶梯；将 `dawn` 核心降至 `0.30`，并轻收 `sunrise/earlyMorning` 白芯。
+- `night/deepNight` 使用按上一版实际结果反算的绝对值，保持当前视觉不变；其他已通过的白昼主题也写入等效绝对值。
+- 前端脚本缓存版本更新为 `rdl-deepspace-theme-glow-v45`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- 仅执行语法、格式和静态参数校验；按用户要求不再花时间进行浏览器视觉验收。
+
+### 遗留问题
+- 最终视觉验收由用户在当前 Chrome 页面完成；如需微调，只改 Deep Space profile 的三个绝对强度值。
+
+## 2026-07-17 HZ统一全时段 Deep Space 增益曲线
+
+### 做了什么
+- 复核用户提供的 v45 全时段截图，确认白昼段整体连续，`dawn` 当前白芯与外晕已经合格，不再做视觉改动。
+- 定位 `evening/lateEvening` 与 `night` 差异过大的剩余原因：旧逻辑仍对 `night/deepNight + deepSpace` 叠加距离增益 `1.22` 和构图增益 `1.50`，使 `night` 实际 `uGlowScale` 达到约 `2.56`，而前两个时段仍为 `1.0`。
+- 删除旧的 Deep Space 夜间构图倍率，将 `glowScale` 与 `ambientRimLift` 一并收进十二主题的 `DEEP_SPACE_GLOW_PROFILES`；运行帧更新在 Deep Space 中只读取 profile，退出后恢复普通近中景规则。
+- 保持已通过的 `dawn/sunrise/morning/noon/afternoon/goldenApproach/sunset` 等效值；将 `earlyMorning` 的旧 `0.55` 压制放顺为 `0.72`。
+- 夜间远景采用连续阶梯：`evening 1.80/0.05 → lateEvening 2.20/0.10 → night 2.56/0.18 → deepNight 2.71/0.22`（`glowScale/ambientRimLift`），保留 Night 与 Deep Night 当前亮度端点，同时补亮中间两个时段。
+- 前端脚本缓存版本更新为 `rdl-deepspace-theme-glow-v46`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 验证
+- 仅执行语法、格式、旧倍率残留和十二主题曲线静态校验；最终视觉验收由用户完成。
+
+### 遗留问题
+- 若夜间过渡仍需微调，只调整 profile 内四个夜间主题的 `glowScale/ambientRimLift`，不再恢复构图级特殊倍率。
+## 2026-07-17 HZ消除 dawn 远景双层辉光
+
+### 做了什么
+- 根据全时段截图复核，确认 dawn 在统一 WebGL Deep Space 辉光之外仍叠加旧 CSS `horizonGlow`，造成贴边亮轮与外层雾环明显分层。
+- 关闭 dawn 的旧 CSS horizon/rim 投影层，保留统一 WebGL core/halo/inner 体系及现有地球明暗参数。
+- 更新前端缓存版本至 `rdl-deepspace-theme-glow-v47`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 视觉验收由用户刷新后完成；本次不调整其余十一个时段。
+
+## 2026-07-17 HZ收敛 dawn 小尺寸远景轮廓
+
+### 做了什么
+- 根据 v47 小尺寸截图继续复核，确认旧 CSS 层关闭后，Deep Space 专用的背面 3D Fresnel shell 仍会在缩采样时形成独立亮线。
+- 为 Deep Space profile 增加可选 `shellEnabled` 开关，仅对 dawn 关闭 3D shell，保留统一的屏幕空间 far-glow 包络。
+- 将 dawn 的 `coreStrength` 从 `0.30` 降至与 `haloStrength` 相同的 `0.18`，使 core 不再形成第二个可辨识峰值，保留原有 halo 宽度、颜色和地球明暗。
+- 更新前端缓存版本至 `rdl-deepspace-theme-glow-v48`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 视觉验收由用户在小尺寸 Deep Space 画面完成。
+
+## 2026-07-17 HZ提亮 dawn Deep Space 辉光
+
+### 做了什么
+- 参考 evening 的远景可读性，提亮 dawn 的 Deep Space 单峰 screen-space halo：增加远景 halo 宽度、范围和整体 `glowScale`。
+- 保持 dawn 的 `shellEnabled: false`，不恢复 3D Fresnel shell，避免回到小图双层轮廓。
+- 轻收 dawn 的内侧雾面强度，避免提亮后地球内缘变成第二圈。
+- 更新前端缓存版本至 `rdl-deepspace-theme-glow-v49`。
+
+### 改动文件
+- `pwa/earth3d.js`
+- `pwa/index.html`
+- `devlog.md`
+
+### 遗留问题
+- 视觉验收由用户在当前 Chrome 页面刷新后完成。
+
+## 2026-07-17 HZ保存当前 Earth 视觉工作节点
+
+### 做了什么
+- 将当前工作区内已跟踪修改与新增的 Earth 视觉资源、预览素材、辅助脚本、截图和本地状态文件保存为一个 Git checkpoint。
+
+### 改动文件
+- 当前工作区全部修改与新增文件。
+
+### 遗留问题
+- 本节点仅用于保存当前进度；视觉效果仍以用户后续验收为准。
