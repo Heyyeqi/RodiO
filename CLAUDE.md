@@ -80,9 +80,10 @@ Spotify 搜索失败时降级到 NCM；Phase 1 补货失败时降级到 Qwen。
 | NCM cookie 过期导致播放中断 | `pwa/index.html:1994` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
 | Spotify Phase 1 补货偶发返回空 | `server.js:1082` | 已在 `2ca0d3b fix(spotify): retry Phase 1 playlist refill when a pull comes back empty` 修复，此行过期，待确认后移除 |
 | Spotify device 失效后 reinit 不稳定 | `pwa/index.html:1217` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
-| MiniMax TTS 限流控制是否真正生效 | `core/tts.js` | 未验证 |
+| MiniMax TTS 静默失败，无降级 | `core/tts.js`、`server.js:997-1002`、`pwa/index.html:2599-2664` | **已确认为真实bug**（2026-07-17第三轮审计）：TTS失败时服务端`.catch()`吞掉错误只打日志，前端收到`say_audio:null`仍尝试`Audio(null).play()`静默失败，无文字降级。追踪于 [GitHub Issue #26](https://github.com/Heyyeqi/RodiO/issues/26) |
 | 浏览器 autoplay 限制影响 DJ 语音 | `pwa/index.html:2082` | 未修复（未在本轮 Stage 0 审计范围内，需要单独复核） |
 | /api/explain 接口 DeepSeek 或 TTS 任一失败即 500 | `server.js:1417` | 未处理降级（AI provider 名称已更新，问题本身状态未复核） |
+| Dislike评分未接入候选排序 | `core/candidate-rerank.js` | **已确认为架构性断裂**（2026-07-17第三轮审计）：`song_feedback.score`正确写入但选曲逻辑从未查询它，评分系统和实际选曲完全脱节。追踪于 [GitHub Issue #25](https://github.com/Heyyeqi/RodiO/issues/25) |
 | 星星渲染被 canvas clipping 遮挡 | `pwa/index.html` | **疑似已过期**：2026-07-17 Stage 0 审计（见 `docs/roadmap/STATUS.md` §1.1）发现全代码库零 clipping 痕迹，星空两层材质均 AdditiveBlending+depthWrite:false，物理上不可能被此机制遮挡，且近期星空/Deep Space 渲染工作正常。待用户肉眼最终复核后关闭，见 [GitHub Issue #13](https://github.com/Heyyeqi/RodiO/issues/13) |
 
 ---

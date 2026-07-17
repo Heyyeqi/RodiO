@@ -21,6 +21,7 @@
 | `05_Product_Vision_v4.md` | 最完整的产品愿景原文（九段时光、天体层、彩蛋系统~50条、天外来信、祈求系统全文） | 很低，仅作参考 |
 | `06_Song_Selection_Module_v2.md` | 选歌模块v2完整工程方案（Mood Intent JSON、track_profile schema、transition_cost、skip反馈） | 阶段完成时更新 |
 | `07_Song_Selection_Multi_AI_Assessment.md` | 九份AI对选歌模块的评估意见整合底稿，v2方案的决策依据 | 很低，仅作参考 |
+| `08_Dynamic_Earth_Camera_System_Design.md` | 动态地球镜头系统v2.0/v3.0完整设计方案（10构图×14运动原语×6缓动×24日常模式×8特殊模式），当前相机语法系统的原始设计蓝图 | 很低，仅作参考 |
 | `source_appendix/` | 历史规划文档（v3.1 Master Pack 8份 + 开发路线v3），已被上述文件取代或归类为历史参考，不直接决定当前执行顺序 | 不更新 |
 | `STATUS.md`（本文件） | 实时现状、差距矩阵、优先级、GitHub Issue 映射 | **每次任务完成后更新** |
 
@@ -123,14 +124,53 @@
 
 ---
 
+## 3.6 第三轮补充审计（2026-07-17，动态镜头系统设计文档 + 14项用户诉求）
+
+用户提供《RodiO 动态地球镜头系统 v2.0/v3.0》设计文档（已存档 `08_Dynamic_Earth_Camera_System_Design.md`——这正是当前相机语法系统的原始设计蓝图）和14项额外诉求。
+
+### 关键发现：镜头"角度太少"是编排层缺口，不是素材缺口
+
+对照设计文档的四层体系逐项核实：
+
+| 层级 | 设计目标 | 实际完成度 |
+|---|---|---|
+| 构图 (C01-C10) | 10种 | **10/10 全部存在** |
+| 运动原语 (M01-M14) | 14种 | 8/14 + 3种以Sequence实现，基本完成 |
+| 缓动曲线 (E01-E06) | 6种 | 3/6存在 |
+| **日常模式 (D01-D24)** | **24种命名模式** | **仅3个硬编码能量分档，无命名、无轮换去重——真正的缺口** |
+| 特殊模式 (S01-S08) | 8种 | 0种 |
+
+结论：底层素材（构图/运动原语）基本齐备，缺的是把它们组合成"有名字、会轮换、不重复"的模式库和智能编排层。issue [#29](https://github.com/Heyyeqi/RodiO/issues/29)。
+
+### 两个确认的真实bug（非roadmap项，已提级为P0）
+
+- **Dislike评分与选曲脱节**：`song_feedback.score`正确记录，但候选排序从未查询它——用户越点不喜欢，系统品味模型完全不跟着调整。issue [#25](https://github.com/Heyyeqi/RodiO/issues/25)
+- **MiniMax TTS静默失败无降级**：服务端吞错误，前端播放null音频静默失败，用户完全不知道发生了什么，也没有退回纯文字展示。issue [#26](https://github.com/Heyyeqi/RodiO/issues/26)
+
+### 其余处理
+
+- 入场动画状态残留 + 切歌歌名闪回竞态 → issue [#27](https://github.com/Heyyeqi/RodiO/issues/27)
+- IP地域首曲本地化（闽南语/粤语/日语） → issue [#28](https://github.com/Heyyeqi/RodiO/issues/28)，基础设施（地理位置检测）已存在，只是没接到选曲
+- 天气视觉映射系统（雨/雪/风） → issue [#30](https://github.com/Heyyeqi/RodiO/issues/30)，对应 Ultimate Build Plan §13.4，此前完全未追踪，数据层已就绪但视觉层全部空白
+- 天体可视化扩展（流星/星座连线/月球渲染） → issue [#31](https://github.com/Heyyeqi/RodiO/issues/31)
+- 真实驱动地形事件（火山喷发，需数据源可行性评估） → issue [#32](https://github.com/Heyyeqi/RodiO/issues/32)
+- 天外来信中英配比、彩蛋清单（地球罩子/爆炸/烟花/太空垃圾）、Earth Visual Foundation验收范围补充 → 追加到已有issue [#16](https://github.com/Heyyeqi/RodiO/issues/16)/[#22](https://github.com/Heyyeqi/RodiO/issues/22)/[#24](https://github.com/Heyyeqi/RodiO/issues/24) 的评论里，未开新issue
+- "say"朗读前缀问题 → 代码审计未能复现，需要用户提供具体场景才能继续排查
+- 播放器控制栏重做（用户标"优先做"） → 就是已有的 issue [#9](https://github.com/Heyyeqi/RodiO/issues/9)（三态UI Full/Minimal），无需新issue，可直接开工
+- 太空垃圾/卫星 → 已被 `02_Living_Earth_Plan_v1.0.md` P4-G"卫星掠过"覆盖，非新范围
+
+---
+
 ## 4. 当前优先级队列
 
 按 Ultimate Build Plan 的依赖拓扑（§26.2）与本次审计结果排序：
 
 ### P0 — 立即可开工（设计已就绪，无阻塞）
-1. **P4 Stage 1：三态UI（Full/Minimal）** — 插入点已定位，复用`dj-speaking`模式，上次会话已有草案
+1. **P4 Stage 1：三态UI（Full/Minimal）** — 插入点已定位，复用`dj-speaking`模式，上次会话已有草案；用户已明确标注"优先做"（对应播放器控制栏重设计诉求）
 2. **P4 Stage 2：GestureRouter** — 冲突矩阵已产出
 3. **P4 Stage 3：最小地球拖拽** — Director安全性已验证，插入点已定位
+4. **Dislike评分与选曲脱节**（issue #25）— 确认的架构性断裂，反馈闭环完全没生效
+5. **MiniMax TTS静默失败无降级**（issue #26）— 确认的真实bug，用户明确反馈"没有语音朗读"
 
 ### P1 — 需要独立设计但无技术阻塞
 4. 星空已知问题复核关闭（CLAUDE.md 更新 + 用户最终肉眼验收）
@@ -179,5 +219,13 @@
 | [#22](https://github.com/Heyyeqi/RodiO/issues/22) | Earth Visual Foundation 正式收口验收 | Earth Visual Foundation Formal Closure | P2 | Backlog |
 | [#23](https://github.com/Heyyeqi/RodiO/issues/23) | RDL 技术方案存档：BMNG+GEBCO+GSHHG 三层LOD具体路线 | Long-Term Backlog | P3 | Backlog |
 | [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
+| [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
+| [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
+| [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Backlog |
+| [#28](https://github.com/Heyyeqi/RodiO/issues/28) | IP地域首曲本地化 | Long-Term Backlog | P2 | Backlog |
+| [#29](https://github.com/Heyyeqi/RodiO/issues/29) | 镜头模式库 (Daily Modes) + 智能编排/去重引擎 | P4 Stage 7 — Motion Profiles Productization | P1 | Backlog |
+| [#30](https://github.com/Heyyeqi/RodiO/issues/30) | 天气视觉映射系统（雨/雪/风） | Long-Term Backlog | P3 | Backlog |
+| [#31](https://github.com/Heyyeqi/RodiO/issues/31) | 天体可视化扩展：流星+星座+月球渲染 | P4 Stage 5 — Star System Verification and Polish | P2 | Backlog |
+| [#32](https://github.com/Heyyeqi/RodiO/issues/32) | 真实驱动地形事件：火山喷发等 | Long-Term Backlog | P3 | Backlog |
 
 - 每次开始一个任务，先把对应 issue 在看板上拖到 In Progress；完成验收后拖到 Done，并在本文件和 devlog.md 都留下记录。
