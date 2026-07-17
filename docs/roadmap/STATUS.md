@@ -248,6 +248,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#22](https://github.com/Heyyeqi/RodiO/issues/22) | Earth Visual Foundation 正式收口验收 | Earth Visual Foundation Formal Closure | P2 | Backlog |
 | [#23](https://github.com/Heyyeqi/RodiO/issues/23) | RDL 技术方案存档：BMNG+GEBCO+GSHHG 三层LOD具体路线 | Long-Term Backlog | P3 | Backlog |
 | [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
+| [#33](https://github.com/Heyyeqi/RodiO/issues/33) | 多套地球配色主题（Palette Variants）— 复用Noon Air管线 | Long-Term Backlog | P2 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
 | [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
 | [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Backlog |
