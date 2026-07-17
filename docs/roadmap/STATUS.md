@@ -22,7 +22,7 @@
 | `06_Song_Selection_Module_v2.md` | 选歌模块v2完整工程方案（Mood Intent JSON、track_profile schema、transition_cost、skip反馈） | 阶段完成时更新 |
 | `07_Song_Selection_Multi_AI_Assessment.md` | 九份AI对选歌模块的评估意见整合底稿，v2方案的决策依据 | 很低，仅作参考 |
 | `08_Dynamic_Earth_Camera_System_Design.md` | 动态地球镜头系统v2.0/v3.0完整设计方案（10构图×14运动原语×6缓动×24日常模式×8特殊模式），当前相机语法系统的原始设计蓝图 | 很低，仅作参考 |
-| `source_appendix/` | 历史规划文档（v3.1 Master Pack 8份 + 开发路线v3），已被上述文件取代或归类为历史参考，不直接决定当前执行顺序 | 不更新 |
+| `source_appendix/` | 历史规划文档（v3.1 Master Pack 8份 + 开发路线v3 + Sky Design v3.2 + Integrated Roadmap v1.7），大部分已被上述文件取代或归类为历史参考；**例外：`C_Sky_Design_v3.2.md` 含未被吸收的精确11时段色彩锚点表和物理散射原理，issue #14施工时应直接参考**，不是纯历史文档 | 不更新 |
 | `STATUS.md`（本文件） | 实时现状、差距矩阵、优先级、GitHub Issue 映射 | **每次任务完成后更新** |
 
 > 注：`03_Sky_Visual_System_Implementation_v3.1.md`（Master Pack 原08份文件之一）截至本次更新未被提供给 Claude Code 直接审阅，仅有 Ultimate Build Plan 对其的二手综述。涉及 Sky LUT/11时段锚点具体参数时，应要求用户补充该文件原文，不要假设已完整掌握。
@@ -158,6 +158,35 @@
 - "say"朗读前缀问题 → 代码审计未能复现，需要用户提供具体场景才能继续排查
 - 播放器控制栏重做（用户标"优先做"） → 就是已有的 issue [#9](https://github.com/Heyyeqi/RodiO/issues/9)（三态UI Full/Minimal），无需新issue，可直接开工
 - 太空垃圾/卫星 → 已被 `02_Living_Earth_Plan_v1.0.md` P4-G"卫星掠过"覆盖，非新范围
+
+---
+
+## 3.7 第四轮补充审计（2026-07-17，Evan大气方案 + Sky v3.2 spec 溯源）
+
+用户提供 Evan 的"白天大气氛围"新方案（五个技术方向：大气散射渐变/极淡高空卷云/太阳方向场/极淡空气颗粒/背景与地球统一空间）和 Living Earth Phase 4 提案（Atmosphere→Motion→Exploration三层升级、Living Earth Engine统一状态机、"Earth OS"产品重新定位），以及五份更早期的原始文档（A/B/C/D/E）。
+
+### 五份早期文档的处理
+
+- **A（Bathy-3/D5b专项）、E（产品方案v3）**：已经是 `02_Earth_Visual_Foundation_Implementation_v3.1.md` 和 `06_Weather_Celestial_Context_Future_v3.1.md` 内嵌的附录原文，round 1时已完整读取吸收，无新增内容
+- **B（3D地球视觉系统v2.0）**：是 v3.1 Master Pack（00/02/06等编号文档）拆分前的合并版前身，结构和内容已被拆分后的文档完整覆盖，无新增内容
+- **C（Sky Design v3.2）、D（Integrated Roadmap v1.7）**：**此前完全没读过的真正缺口**——round 1时被跳过（用户没有附带03号Sky文档，也没附带这两份），现已读取并存档
+
+### 关键发现：C/D 揭示了"白天感觉扁平"的精确技术根因
+
+代码审计确认：天空系统实现时**放弃了spec的双LUT/OKLab技术路线**，改用更简单的3-4色彩锚点方案（spec原设计是8-12锚点，基于瑞利散射/米氏散射物理模型分层）。这个简化本身就是"背景是二维的"这个感受的技术根源——不是主观审美判断，是过渡点位密度确实只有原设计的三分之一到一半。
+
+Evan独立提出的"大气散射渐变"方案和 v3.2 spec 的诉求本质相同，已追加详细审计到 issue [#14](https://github.com/Heyyeqi/RodiO/issues/14)。
+
+### 需要用户决策的一处张力
+
+Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作为一个整体系统一起做（因为都是"大气"的组成部分）；但 P4 doc 的执行纪律明确要求"同一轮不要混合视觉层"，且 Living Earth Plan 把高空卷云/空气体积列为"第二轮候选"，不在第一轮范围。这个范围决策已在 issue #14 中列出，需要用户在实际开工前拍板。
+
+### 其余发现（均验证为已有规划的重申，非新缺口）
+- Evan"镜头库/旋转风格/季节镜头"提案 → 已是issue [#29](https://github.com/Heyyeqi/RodiO/issues/29)覆盖范围，增加"季节性镜头高度变化"作为细节补充
+- Evan"Discovery Mode/Surprise Camera"提案 → 已是 `02_Living_Earth_Plan_v1.0.md` P4-F 的"Auto Journey"/"Surprise View"，已规划且有意延后（P3优先级）
+- Evan"音乐镜头映射"提案（钢琴远景/电子环绕/爵士城市夜景等）→ 与 P4-F §3"音乐镜头映射"表几乎完全相同，非新内容
+- Evan"Living Earth Engine统一状态机"提案 → 与 Living Earth Plan P4-A"Earth Director控制系统收口"、Ultimate Build Plan §9.1"先最小仲裁、真实冲突出现后再升级完整Director"是同一个长期目标，当前刻意延后（Stage 0审计已确认现有隐式仲裁安全，无需提前重构）
+- "Earth OS"产品重新定位 → 与"宇宙电台"哲学（Ultimate Build Plan §0/§2）一致，是同一愿景的更强表达，非路线变更
 
 ---
 
