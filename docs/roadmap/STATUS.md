@@ -243,19 +243,19 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — ✅已提交（`325c379`）并本地实机验证通过，已标Done。范围只做Full/Minimal，Earth Only留给#12
-6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** — 依赖Stage1的UI状态存在（唤出手势需要有状态可唤出）
+6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — 依赖Stage1的UI状态存在（唤出手势需要有状态可唤出）
 7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅已提交（`7143114`）并本地实测验证通过（刷新页面确认`dj-speaking`类不再残留），已标Done
-8. **[#11](https://github.com/Heyyeqi/RodiO/issues/11) P4 Stage 3：最小地球拖拽** — 依赖GestureRouter把drag意图路由过来；P4文档原话"极高用户价值"
-9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
+8. **[#11](https://github.com/Heyyeqi/RodiO/issues/11) P4 Stage 3：最小地球拖拽** `[Cat A]` — 依赖GestureRouter把drag意图路由过来；P4文档原话"极高用户价值"；复用已有经纬度控制，不引入新相机-几何体关系
+9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** `[Cat A]` — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
 
 ### 第三梯队：高杠杆视觉任务（材料大半已具备，缺编排/收口）
 
 > **2026-07-18 更新**：用户拍板 #39 优先级为"中前段"，排进本梯队最前面，且提前到 #14 之前——原因是 #14（锚点密度不够）和 #39（锚点间怎么过渡）虽是正交问题，但 #39 是底层机制，先做 #39 再做 #14 可以避免 #14 的成果之后又要为了适配新架构返工一次。
 
-10. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** — 架构级改造（跨天空/海洋/云/大气/星空/城市灯光），排在#14前面，避免#14成果日后为适配新架构返工
-11. **[#28](https://github.com/Heyyeqi/RodiO/issues/28) 镜头模式库+智能编排引擎** — 直接回应"角度太少"，10种构图/多数运动原语已存在，只差组合成命名模式库；建议和Stage3地球拖拽前后衔接做，上下文连续
-12. **[#14](https://github.com/Heyyeqi/RodiO/issues/14) P4 Stage 6：白天背景第一轮** — 已定位精确技术根因（8-12锚点spec vs 实际3-4锚点），色值表现成可用；开工前需要你对"是否把Evan的大气方案几个子项打包一起做"拍板（issue里列了这个决策点）；建议在#39之后开工
-13. **[#22](https://github.com/Heyyeqi/RodiO/issues/22) Earth Visual Foundation正式收口验收** — 大部分问题已经在#22评论里回答完（地形维度、城市灯光分层现状），剩下主要是走一遍截图验收流程，成本不高
+10. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** `[Cat A，但跨系统改动需走影子验证]` — 架构级改造（跨天空/海洋/云/大气/星空/城市灯光），排在#14前面，避免#14成果日后为适配新架构返工。只改参数计算方式，不改相机-几何体关系；具体做法见 CLAUDE.md「3D渲染/相机新功能」一节
+11. **[#28](https://github.com/Heyyeqi/RodiO/issues/28) 镜头模式库+智能编排引擎** `[Cat A]` — 直接回应"角度太少"，10种构图/多数运动原语已存在，只差组合成命名模式库；建议和Stage3地球拖拽前后衔接做，上下文连续
+12. **[#14](https://github.com/Heyyeqi/RodiO/issues/14) P4 Stage 6：白天背景第一轮** `[Cat A]` — 已定位精确技术根因（8-12锚点spec vs 实际3-4锚点），色值表现成可用；开工前需要你对"是否把Evan的大气方案几个子项打包一起做"拍板（issue里列了这个决策点）；建议在#39之后开工
+13. **[#22](https://github.com/Heyyeqi/RodiO/issues/22) Earth Visual Foundation正式收口验收** — 大部分问题已经在#22评论里回答完（地形维度、城市灯光分层现状），剩下主要是走一遍截图验收流程，成本不高；验收性质，不涉及新开发，无需分级
 14. **[#15](https://github.com/Heyyeqi/RodiO/issues/15) P4 Stage 7：运动方向产品化** — 与#28范围高度重叠（#28的模式库本身就会产出这7个命名Profile），建议#28做完后回来看这条是否已经被顺带满足，而不是重复做
 
 ### 第四梯队：AI/产品深度功能
@@ -275,10 +275,10 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 24. **[#23](https://github.com/Heyyeqi/RodiO/issues/23) RDL完整三阶段技术方案** — 冻结至近景模糊成为真实用户痛点
 25. **[#24](https://github.com/Heyyeqi/RodiO/issues/24) 彩蛋系统清单存档** — P3，不进当前主线
 26. **[#18](https://github.com/Heyyeqi/RodiO/issues/18) 长期backlog总类** — 兜底条目，逐步被上面拆出的具体issue替代
-27. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** — 长期愿景，milestone "Living Earth — Vertical Space Journey"
-28. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化
-29. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立
-30. **[#40](https://github.com/Heyyeqi/RodiO/issues/40) 航线视角 Flight View** — 同上milestone，2026-07-18新提出，连接Cloud与Horizon的中间层，原文认为优先级可高于纯Horizon（#36），但仍属于本梯队"当前不启动"的范围
+27. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** `[混合：光照/纹理增强部分Cat A，Cloud View新相机视角部分Cat B]` — 长期愿景，milestone "Living Earth — Vertical Space Journey"，开工前需重新拆分子任务确认各自分级
+28. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** `[Cat B，需先建独立试验场景]` — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化，但相机距地表极近，改变了相机-几何体关系
+29. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** `[Cat B，需先建独立试验场景]` — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立；方案文档自己明确"不建议直接把摄像机塞进现有海洋球层"
+30. **[#40](https://github.com/Heyyeqi/RodiO/issues/40) 航线视角 Flight View** `[Cat B，需先建独立试验场景]` — 同上milestone，2026-07-18新提出，连接Cloud与Horizon的中间层，原文认为优先级可高于纯Horizon（#36），但仍属于本梯队"当前不启动"的范围；相机沿路径持续移动+新LOD策略，改变了相机-几何体关系
 
 ---
 
