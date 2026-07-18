@@ -219,7 +219,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 > - #20 的 skip_penalty 分层衰减验证通过；discovery→validated 晋升管线发现结构性缺口（scene_id 全线硬编码 null，晋升条件永远不可达），已拆出新 issue [#38](https://github.com/Heyyeqi/RodiO/issues/38)，不阻塞 #20 本身标 Done。
 > - #25 代码审查确认正确，已部署，但 production 的 shadow-rerank 只在补货周期（reason=next/heartbeat）触发、不含 startup-prewarm，且本次部署后队列一直饱满未触发自然补货，**仍未拿到生产环境正数据实锤**，留在 Review。顺带给 `logShadowRerank` 加了成功路径日志（commit `fd60374`）方便下次直接查 railway logs 而不必戳数据库。
 
-0. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — ✅代码已提交（`4515ef6`）并部署，反馈闭环架构性断裂已修复；**仍待生产环境自然补货周期或人工确认**验证 shadow_rerank_candidates 真的写入非空数据（本地/本次部署窗口内队列一直饱满，补货周期未自然触发）
+0. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — ✅已提交（`4515ef6`）并端到端验证通过，已标Done（本地补齐策划歌单env var后，用真实队列57首候选直接调用`logShadowRerank`，`shadow_rerank_candidates`正确写入30行，`track_key`不再是修复前的空拼接）
 1. **[#13](https://github.com/Heyyeqi/RodiO/issues/13) 星空已知问题复核关闭** — 95%把握已过期，只差用户肉眼看一眼确认，几分钟的事，拖了多轮审计，**仍未完成**
 2. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 已查：fallback_rate 0.5%✅、candidate_empty_count 0✅达标；avg_transition_cost因shadow_rerank_candidates曾无真实数据无法计算（#25修复已部署，待验证后应能恢复）；7天连续性差1天。待#25端到端验证完成后重新计时复查
 3. **[#38](https://github.com/Heyyeqi/RodiO/issues/38) discovery_candidates晋升管线缺scene_id生产者** — 2026-07-18本地验证时新发现，需要先决定scene_id的产品语义（时段/天气/mood-intent标签）才能接线，不阻塞其他任务
@@ -287,7 +287,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#35](https://github.com/Heyyeqi/RodiO/issues/35) | 云层系统升级：多层云+天空美景谱系+Cloud View视角 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#36](https://github.com/Heyyeqi/RodiO/issues/36) | 地平线视角深化：真正贴地平视 + 独立局部地形场景 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
-| [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Review（4515ef6，已部署，待生产环境自然补货周期验证） |
+| [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Done（4515ef6，端到端验证通过） |
 | [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Done（b31a024，本地实测验证通过） |
 | [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Done（27c9b01 + 1c39eb1补完/api/explain路径，实测验证通过） |
 | [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Done（7143114，本地实测验证通过） |
