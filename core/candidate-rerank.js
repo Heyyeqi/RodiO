@@ -133,6 +133,7 @@ async function logShadowRerank(candidates, currentTrackKey, reason) {
         blended_score: score.blended,
       })
     }
+    console.log(`[candidate-rerank] shadow logged: ${top.length} candidates, reason=${reason || 'null'}`)
   } catch (err) {
     // 任何内部错误都吞掉，绝不影响真实补货
     console.error('[candidate-rerank] 观测计算异常（已忽略，不影响真实队列）:', err?.message || err)
