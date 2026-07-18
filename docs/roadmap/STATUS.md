@@ -190,6 +190,22 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 
 ---
 
+## 3.9 第六轮补充：Living Earth 垂直空间愿景（2026-07-18）
+
+用户提供三份方案（云层创意/深海模式/地平线视角），已存档 `docs/roadmap/source_appendix/{Cloud_System_Vision,Underwater_Mode_Vision,Horizon_Mode_Vision}.md`。
+
+**关键发现：三份方案独立收敛到同一个构想**——`ORBIT（太空）→ CLOUD（云层）→ HORIZON（地表）→ UNDERWATER（海洋）→ ABYSS/MINIMAL` 的垂直空间旅程，不是三个孤立功能点。
+
+**与已有系统的具体连接**（避免重复建设）：
+- 地平线方案描述的"近景贴图糊/z-fighting/辉光变厚重光带"不是理论推测——是本次会话里刚修过的问题（`cityFocus`/`lowOrbit`/`horizon`/`horizonSkim`清晰度修复）。现有构图库已有`horizon`/`horizonSkim`/`lowOrbit`，方案要做的是深化到真正贴地平视，不是从零新建
+- 山地平线需要的高程数据（DEM）和 RDL 方案（issue #23）的 GEBCO 数据管线是同一个数据源，RDL 解冻时可顺带解决
+- 云层方案的"高空云/Air Volume"和 issue #14（白天背景）的"第二轮候选"是同一建设域，但规模远超#14当前范围
+- 深海模式和现有系统耦合最少（明确不能直接复用现有海洋球层，需要独立场景），风险相对独立
+
+**处理方式**：新建 milestone "Living Earth — Vertical Space Journey"（#15），三个issue（[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层、[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线、[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海），P3，放进优先级队列最后一档。P4主线"大规模新镜头库"/"高空云与Air Volume同时施工"明确冻结这类范围，当前不启动，仅保留愿景完整性。
+
+---
+
 ## 4. 当前优先级队列（2026-07-17 第五轮重排）
 
 不再按 P0-P3 桶装，改成单条可执行序列，越靠前越先做。排序依据：①正在发生的真实故障优先于新功能；②近乎零成本的存量清账任务插空处理；③P4主线交互闭环按依赖顺序走完；④"材料已具备、只差编排"的高杠杆视觉任务提前；⑤纯粹待定/需要更多前置研究/用户已明确说"中后期"的任务放最后。GitHub 看板 Backlog 列的卡片顺序已同步调整为这个序列。
@@ -234,6 +250,9 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 23. **[#23](https://github.com/Heyyeqi/RodiO/issues/23) RDL完整三阶段技术方案** — 冻结至近景模糊成为真实用户痛点
 24. **[#24](https://github.com/Heyyeqi/RodiO/issues/24) 彩蛋系统清单存档** — P3，不进当前主线
 25. **[#18](https://github.com/Heyyeqi/RodiO/issues/18) 长期backlog总类** — 兜底条目，逐步被上面拆出的具体issue替代
+26. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** — 长期愿景，milestone "Living Earth — Vertical Space Journey"
+27. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化
+28. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立
 
 ---
 
@@ -261,6 +280,9 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#23](https://github.com/Heyyeqi/RodiO/issues/23) | RDL 技术方案存档：BMNG+GEBCO+GSHHG 三层LOD具体路线 | Long-Term Backlog | P3 | Backlog |
 | [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
 | [#33](https://github.com/Heyyeqi/RodiO/issues/33) | 多套地球配色主题（Palette Variants）— 复用Noon Air管线 | Long-Term Backlog | P2 | Backlog |
+| [#35](https://github.com/Heyyeqi/RodiO/issues/35) | 云层系统升级：多层云+天空美景谱系+Cloud View视角 | Living Earth — Vertical Space Journey | P3 | Backlog |
+| [#36](https://github.com/Heyyeqi/RodiO/issues/36) | 地平线视角深化：真正贴地平视 + 独立局部地形场景 | Living Earth — Vertical Space Journey | P3 | Backlog |
+| [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 4515ef6，待Spotify真实session验证） |
 | [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 b31a024，含prompt根源修复，待实机验证） |
 | [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 27c9b01，待部署+重启验证） |
