@@ -13,6 +13,7 @@ RodiO 是一个个人 AI 电台应用。核心体验是：由 AI（DeepSeek）�
 - 线上地址：https://web-production-a5193.up.railway.app
 - 仓库：Heyyeqi/RodiO，**主干直入策略**：所有建设任务直接小步提交到 main，不开长期功能分支；通过 GitHub Issue + Milestone 追踪任务边界（见 `docs/roadmap/STATUS.md` §2、§5）。`wip/easter-themes` 等少数归档分支例外保留，见 STATUS.md 分支状态表。
 - 部署方式：Railway + Procfile（`web: node server.js`），**迁移中**：计划从 Railway 迁移到腾讯云，过渡期以本地开发环境为主要验证环境，Railway production 仅作为迁移完成前的临时兜底。Spotify token 持久化已从"Railway优先"改为"本机 SQLite（`core/state.js`）优先"，Railway GraphQL push 仍保留但已是可选兜底层（详见 `core/spotify.js` `loadPersistedUserToken()`/`persistUserToken()`）。
+  - **2026-07-18 起：Railway 的 GitHub 自动部署已断开**（`railway service source disconnect`），`git push` 到 main 不会再触发 Railway 重新部署/重启。当前 production 实例会一直保持运行，直到手动执行 `railway service source connect --repo Heyyeqi/RodiO --branch main --service web` 重新接上，或用 `railway up`/`railway redeploy` 手动部署一次。
 
 ---
 
