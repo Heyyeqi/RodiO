@@ -215,7 +215,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 - 规模是架构级的，跨越天空/海洋/云/大气/星空/城市灯光多个现有渲染系统，明显大于单个视觉任务
 - 方案自己也提出应作为 Orbit/Cloud/Flight/Horizon/Underwater 共享的底层环境状态源，与3.9的垂直空间旅程系统直接relevant
 
-**处理方式**：新建 milestone "Continuous Day Cycle System"（#16），[#39](https://github.com/Heyyeqi/RodiO/issues/39)。优先级需要用户拍板（原文认为比新主题更重要，但和当前P4主线存在资源竞争），暂不自动排入队列前列，见下方优先级队列的待决策标注。
+**处理方式**：新建 milestone "Continuous Day Cycle System"（#16），[#39](https://github.com/Heyyeqi/RodiO/issues/39)。**2026-07-18 用户已拍板：优先级"中前段"**，排进第三梯队最前面（P4主线之后、其余视觉任务之前），且提前到 #14 之前——避免 #14 的锚点密度工作日后为适配新的连续插值架构而返工。
 
 **方案二：航线视角 Flight View**——3.9 三个空间模式（Cloud/Horizon/Underwater）之间新增的连接层，摄影机沿大圆航线巡航飞行，四种子镜头（巡航/舷窗/穿云下降/高空夜航）。方案原文判断"值得增加，且优先级可以高于纯山地Horizon"，理由是最大程度复用现有地球/天空/云/昼夜/城市灯光系统，不需要高精度近地形。"穿云下降"子模式天然是 Flight→Horizon 的过渡桥梁。
 
@@ -249,33 +249,36 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
 
 ### 第三梯队：高杠杆视觉任务（材料大半已具备，缺编排/收口）
-10. **[#28](https://github.com/Heyyeqi/RodiO/issues/28) 镜头模式库+智能编排引擎** — 直接回应"角度太少"，10种构图/多数运动原语已存在，只差组合成命名模式库；建议和Stage3地球拖拽前后衔接做，上下文连续
-11. **[#14](https://github.com/Heyyeqi/RodiO/issues/14) P4 Stage 6：白天背景第一轮** — 已定位精确技术根因（8-12锚点spec vs 实际3-4锚点），色值表现成可用；开工前需要你对"是否把Evan的大气方案几个子项打包一起做"拍板（issue里列了这个决策点）
-12. **[#22](https://github.com/Heyyeqi/RodiO/issues/22) Earth Visual Foundation正式收口验收** — 大部分问题已经在#22评论里回答完（地形维度、城市灯光分层现状），剩下主要是走一遍截图验收流程，成本不高
-13. **[#15](https://github.com/Heyyeqi/RodiO/issues/15) P4 Stage 7：运动方向产品化** — 与#28范围高度重叠（#28的模式库本身就会产出这7个命名Profile），建议#28做完后回来看这条是否已经被顺带满足，而不是重复做
-13.5. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** — **优先级待你拍板**：2026-07-18新提出，原文判断"重要性高于新增主题"，架构级改造（跨天空/海洋/云/大气/星空/城市灯光），和#14是正交问题（#14管锚点够不够，这个管锚点间怎么过渡）。暂放在这个位置只是占位，不代表已确定排在#15之后
+
+> **2026-07-18 更新**：用户拍板 #39 优先级为"中前段"，排进本梯队最前面，且提前到 #14 之前——原因是 #14（锚点密度不够）和 #39（锚点间怎么过渡）虽是正交问题，但 #39 是底层机制，先做 #39 再做 #14 可以避免 #14 的成果之后又要为了适配新架构返工一次。
+
+10. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** — 架构级改造（跨天空/海洋/云/大气/星空/城市灯光），排在#14前面，避免#14成果日后为适配新架构返工
+11. **[#28](https://github.com/Heyyeqi/RodiO/issues/28) 镜头模式库+智能编排引擎** — 直接回应"角度太少"，10种构图/多数运动原语已存在，只差组合成命名模式库；建议和Stage3地球拖拽前后衔接做，上下文连续
+12. **[#14](https://github.com/Heyyeqi/RodiO/issues/14) P4 Stage 6：白天背景第一轮** — 已定位精确技术根因（8-12锚点spec vs 实际3-4锚点），色值表现成可用；开工前需要你对"是否把Evan的大气方案几个子项打包一起做"拍板（issue里列了这个决策点）；建议在#39之后开工
+13. **[#22](https://github.com/Heyyeqi/RodiO/issues/22) Earth Visual Foundation正式收口验收** — 大部分问题已经在#22评论里回答完（地形维度、城市灯光分层现状），剩下主要是走一遍截图验收流程，成本不高
+14. **[#15](https://github.com/Heyyeqi/RodiO/issues/15) P4 Stage 7：运动方向产品化** — 与#28范围高度重叠（#28的模式库本身就会产出这7个命名Profile），建议#28做完后回来看这条是否已经被顺带满足，而不是重复做
 
 ### 第四梯队：AI/产品深度功能
-14. **[#21](https://github.com/Heyyeqi/RodiO/issues/21) 此刻入口+祈求系统** — 确认的真实缺口，产品原始愿景的核心部分之一
-15. **[#16](https://github.com/Heyyeqi/RodiO/issues/16) 天外来信+选曲风格调优** — 纯调参非架构，风险低，可穿插在别的任务间隙做
-16. **[#20](https://github.com/Heyyeqi/RodiO/issues/20) 选歌模块v2缺口：skip_penalty分层+discovery_candidates** — ✅已提交（`fdd1753`）并本地模拟验证通过（skip事件正确生成4维度独立衰减行），已标Done。晋升管线的scene_id缺口拆到 [#38](https://github.com/Heyyeqi/RodiO/issues/38)
+15. **[#21](https://github.com/Heyyeqi/RodiO/issues/21) 此刻入口+祈求系统** — 确认的真实缺口，产品原始愿景的核心部分之一
+16. **[#16](https://github.com/Heyyeqi/RodiO/issues/16) 天外来信+选曲风格调优** — 纯调参非架构，风险低，可穿插在别的任务间隙做
+17. **[#20](https://github.com/Heyyeqi/RodiO/issues/20) 选歌模块v2缺口：skip_penalty分层+discovery_candidates** — ✅已提交（`fdd1753`）并本地模拟验证通过（skip事件正确生成4维度独立衰减行），已标Done。晋升管线的scene_id缺口拆到 [#38](https://github.com/Heyyeqi/RodiO/issues/38)
 
 ### 第五梯队：锦上添花（价值明确但不紧急）
-17. **[#29](https://github.com/Heyyeqi/RodiO/issues/29) IP地域首曲本地化** — 基础设施已有，方言级别识别精度是唯一顾虑
-18. **[#31](https://github.com/Heyyeqi/RodiO/issues/31) 天体可视化扩展：流星+星座+月球渲染**
-19. **[#17](https://github.com/Heyyeqi/RodiO/issues/17) 画面流畅度/渲染延迟专项审计** — 需要先收集具体复现场景，目前信息不够开工
+18. **[#29](https://github.com/Heyyeqi/RodiO/issues/29) IP地域首曲本地化** — 基础设施已有，方言级别识别精度是唯一顾虑
+19. **[#31](https://github.com/Heyyeqi/RodiO/issues/31) 天体可视化扩展：流星+星座+月球渲染**
+20. **[#17](https://github.com/Heyyeqi/RodiO/issues/17) 画面流畅度/渲染延迟专项审计** — 需要先收集具体复现场景，目前信息不够开工
 
 ### 第六梯队：明确延后/冻结（不要在前面几梯队做完之前碰）
-20. **[#33](https://github.com/Heyyeqi/RodiO/issues/33) 多套地球配色主题** — 用户已明确说"中后期做"
-21. **[#30](https://github.com/Heyyeqi/RodiO/issues/30) 天气视觉映射系统** — P4文档明确冻结"实时天气"联动
-22. **[#32](https://github.com/Heyyeqi/RodiO/issues/32) 真实驱动地形事件：火山喷发** — 数据源可行性未知，先评估不排期
-23. **[#23](https://github.com/Heyyeqi/RodiO/issues/23) RDL完整三阶段技术方案** — 冻结至近景模糊成为真实用户痛点
-24. **[#24](https://github.com/Heyyeqi/RodiO/issues/24) 彩蛋系统清单存档** — P3，不进当前主线
-25. **[#18](https://github.com/Heyyeqi/RodiO/issues/18) 长期backlog总类** — 兜底条目，逐步被上面拆出的具体issue替代
-26. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** — 长期愿景，milestone "Living Earth — Vertical Space Journey"
-27. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化
-28. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立
-29. **[#40](https://github.com/Heyyeqi/RodiO/issues/40) 航线视角 Flight View** — 同上milestone，2026-07-18新提出，连接Cloud与Horizon的中间层，原文认为优先级可高于纯Horizon（#36），但仍属于本梯队"当前不启动"的范围
+21. **[#33](https://github.com/Heyyeqi/RodiO/issues/33) 多套地球配色主题** — 用户已明确说"中后期做"
+22. **[#30](https://github.com/Heyyeqi/RodiO/issues/30) 天气视觉映射系统** — P4文档明确冻结"实时天气"联动
+23. **[#32](https://github.com/Heyyeqi/RodiO/issues/32) 真实驱动地形事件：火山喷发** — 数据源可行性未知，先评估不排期
+24. **[#23](https://github.com/Heyyeqi/RodiO/issues/23) RDL完整三阶段技术方案** — 冻结至近景模糊成为真实用户痛点
+25. **[#24](https://github.com/Heyyeqi/RodiO/issues/24) 彩蛋系统清单存档** — P3，不进当前主线
+26. **[#18](https://github.com/Heyyeqi/RodiO/issues/18) 长期backlog总类** — 兜底条目，逐步被上面拆出的具体issue替代
+27. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** — 长期愿景，milestone "Living Earth — Vertical Space Journey"
+28. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化
+29. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立
+30. **[#40](https://github.com/Heyyeqi/RodiO/issues/40) 航线视角 Flight View** — 同上milestone，2026-07-18新提出，连接Cloud与Horizon的中间层，原文认为优先级可高于纯Horizon（#36），但仍属于本梯队"当前不启动"的范围
 
 ---
 
@@ -316,7 +319,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#30](https://github.com/Heyyeqi/RodiO/issues/30) | 天气视觉映射系统（雨/雪/风） | Long-Term Backlog | P3 | Backlog |
 | [#31](https://github.com/Heyyeqi/RodiO/issues/31) | 天体可视化扩展：流星+星座+月球渲染 | P4 Stage 5 — Star System Verification and Polish | P2 | Backlog |
 | [#32](https://github.com/Heyyeqi/RodiO/issues/32) | 真实驱动地形事件：火山喷发等 | Long-Term Backlog | P3 | Backlog |
-| [#39](https://github.com/Heyyeqi/RodiO/issues/39) | 连续日夜过渡系统（Day Cycle Controller）：11时段从互斥主题改为太阳驱动的连续插值 | Continuous Day Cycle System | P2 | Backlog（优先级待用户拍板） |
+| [#39](https://github.com/Heyyeqi/RodiO/issues/39) | 连续日夜过渡系统（Day Cycle Controller）：11时段从互斥主题改为太阳驱动的连续插值 | Continuous Day Cycle System | P2 | Backlog（队列位置：第三梯队最前，P4主线之后） |
 | [#40](https://github.com/Heyyeqi/RodiO/issues/40) | 航线视角 Flight View：巡航高度沿大圆航线飞行，连接Cloud与Horizon的中间层 | Living Earth — Vertical Space Journey (Cloud/Flight/Horizon/Underwater) | P3 | Backlog |
 
 - 每次开始一个任务，先把对应 issue 在看板上拖到 In Progress；完成验收后拖到 Done，并在本文件和 devlog.md 都留下记录。
