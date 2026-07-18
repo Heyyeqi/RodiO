@@ -1950,6 +1950,13 @@ app.post('/api/play-event', async (req, res) => {
       // 任一对象缺失或任一字段为 null → transition_cost 为 null（不用 0 凑）
     }
 
+    // ── #20: 新曲目发现管线 — 无 track_profile 记录（shadow 观测，不阻塞）──
+    try {
+      if (!state.getTrackProfile(track_key)) {
+        state.insertDiscoveryCandidate(track_key, 'play-event')
+      }
+    } catch (_) { /* discovery 失败不影响真实流程 */ }
+
     state.insertPlayEvent({
       event_type,
       track_key,
@@ -1963,6 +1970,29 @@ app.post('/api/play-event', async (req, res) => {
       context_snapshot,
       created_at: timestamp || new Date().toISOString(),
     })
+
+    // ── #20: skip 惩罚管线 — fire-and-forget（shadow 观测）──
+    try {
+      if (event_type === 'skip') {
+        const artistKey = normalizeArtistKey(artist)
+        const profile = state.getTrackProfile(track_key)
+        const tags = []
+        if (profile) {
+          try { if (profile.mood_tags_json) tags.push(...JSON.parse(profile.mood_tags_json)) } catch (_) {}
+          try { if (profile.texture_tags_json) tags.push(...JSON.parse(profile.texture_tags_json)) } catch (_) {}
+        }
+        state.recordSkipPenalty(track_key, artistKey, tags, null, 1)
+      }
+    } catch (_) { /* skip 惩罚失败不影响真实流程 */ }
+
+    // ── #20: 验证播放管线 — 复用已算好的 played_ratio / played_seconds / scene_id ──
+    // 早跳标准按 spec 用播放秒数（<20s），不用比例：一首10分钟的歌放到2.5分钟被跳
+    // ratio 是 0.25，但显然不是"20秒内跳过"那种强烈厌恶信号，两者不能互换。
+    try {
+      const ratio = parseFloat(played_ratio) || 0
+      const seconds = parseFloat(played_seconds) || 0
+      state.recordValidationPlay(track_key, ratio, seconds < 20, null)
+    } catch (_) { /* 验证播放失败不影响真实流程 */ }
 
     res.json({ ok: true })
   } catch (e) {

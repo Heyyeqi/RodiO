@@ -249,6 +249,52 @@ try {
   if (!/duplicate column/i.test(e.message)) throw e
 }
 
+// ── skip_penalties 分层半衰期惩罚表 ──────────────────────────────────
+// 每行只存一个维度：track_key / artist_key / tag / scene_id 四选一非空
+db.exec(`
+  CREATE TABLE IF NOT EXISTS skip_penalties (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    track_key     TEXT,
+    artist_key    TEXT,
+    tag           TEXT,
+    scene_id      TEXT,
+    penalty       REAL DEFAULT 0,
+    half_life_days INTEGER DEFAULT 14,
+    updated_at    TEXT DEFAULT (datetime('now'))
+  );
+`)
+// 清空可能已有的旧格式脏数据（旧结构一行塞了多个字段）
+db.exec(`DELETE FROM skip_penalties`)
+
+// ── discovery_candidates 三表发现管线 ─────────────────────────────────
+// discovery_candidates: 新发现候选池，待验证，不直接播放
+db.exec(`
+  CREATE TABLE IF NOT EXISTS discovery_candidates (
+    track_key     TEXT PRIMARY KEY,
+    source        TEXT,
+    added_at      TEXT DEFAULT (datetime('now')),
+    validation_plays  INTEGER DEFAULT 0,
+    validation_ok      INTEGER DEFAULT 0,
+    early_skip_count   INTEGER DEFAULT 0,
+    scene_ids_json     TEXT DEFAULT '[]'
+  );
+`)
+
+// validated_tracks: 已验证可播放、已打标签，可进入播放
+db.exec(`
+  CREATE TABLE IF NOT EXISTS validated_tracks (
+    track_key    TEXT PRIMARY KEY,
+    validated_at TEXT DEFAULT (datetime('now')),
+    source       TEXT
+  );
+`)
+
+// ── 分层半衰期常数 ────────────────────────────────────────────────────
+const SKIP_HALF_LIFE_TRACK = 14
+const SKIP_HALF_LIFE_TAG   = 30
+const SKIP_HALF_LIFE_ARTIST = 60
+const SKIP_HALF_LIFE_SCENE = 14
+
 // 半衰期天数：180 天衰减一半
 const SCORE_HALF_LIFE_DAYS = 180
 
@@ -400,7 +446,7 @@ function insertPlayEvent(event) {
 function getTrackProfile(trackKey) {
   if (!trackKey) return null
   return db.prepare(
-    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight, rhythmic_motion FROM track_profile WHERE track_key = ?'
+    'SELECT track_key, energy, brightness, density, vocal_presence, emotional_weight, rhythmic_motion, mood_tags_json, texture_tags_json FROM track_profile WHERE track_key = ?'
   ).get(trackKey) || null
 }
 
@@ -522,6 +568,125 @@ function getCommentaryHistory(limit = 50) {
   return rows
 }
 
+// ── skip_penalty 分层衰减函数 ─────────────────────────────────────────
+
+/** 记录一次 skip 惩罚（track / artist / tag / scene 各存独立行） */
+function recordSkipPenalty(trackKey, artistKey, tags, sceneId, penaltyValue) {
+  const now = new Date().toISOString()
+  const upsert = (dim, halfLife) => {
+    const params = dim.track_key ? [dim.track_key, null, null, null, penaltyValue, halfLife, now]
+      : dim.artist_key ? [null, dim.artist_key, null, null, penaltyValue, halfLife, now]
+      : dim.tag ? [null, null, dim.tag, null, penaltyValue, halfLife, now]
+      : dim.scene_id ? [null, null, null, dim.scene_id, penaltyValue, halfLife, now]
+      : null
+    if (!params) return
+    db.prepare(`
+      INSERT INTO skip_penalties (track_key, artist_key, tag, scene_id, penalty, half_life_days, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(...params)
+  }
+  // track 维度
+  if (trackKey) upsert({ track_key: trackKey }, SKIP_HALF_LIFE_TRACK)
+  // tag 维度（每个 tag 独立一行）
+  if (Array.isArray(tags) && tags.length > 0) {
+    for (const tag of tags) {
+      upsert({ tag }, SKIP_HALF_LIFE_TAG)
+    }
+  }
+  // artist 维度
+  if (artistKey) upsert({ artist_key: artistKey }, SKIP_HALF_LIFE_ARTIST)
+  // scene 维度
+  if (sceneId) upsert({ scene_id: sceneId }, SKIP_HALF_LIFE_SCENE)
+}
+
+/** 查询当前有效的 skip 惩罚（四维度独立衰减后加权求和） */
+function getCompositeSkipPenalty(trackKey, artistKey, tags, sceneId) {
+  const now = new Date()
+  const decay = (penalty, halfLifeDays, updatedAt) => {
+    if (!penalty || penalty === 0 || !updatedAt) return 0
+    const days = (now.getTime() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24)
+    if (days <= 0) return penalty
+    return penalty * Math.pow(0.5, days / (halfLifeDays || 14))
+  }
+  const sumRows = (rows) => {
+    let s = 0
+    for (const r of rows) {
+      s += decay(r.penalty, r.half_life_days, r.updated_at)
+    }
+    return s
+  }
+  // 1. track 维度（只有 track_key 非空且匹配）
+  const trackRows = trackKey ? db.prepare(`
+    SELECT penalty, half_life_days, updated_at FROM skip_penalties
+    WHERE track_key = ? AND artist_key IS NULL AND tag IS NULL AND scene_id IS NULL
+  `).all(trackKey) : []
+  const trackPenalty = sumRows(trackRows)
+  // 2. artist 维度
+  const artistRows = artistKey ? db.prepare(`
+    SELECT penalty, half_life_days, updated_at FROM skip_penalties
+    WHERE artist_key = ? AND track_key IS NULL AND tag IS NULL AND scene_id IS NULL
+  `).all(artistKey) : []
+  const artistPenalty = sumRows(artistRows)
+  // 3. tag 维度（每个 tag 独立，求和后乘权重）
+  let tagPenalty = 0
+  if (Array.isArray(tags) && tags.length > 0) {
+    const placeholders = tags.map(() => '?').join(',')
+    const tagRows = db.prepare(`
+      SELECT penalty, half_life_days, updated_at FROM skip_penalties
+      WHERE tag IN (${placeholders}) AND track_key IS NULL AND artist_key IS NULL AND scene_id IS NULL
+    `).all(...tags)
+    tagPenalty = sumRows(tagRows)
+  }
+  // 4. scene 维度
+  const sceneRows = sceneId ? db.prepare(`
+    SELECT penalty, half_life_days, updated_at FROM skip_penalties
+    WHERE scene_id = ? AND track_key IS NULL AND artist_key IS NULL AND tag IS NULL
+  `).all(sceneId) : []
+  const scenePenalty = sumRows(sceneRows)
+  const total = trackPenalty + artistPenalty * 0.3 + tagPenalty * 0.5 + scenePenalty
+  return Math.round(total * 1e6) / 1e6
+}
+
+// ── discovery_candidates 三表管线 ─────────────────────────────────────
+
+/** 将新候选加入 discovery_candidates 池 */
+function insertDiscoveryCandidate(trackKey, source) {
+  db.prepare(`
+    INSERT OR IGNORE INTO discovery_candidates (track_key, source)
+    VALUES (?, ?)
+  `).run(trackKey, source || null)
+}
+
+/** 记录一次验证播放结果，达到条件时自动晋升到 validated_tracks */
+function recordValidationPlay(trackKey, playedRatio, earlySkip, sceneId) {
+  const row = db.prepare('SELECT * FROM discovery_candidates WHERE track_key = ?').get(trackKey)
+  if (!row) return null // 不在发现池中
+  const newPlays = (row.validation_plays || 0) + 1
+  const newOk = (row.validation_ok || 0) + (playedRatio > 0.7 ? 1 : 0)
+  const newEarlySkips = (row.early_skip_count || 0) + (earlySkip ? 1 : 0)
+  let sceneIds = JSON.parse(row.scene_ids_json || '[]')
+  if (sceneId && !sceneIds.includes(sceneId)) sceneIds.push(sceneId)
+  db.prepare(`
+    UPDATE discovery_candidates SET
+      validation_plays = ?, validation_ok = ?, early_skip_count = ?,
+      scene_ids_json = ?
+    WHERE track_key = ?
+  `).run(newPlays, newOk, newEarlySkips, JSON.stringify(sceneIds), trackKey)
+  // 检查晋升条件
+  if (newPlays >= 3 && newOk >= 2 && newEarlySkips === 0 && sceneIds.length >= 2) {
+    db.prepare('INSERT OR IGNORE INTO validated_tracks (track_key, source) VALUES (?, ?)')
+      .run(trackKey, row.source || 'discovery')
+    db.prepare('DELETE FROM discovery_candidates WHERE track_key = ?').run(trackKey)
+    return 'promoted'
+  }
+  return null
+}
+
+/** 检查 track 是否已通过验证 */
+function isValidatedTrack(trackKey) {
+  return !!db.prepare('SELECT 1 FROM validated_tracks WHERE track_key = ?').get(trackKey)
+}
+
 module.exports = {
   getRecentMessages,
   insertCommentaryHistory,
@@ -546,4 +711,9 @@ module.exports = {
   insertShadowRerankCandidate,
   insertShadowMoodIntentLog,
   getRecentShadowMoodIntentLogs,
+  recordSkipPenalty,
+  getCompositeSkipPenalty,
+  insertDiscoveryCandidate,
+  recordValidationPlay,
+  isValidatedTrack,
 }
