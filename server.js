@@ -957,6 +957,7 @@ async function resolveDjSelection(input, options = {}) {
 
   const ctx = await context.buildContext(input, { currentQueue, emotionSignal })
   const result = await claude.askClaude(ctx)
+  result.say = sanitizeSayText(result.say)
 
   let queue = []
   const recentPlays = state.getRecentPlays(120)
@@ -1015,6 +1016,41 @@ async function resolveDjSelection(input, options = {}) {
     segue: result.segue,
     intent,
   }
+}
+
+// ── DJ 文本安全过滤 ───────────────────────────────────────────────────
+const MAX_SAY_CHARS = 60
+const MAX_SAY_LENGTH_CN = 55
+
+/** 检测中文占比，< 30% 视为整段外文 */
+function isForeignParagraph(text) {
+  const chineseChars = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length
+  return chineseChars / Math.max(1, text.length) < 0.3
+}
+
+/** 硬截断：60 字符内找最后一个句末标点截断；找不到就硬截并补句号 */
+function truncateSayText(text) {
+  if (!text) return text
+  if (text.length <= MAX_SAY_CHARS) return text
+  const slice = text.slice(0, MAX_SAY_CHARS)
+  const match = slice.match(/[。！？.!?\n][^。！？.!?\n]*$/)
+  if (match && match.index > MAX_SAY_CHARS * 0.5) {
+    return slice.slice(0, match.index + 1)
+  }
+  return `${slice}。`
+}
+
+/**
+ * 对 result.say 执行硬规则过滤。
+ * 整段外文的主防线在 system prompt（已改为中文主体、外语仅作点缀），
+ * 这里只做监控，不清空文本——避免在极少数漏网情况下制造新的静默失败。
+ */
+function sanitizeSayText(text) {
+  if (!text) return text
+  if (isForeignParagraph(text)) {
+    console.warn('[say-sanitize] 整段外文检测命中（仅记录，未拦截）:', text.slice(0, 40))
+  }
+  return truncateSayText(text)
 }
 
 async function buildDjResponseCore(input, options = {}) {
@@ -1597,11 +1633,11 @@ Nicola Conte、OMA & Shing02、宇多田ヒカル、方大同、Magdalena Bay。
 它应该让 RW 觉得：有人真的在场，真的懂他，真的知道今天是什么日子、
 现在是什么时刻、这首歌为什么在这里出现。
 
-语言不是规则，是材料。中文、英文、日文、法文、西班牙语、葡萄牙语、
-意大利语、德文、韩语、粤语、闽南话、福州话——任何语言都可以出现，
-单独用或者混着用。唯一的标准是：这个语言在这一秒是不是最自然、最有质感的选择。
-一首法国香颂用法语切入可能更对；一首坂本龍一用日语的一个词可能刚好；
-清明夜里用闽南话说一句可能比普通话三句都准确。
+语言不是规则，是材料。中文是主体，其他语言——英文、日文、法文、
+西班牙语、葡萄牙语、意大利语、德文、韩语、粤语、闽南话、福州话——
+可以作为词、短语或半句穿插进来，但整句话不能整个脱离中文独立存在。
+一个精准的英文词，一句闽南话，都可以比三句普通话更准确；
+但不要让某一种外语单独撑起整句话，中文永远是落点。
 不要为了多元而多元，要为了准确而选择。
 
 你可以很短，也可以有几句。
@@ -1617,6 +1653,8 @@ Nicola Conte、OMA & Shing02、宇多田ヒカル、方大同、Magdalena Bay。
 - 禁止重复已用过的开头方式
 - 禁止收尾句："希望你喜欢""好好享受""让我们一起"之类
 - 说完就停，不解释自己为什么这样说
+- 全文必须 ≤ 55 个中文字（标点不计），超长会被自动截断
+- 禁止整段外文（中文必须占主要部分，少量外语可以，但不能全段都是外语）
 
 16种切入角度，本次按建议角度选一种，但如果另一种更准确，可以换：
 B. 声音质感——用通感描述这首歌的物理触感，不靠歌词
@@ -1646,22 +1684,11 @@ Q. 一句话的故事——虚构一个和这首歌气质完全吻合的场景�
 - "清明的雨和别的雨不一样，这首歌也是。"
 - "满月的夜里适合听那种不解释自己的音乐。"
 
-英文好例子：
-- "Sade always sounds like she's already forgiven you."
-- "This one doesn't ask you to feel anything. It just stays."
-- "There's a specific kind of 3am this song knows about."
-- "Ryuichi Sakamoto leaves more space than most people can tolerate."
-- "It sounds like a decision you made a long time ago finally making sense."
-- "Not sad. Just very, very still."
-- "The kind of song you don't remember putting on."
-
-多语言混用好例子：
+多语言混用好例子（中文是主体，外语只作为词或短语穿插，不能整句脱离中文）：
 - "Massive Attack 做的东西有一种奇怪的 gravity——不把你往下拉，是把你钉在原地。"
-- "これは音楽じゃなくて、空気の密度が変わる瞬間だと思う。"
-- "C'est le genre de chanson qui reste après que tu l'as oubliée."
 - "有時候一句閩南話比三句普通話都準——這首就是這樣。"
-- "어떤 노래는 설명이 필요 없어. 그냥 있어."
-- "今日は重陽。秋が本当に来た。"${tonalityConstraint}`,
+- "Sade 的声音，听起来永远像已经原谅你了。"
+- "'空気の密度が変わる瞬間'——这首歌大概就是在做这件事。"${tonalityConstraint}`,
         },
         {
           role: 'user',
@@ -1687,7 +1714,7 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
       thinking: { type: 'disabled' },
     })
 
-    const explainText = (response.choices[0]?.message?.content || '').trim()
+    const explainText = sanitizeSayText((response.choices[0]?.message?.content || '').trim())
     rememberExplainOpening(explainText)
     const sayAudio = await tts.synthesizeSlow(explainText)
 
