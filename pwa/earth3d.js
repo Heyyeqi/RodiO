@@ -568,6 +568,7 @@
     let currentDebugMode = null   // tracks active setDebugLayer mode; null = final/normal
     let _animDirty = true
     let _animFrameCount = 0
+    let _gramStreamingLodOverride = null
     let _starAnimStartTime = 0
     let _horizonGlowEl = null      // screen-space outer haze overlay (high blur)
     let _rimGlowEl    = null      // screen-space thin rim overlay (near-zero blur)
@@ -1009,7 +1010,11 @@
           bootstrapDayAtlasState = 'missing'
           console.warn('[earth3d] bootstrap day atlas image unavailable; keeping dark atlas placeholder')
         }
-        img.src = '/assets/earth_day_8k.jpg'
+        // Keep the bootstrap in the same tonal pipeline as the streamed
+        // NOON_AIR_V2_ISLANDS tiles. The old raw Blue Marble fallback has a
+        // near-black ocean; when one polar atlas cell is still pending that
+        // mismatch becomes a dark triangular wedge on the sphere.
+        img.src = '/assets/earth/production/d5z_b_8192x4096.jpg'
       }
 
       function loadTextureWithFallbackLegacy(primaryPath, fallbackPath, onLoad) {
@@ -1064,6 +1069,13 @@
         } else {
           lod = '4k'
         }
+        // Camera Grammar may temporarily pin the current or target LOD while a
+        // transition is in flight. Approaches switch high-res early; retreats
+        // keep it until the globe is small, avoiding a visible 4k/8k soft phase.
+        const forcedLod = cameraState.forceLod
+        if (forcedLod === '16k' && maxSize >= 16384) lod = '16k'
+        else if (forcedLod === '8k' && maxSize >= 8192) lod = '8k'
+        else if (forcedLod === '4k') lod = '4k'
         // atlasTileSize drives the canvas draw size per tile (1:1 with source resolution).
         // 16k: GPU maxSize >= 16384 is already verified above, so 4 cols × 4096 = 16384 wide is safe.
         // 8k:  2 cols × 4096 = 8192 wide (full source resolution, safe).
@@ -1162,14 +1174,7 @@
         const fov = Math.max(1, Number.isFinite(cameraState.fovDegrees) ? cameraState.fovDegrees : 52)
         const centerX = clamp(Math.floor((lon + 180) / 360 * tileCols), 0, tileCols - 1)
         const centerY = clamp(Math.floor((90 - lat) / 180 * tileRows), 0, tileRows - 1)
-        // Polar/high-latitude views expose a lot more longitude near the visible
-        // cap than this simple lon/fov heuristic suggests. If we keep a narrow
-        // radiusX there, one missing top-row tile can show up as a dark diamond/
-        // wedge over the Arctic/Antarctic. Be conservative and load the whole row.
-        const polarWideLoad = tileRows > 1 && Math.abs(lat) >= 50
-        const radiusX = polarWideLoad
-          ? (tileCols - 1)
-          : Math.max(0, Math.ceil(fov / (360 / tileCols) / 2))
+        const radiusX = Math.max(0, Math.ceil(fov / (360 / tileCols) / 2))
         const radiusY = Math.max(0, Math.ceil(fov / (180 / tileRows) / 2))
         const keys = new Set()
         for (let dy = -radiusY; dy <= radiusY; dy += 1) {
@@ -1180,6 +1185,22 @@
             keys.add(`${lod}:${x}:${y}`)
           }
         }
+
+        // Every longitude cell converges at a pole. A target-centred lon/fov
+        // heuristic can therefore omit a cell that is still visible around the
+        // polar cap, turning the rectangular atlas gap into a triangle/wedge on
+        // the sphere. Runtime streaming passes projection-derived visibility;
+        // prefetch callers without it retain the high-latitude safety fallback.
+        const northPoleVisible = cameraState.northPoleVisible === true
+          || (cameraState.northPoleVisible == null && lat >= 50)
+        const southPoleVisible = cameraState.southPoleVisible === true
+          || (cameraState.southPoleVisible == null && lat <= -50)
+        const addCompleteRow = (y) => {
+          for (let x = 0; x < tileCols; x += 1) keys.add(`${lod}:${x}:${y}`)
+        }
+        if (tileRows > 1 && northPoleVisible) addCompleteRow(0)
+        if (tileRows > 1 && southPoleVisible) addCompleteRow(tileRows - 1)
+
         return Array.from(keys).sort().map((key) => {
           const [_lod, x, y] = key.split(':')
           return { lod: _lod, x: Number(x), y: Number(y) }
@@ -1213,7 +1234,7 @@
           this.tileRetryCount = new Map()
         }
 
-        redrawAtlasBaseLayer() {
+        redrawAtlasBaseLayer(options = {}) {
           const width = this.atlasCanvas.width
           const height = this.atlasCanvas.height
           if (!width || !height || !this.atlasContext) return
@@ -1228,6 +1249,20 @@
           } else {
             this.atlasContext.fillStyle = '#020514'
             this.atlasContext.fillRect(0, 0, width, height)
+          }
+
+          // Bootstrap decode can finish after several high-res cells have
+          // already been drawn. Re-laying the base must not erase those cells;
+          // immediately restore every active cached tile on top in one pass.
+          if (options.restoreActiveTiles !== false) {
+            for (const [key, tile] of this.activeTiles) {
+              const record = this.tileCache.get(key)
+              const image = (record?.texture || record)?.image
+              if (!image || tile.lod !== this.lodConfig.lod) continue
+              const size = this.lodConfig.atlasTileSize
+              this.atlasContext.imageSmoothingEnabled = false
+              this.atlasContext.drawImage(image, tile.x * size, tile.y * size, size, size)
+            }
           }
           this.atlasTexture.needsUpdate = true
         }
@@ -1418,7 +1453,7 @@
           const height = config.tileRows * config.atlasTileSize
           if (this.atlasCanvas.width !== width) this.atlasCanvas.width = width
           if (this.atlasCanvas.height !== height) this.atlasCanvas.height = height
-          this.redrawAtlasBaseLayer()
+          this.redrawAtlasBaseLayer({ restoreActiveTiles: false })
           configureAtlasTexture(this.atlasTexture, config.lod)
           this.activeTiles.clear()
           this.loadingTiles.clear()
@@ -3685,6 +3720,17 @@
           })
         }
       }
+
+      function clearRDLInspectRegion() {
+        const hadInspectRegion = Boolean(_rdlInspectRegion)
+        _rdlInspectRegion = null
+        rdlMeshes.forEach(({ mesh, mat }) => {
+          mesh.visible = false
+          mat.uniforms.uOpacity.value = 0.0
+          mat.uniforms.uSharpen.value = 0.0
+        })
+        return hadInspectRegion
+      }
       // ──────────────────────────────────────────────────────────────────────
 
       // Procedural star sprites: gaussian-falloff glow points (bright core +
@@ -5738,7 +5784,7 @@
         // extra near-coplanar transparent sphere (r=2.002) can expose its
         // faceted depth pattern as repeating dark diamonds on the globe.
         const usesNightBaseGrade = THEME_VISUAL_CONFIG[themeKey]?.nightGrade?.daybaseMode === true
-        if (config && !usesNightBaseGrade) {
+        if (config && config.strength > 0.001 && !usesNightBaseGrade) {
           oceanTintMaterial.color.set(config.color)
           oceanTintMaterial.opacity = config.strength
           oceanTintMesh.visible = true
@@ -6603,11 +6649,33 @@
       function getStreamingCameraState(streamCamera = camera) {
         const visualState = window.__rodioVisualState || {}
         const cameraDistance = streamCamera?.position?.length ? streamCamera.position.length() : null
+        const poleVisible = (lat) => {
+          if (!earth || !streamCamera) return false
+          earth.updateWorldMatrix(true, false)
+          streamCamera.updateWorldMatrix(true, false)
+          const earthCenter = new THREE.Vector3()
+          const cameraWorld = new THREE.Vector3()
+          const poleWorld = lonLatToVector3(0, lat, 2.001)
+          earth.getWorldPosition(earthCenter)
+          streamCamera.getWorldPosition(cameraWorld)
+          earth.localToWorld(poleWorld)
+          const frontFacing = poleWorld.clone().sub(earthCenter).normalize()
+            .dot(cameraWorld.clone().sub(earthCenter).normalize()) >= -0.02
+          if (!frontFacing) return false
+          const ndc = poleWorld.project(streamCamera)
+          const margin = 0.08
+          return ndc.z >= -1 && ndc.z <= 1
+            && Math.abs(ndc.x) <= 1 + margin
+            && Math.abs(ndc.y) <= 1 + margin
+        }
         return {
           lon: normalizeLon(Number.isFinite(visualState.lon) ? visualState.lon : 121.4737),
           lat: clamp(Number.isFinite(visualState.lat) ? visualState.lat : 31.2304, -80, 80),
           distance: Number.isFinite(cameraDistance) ? cameraDistance : 4.8,
           fovDegrees: Number.isFinite(streamCamera?.fov) ? streamCamera.fov : 28,
+          forceLod: _gramStreamingLodOverride,
+          northPoleVisible: poleVisible(90),
+          southPoleVisible: poleVisible(-90),
         }
       }
 
@@ -6652,9 +6720,13 @@
         globe:           { label: 'Globe',           lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 4.8,  lookAtY: 0.0  },
         heroClose:       { label: 'Hero Close',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 48, cameraOffsetY: 0.0, cameraOffsetZ: 5.5,  lookAtY: 0.0  },
         hemisphere:      { label: 'Hemisphere',      lat: 35.0,   lon: 110.0,   centerMode: false, fov: 22, cameraOffsetY: 0.5, cameraOffsetZ: 5.5,  lookAtY: -0.3 },
-        horizon:         { label: 'Horizon',         lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.0,  lookAtY: -0.5 },
-        lowOrbit:        { label: 'Low Orbit',       lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 3.5,  lookAtY: -0.8 },
-        cityFocus:       { label: 'City Focus',      lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 8,  cameraOffsetY: 0.6, cameraOffsetZ: 3.0,  lookAtY: -1.0 },
+        // Close views keep roughly >= 900 source texels across the vertical
+        // footprint on the 16k atlas. The previous distances enlarged only
+        // 180–600 source texels to a Retina-height canvas, so land and clouds
+        // looked visibly smeared even after the highest LOD had settled.
+        horizon:         { label: 'Horizon',         lat: 25.0,   lon: 121.0,   centerMode: true,  fov: 14, cameraOffsetY: 2.0, cameraOffsetZ: 4.5,  lookAtY: -0.5 },
+        lowOrbit:        { label: 'Low Orbit',       lat: 30.0,   lon: 121.0,   centerMode: true,  fov: 12, cameraOffsetY: 1.2, cameraOffsetZ: 5.2,  lookAtY: -0.8 },
+        cityFocus:       { label: 'City Focus',      lat: 31.23,  lon: 121.47,  centerMode: true,  fov: 10, cameraOffsetY: 0.6, cameraOffsetZ: 6.2,  lookAtY: -1.0 },
         oceanView:       { label: 'Ocean View',      lat: -10.0,  lon: -140.0,  centerMode: false, fov: 24, cameraOffsetY: 0.3, cameraOffsetZ: 5.0,  lookAtY: -0.2 },
         deepSpace:       { label: 'Deep Space',      lat: 31.23,  lon: 121.47,  centerMode: false, fov: 28, cameraOffsetY: 0.0, cameraOffsetZ: 80.0, lookAtY: 0.0  },
         eastAsiaHeroV1:  { label: 'East Asia Hero',  lat: 31.23,  lon: 121.47,  centerMode: false, fov: 23, cameraOffsetY: 0.0, cameraOffsetZ: 5.2,  lookAtY: 0.0, targetNdcX: 0.05, targetNdcY: -0.05, screenOffsetY: 16 },
@@ -6712,7 +6784,7 @@
         },
         horizonSkim: {
           lat: 25.0, lon: 121.0,
-          cameraOffsetY: 1.6, cameraOffsetZ: 3.7,
+          cameraOffsetY: 1.6, cameraOffsetZ: 4.8,
           anchorNdcX: 0.0, anchorNdcY: -0.3,
           fov: 13,
           lookAtY: -0.5,
@@ -6815,18 +6887,31 @@
       let _gramSettledZ = null   // settled camera.position.z after transition ends, used by breathe primitive
       let _gramTransition = null  // { fromY, fromZ, fromFov, fromLookAtY, toY, toZ, toFov, toLookAtY, toNdcX, toNdcY, toRollDeg, toLat, toLon, startTime, duration, envelope }
       let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
+      const _GRAM_LOD_RANK = { '4k': 0, '8k': 1, '16k': 2 }
       _gramSettledZRef = _gramSettledZ
       _gramTransitionRef = _gramTransition
 
       function prefetchTilesForCameraState(cameraState) {
         if (!tileManager || !renderer) return
         const config = resolveEarthTextureLOD(tileManager.lodManager, renderer.capabilities, cameraState)
-        const tiles = computeVisibleTileSet({ ...cameraState, lod: config.lod, tileCols: config.tileCols, tileRows: config.tileRows })
+        const targetLat = Number.isFinite(cameraState.lat) ? cameraState.lat : 31.2304
+        const tiles = computeVisibleTileSet({
+          ...cameraState,
+          lod: config.lod,
+          tileCols: config.tileCols,
+          tileRows: config.tileRows,
+          // Before a transition reaches its final camera we cannot project the
+          // target pole yet. Prefetch the polar row for the target hemisphere so
+          // the tile is ready before the cap enters frame.
+          northPoleVisible: cameraState.northPoleVisible ?? targetLat > 0,
+          southPoleVisible: cameraState.southPoleVisible ?? targetLat < 0,
+        })
         tiles.forEach((tile) => tileManager.prefetchTile(tile))
       }
 
       function transitionToComposition(compositionKey, opts = {}, _isSequenceStep = false) {
         _currentCompositionKey = compositionKey
+        clearRDLInspectRegion()
         if (!_isSequenceStep) _gramSequenceQueue = []   // 外部手动调用，清空任何排队中的序列
         const duration = opts.duration ?? 4
         const envelopeName = opts.envelope ?? 'easeInOutCubic'
@@ -6847,6 +6932,18 @@
         const targetNdcY = compositionKey === 'homeGlobe' ? undefined : comp.anchorNdcY
         const targetRollDeg = compositionKey === 'homeGlobe' ? 0 : (comp.rollDeg || 0)
         const targetLookAtY = compositionKey === 'homeGlobe' ? comp.lookAtY : (comp.lookAtY || 0)
+
+        const targetLod = resolveEarthTextureLOD(tileManager?.lodManager, renderer?.capabilities, {
+          distance: Math.hypot(targetY, targetZ),
+          fovDegrees: targetFov,
+          forceLod: null,
+        }).lod
+        const currentLod = tileManager?.lodConfig?.lod || targetLod
+        const targetRank = _GRAM_LOD_RANK[targetLod] ?? 0
+        const currentRank = _GRAM_LOD_RANK[currentLod] ?? 0
+        _gramStreamingLodOverride = targetRank > currentRank
+          ? targetLod
+          : (targetRank < currentRank ? currentLod : null)
 
         const isFarComposition = FAR_COMPOSITIONS.has(compositionKey)
         const isDaytimeTheme = ['morning', 'noon', 'afternoon', 'goldenApproach'].includes(currentTheme)
@@ -6989,6 +7086,7 @@
         _gramLastLookAtY = lookAtY
         camera.updateProjectionMatrix()
         if (t >= 1) {
+          _gramStreamingLodOverride = null
           const vs = window.__rodioVisualState
           if (_gramTransition.toNdcX !== undefined) vs._targetNdcX = _gramTransition.toNdcX
           if (_gramTransition.toNdcY !== undefined) vs._targetNdcY = _gramTransition.toNdcY
@@ -7000,6 +7098,7 @@
           _gramSettledZ = camera.position.z
           _gramTransitionRef = _gramTransition
           _gramSettledZRef = _gramSettledZ
+          updateStreaming(camera)
 
           if (_gramSequenceQueue.length > 0) {
             const next = _gramSequenceQueue.shift()
@@ -7203,6 +7302,7 @@
         },
         setTimeOfDay(themeKey) {
           if (permanentlyUnavailable) return false
+          clearRDLInspectRegion()
           pendingTheme = themeKey
           const applied = applyTheme(themeKey, { force: true })
           updateSunPosition()
@@ -7318,16 +7418,16 @@
           return _rdlZoomLevel
         },
         setRDLInspectRegion(regionId) {
-          _rdlInspectRegion = regionId || null
-          if (_rdlInspectRegion) {
-            const entry = rdlMeshes.find((e) => e.region.id === _rdlInspectRegion)
-            if (entry) entry.startLoad()
-          }
+          clearRDLInspectRegion()
+          const entry = regionId ? rdlMeshes.find((e) => e.region.id === regionId) : null
+          _rdlInspectRegion = entry ? entry.region.id : null
+          if (entry) entry.startLoad()
           refreshRDLTextureSampling()
           requestRenderUpdate()
           return _rdlInspectRegion
         },
         setAuditViewAngle(angle) {
+          clearRDLInspectRegion()
           const preset = _AUDIT_VIEW_ANGLES[angle] || _AUDIT_VIEW_ANGLES.top
           _currentAuditViewAngle = Object.prototype.hasOwnProperty.call(_AUDIT_VIEW_ANGLES, angle) ? angle : 'top'
           camera.position.set(0, preset.y, preset.z)
@@ -7346,6 +7446,14 @@
         applyCameraPreset(key) {
           const preset = CAMERA_PRESETS[key]
           if (!preset) { console.warn('[earth3d] unknown camera preset:', key); return false }
+          clearRDLInspectRegion()
+          // Debug presets are immediate camera commands. Cancel any in-flight
+          // grammar transition and its temporary LOD pin so it cannot pull the
+          // camera or texture resolution away again on the next frame.
+          _gramTransition = null
+          _gramTransitionRef = null
+          _gramSequenceQueue = []
+          _gramStreamingLodOverride = null
 
           // camera position & FOV
           camera.position.set(0, preset.cameraOffsetY, preset.cameraOffsetZ)
