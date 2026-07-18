@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "rodio",
-      "runtimeExecutable": "/Users/rw-mac/.local/bin/node",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
       "runtimeArgs": ["server.js"],
-      "port": 8081
+      "port": 8080
     },
     {
       "name": "rodio-static",
