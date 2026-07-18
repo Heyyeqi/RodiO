@@ -878,6 +878,30 @@
     50% { box-shadow: 0 0 14px rgba(123,184,122,0.9); transform: scale(1.25); }
   }
 
+  /* ── P4 Stage 1: Full ↔ Minimal 三态UI ────────────────────────────── */
+  #app.ui-state-minimal .progress-wrap {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  #app.ui-state-minimal .controls {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  #app.ui-state-minimal .page1-footer {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #app.ui-state-minimal .progress-wrap,
+    #app.ui-state-minimal .controls,
+    #app.ui-state-minimal .page1-footer {
+      transition: opacity 50ms ease;
+    }
+  }
+
   .error-overlay {
     position: fixed;
     left: 16px;
@@ -1305,6 +1329,9 @@
         state.playing = !s.paused
         state.progress = s.position / 1000
         state.duration = s.duration / 1000
+        // P4: Spotify 播放状态切换 → 同步空闲计时
+        if (!wasPlaying && state.playing) resetIdleTimer()
+        if (wasPlaying && !state.playing) enterFull()
         // 拿到真实 duration 后修正看门狗定时器
         if (s.duration > 0) armSongEndWatchdog(state.duration, state.currentTrack)
         renderControls()
@@ -1318,6 +1345,7 @@
 
       spotifyPlayer.addListener('playback_error', ({ message }) => {
         console.error('[spotify] playback error:', message)
+        enterFull()  // P4: 播放错误 → 强制回到 Full
         if (spotifyPlayRetryCount < 1 && spotifyCurrentUri) {
           spotifyPlayRetryCount += 1
           setTimeout(() => spotifyPlay(spotifyCurrentUri).catch(() => {}), 1200)
@@ -1842,8 +1870,40 @@
     messages: [
       { id: makeId('dj'), from: 'dj', text: '跟我说说你想听什么，或者让我来决定。', time: ts() },
     ],
+    uiMode: 'full',  // P4 Stage 1: 'full' | 'minimal'（后续 stage 加 'earthOnly'）
   }
   window.__rodioVisualState = state
+
+  // ── P4 Stage 1: Full ↔ Minimal 空闲计时器 ──────────────────────────
+  let idleTimer = null
+  const IDLE_TIMEOUT = 5000
+
+  function isErrorVisible() {
+    return errorOverlay.style.display === 'block'
+  }
+
+  function enterFull() {
+    if (state.uiMode !== 'full') {
+      state.uiMode = 'full'
+      app.classList.remove('ui-state-minimal')
+    }
+    resetIdleTimer()
+  }
+
+  function enterMinimal() {
+    state.uiMode = 'minimal'
+    app.classList.add('ui-state-minimal')
+  }
+
+  function resetIdleTimer() {
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => {
+      // 只在 playing 且无错误态时进入 Minimal
+      if (state.playing && !isErrorVisible() && state.uiMode === 'full') {
+        enterMinimal()
+      }
+    }, IDLE_TIMEOUT)
+  }
 
   function makeId(prefix) {
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -2488,6 +2548,7 @@
     const autoExplain = options.autoExplain !== false
     if (!item) return
     if (!item.play_url && !item.spotify_uri) return
+    enterFull()  // P4: 新歌开始/切歌 → 强制回到 Full
     activeExplainToken += 1
     if (pendingAutoExplainTimer) {
       clearTimeout(pendingAutoExplainTimer)
@@ -2573,6 +2634,7 @@
         state.currentTrack = prevTrack
         renderHero()
         renderControls()
+        enterFull()  // P4: 播放异常 → 强制回到 Full
         console.error('[claudio] NCM 播放失败:', e.name, e.message)
         setTimeout(() => advanceToNext(), 800)
       })
@@ -2610,6 +2672,7 @@
       }).catch((error) => {
         state.playing = false
         renderControls()
+        enterFull()  // P4: 播放恢复失败 → 强制回到 Full
         appendDj(`播放失败：${error && error.name ? error.name : 'AudioError'}`)
       })
     }
@@ -4862,12 +4925,13 @@
     weatherFrameId = requestAnimationFrame(startVisualLoop)
   }
 
-  document.getElementById('btn-prev').addEventListener('click', playPrevious)
-  document.getElementById('btn-next').addEventListener('click', () => advanceToNext('skip'))
+  document.getElementById('btn-prev').addEventListener('click', () => { resetIdleTimer(); playPrevious() })
+  document.getElementById('btn-next').addEventListener('click', () => { resetIdleTimer(); advanceToNext('skip') })
 
   // MediaSession API — lock screen / notification controls
   if ('mediaSession' in navigator) {
     navigator.mediaSession.setActionHandler('play', () => {
+      resetIdleTimer()
       if (spotifyCurrentUri) {
         if (spotifyReady && !state.playing) spotifyToggle()
       } else if (audio.paused) {
@@ -4884,8 +4948,8 @@
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
     navigator.mediaSession.setActionHandler('nexttrack', () => advanceToNext('skip'))
   }
-  document.getElementById('btn-note').addEventListener('click', explainCurrentTrack)
-  document.getElementById('btn-dislike').addEventListener('click', () => sendFeedback('dislike'))
+  document.getElementById('btn-note').addEventListener('click', () => { resetIdleTimer(); explainCurrentTrack() })
+  document.getElementById('btn-dislike').addEventListener('click', () => { resetIdleTimer(); sendFeedback('dislike') })
   const SHICHIYOU_SYMBOLS = ['☀', '☽', '♂', '☿', '♃', '♀', '♄']
   function updateShichiyouBtn() {
     const shanghaiDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
@@ -4894,8 +4958,8 @@
     if (el) el.textContent = SHICHIYOU_SYMBOLS[day]
   }
   updateShichiyouBtn()
-  document.getElementById('btn-heart').addEventListener('click', () => sendFeedback('like'))
-  page1Footer.addEventListener('click', goToPage2)
+  document.getElementById('btn-heart').addEventListener('click', () => { resetIdleTimer(); sendFeedback('like') })
+  page1Footer.addEventListener('click', () => { resetIdleTimer(); goToPage2() })
   page2Back.addEventListener('click', goToPage1)
 
   // 触摸滑动支持
@@ -4915,7 +4979,7 @@
       if (dy > 0 && currentPage === 2) goToPage1()
     }
   }, { passive: true })
-  playButton.addEventListener('click', togglePlay)
+  playButton.addEventListener('click', () => { resetIdleTimer(); togglePlay() })
   composerSend.addEventListener('click', send)
   composerInput.addEventListener('input', renderControls)
   composerInput.addEventListener('keydown', (event) => {
@@ -4924,8 +4988,17 @@
       send()
     }
   })
-  startButton.addEventListener('click', startListening)
-  progressLine.addEventListener('click', seekTo)
+  startButton.addEventListener('click', () => { resetIdleTimer(); startListening() })
+  progressLine.addEventListener('click', (e) => { resetIdleTimer(); seekTo(e) })
+
+  // P4 Stage 1: page1 空白区域短触 — Minimal 下恢复 Full，Full 下重置计时
+  const page1 = document.getElementById('page1')
+  page1.addEventListener('click', (e) => {
+    // 不拦截已绑定控件的点击
+    if (e.target.closest('.controls, .progress-wrap, .page1-footer, button')) return
+    if (state.uiMode === 'minimal') enterFull()
+    else resetIdleTimer()
+  })
   queueList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-queue-index]')
     if (!button) return
@@ -4947,10 +5020,12 @@
   audio.addEventListener('play', () => {
     state.playing = true
     renderControls()
+    resetIdleTimer()  // P4: 开始播放时启动空闲计时
   })
   audio.addEventListener('pause', () => {
     state.playing = false
     renderControls()
+    enterFull()  // P4: 暂停/异常 → 强制回到 Full，且不自动进入 Minimal（因 state.playing=false）
   })
   audio.addEventListener('ended', () => {
     advanceToNext('complete')
