@@ -1200,19 +1200,25 @@
   function syncCurrentTrackFromSpotifyState(s) {
     const track = s && s.track_window && s.track_window.current_track
     if (!track) return
+    const incomingUri = track.uri || track.id || null
+    // 竞态守卫：如果本地刚设置过一首不同的歌（< 2s），忽略 SDK 延迟事件
+    if (incomingUri && state._localTrackUri && incomingUri !== state._localTrackUri) {
+      const age = Date.now() - (state._localTrackSetAt || 0)
+      if (age < 2000) return
+    }
     const nextTrack = {
       id: track.id || track.uri || null,
       name: track.name || null,
       artist: Array.isArray(track.artists) ? track.artists.map(a => a.name).filter(Boolean).join('; ') : null,
     }
     if (!nextTrack.name) return
-    // 保留 SSE play_audio 阶段已注入的 rhythmic_motion / duration_ms
-    // (syncCurrentTrackFromSpotifyState 在 SDK state_changed 时被调用,会覆盖 SSE 写入的富数据)
     if (state.currentTrack &&
         (state.currentTrack.id === nextTrack.id || state.currentTrack.name === nextTrack.name)) {
       if (state.currentTrack.rhythmic_motion != null) nextTrack.rhythmic_motion = state.currentTrack.rhythmic_motion
       if (state.currentTrack.duration_ms != null) nextTrack.duration_ms = state.currentTrack.duration_ms
     }
+    state._localTrackUri = incomingUri
+    state._localTrackSetAt = Date.now()
     spotifyCurrentUri = track.uri || spotifyCurrentUri
     state.currentTrack = nextTrack
     renderHero()
@@ -1432,6 +1438,8 @@
 
   const audio = document.getElementById('claudio-audio')
   const app = document.getElementById('app')
+  // 页面加载时重置可能残留的会话状态 class
+  app.classList.remove('dj-speaking')
   const canvas = document.getElementById('weather-canvas')
   const ctx = canvas.getContext('2d')
   const pagesContainer = document.getElementById('pages-container')
@@ -2494,6 +2502,8 @@
 
     const prevTrack = state.currentTrack
     state.currentTrack = item.song_info || null
+    state._localTrackUri = (item.song_info && (item.song_info.id || item.song_info.uri)) || null
+    state._localTrackSetAt = Date.now()
     state.progress = 0
     state.heroCommentary = ''
     renderHero()
