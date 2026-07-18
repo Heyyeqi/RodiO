@@ -223,15 +223,18 @@ function getRailwayTokenContext() {
 
 function loadPersistedUserToken() {
   try {
+    // SQLite（本机持久化）优先：本地长期运行时，这里的 token 会比 .env
+    // 里的静态值更新（每次刷新都会写回 state.setPref）。.env 只在 SQLite
+    // 还没攒出任何记录时（比如全新环境）当一次性种子用。
+    const raw = state.getPref(SPOTIFY_TOKEN_PREF)
+    if (raw && applyPersistedUserToken(JSON.parse(raw))) return
+
     const envToken = {
       access_token: process.env.SPOTIFY_ACCESS_TOKEN || null,
       refresh_token: process.env.SPOTIFY_REFRESH_TOKEN || null,
       expires_at: Number(process.env.SPOTIFY_TOKEN_EXPIRES_AT || 0) || 0,
     }
     if (applyPersistedUserToken(envToken)) return
-
-    const raw = state.getPref(SPOTIFY_TOKEN_PREF)
-    if (raw && applyPersistedUserToken(JSON.parse(raw))) return
   } catch {}
 }
 
