@@ -36,8 +36,8 @@ const FRESHNESS_LOG_BASE_DAYS = 90
  * @returns {Object} 见任务定义结构
  */
 function computeCandidateScore(candidateSong, currentTrackKey) {
-  const name = candidateSong?.name
-  const artist = candidateSong?.artist
+  const name = candidateSong?.song_info?.name || candidateSong?.name
+  const artist = candidateSong?.song_info?.artist || candidateSong?.artist
 
   // track_key 用 normalizeSongKey/normalizeArtistKey 拼接（与 play_events 表 key 匹配）
   const trackKey = `${normalizeSongKey(name)}::${normalizeArtistKey(artist)}`
@@ -119,7 +119,9 @@ async function logShadowRerank(candidates, currentTrackKey, reason) {
     const top = list.slice(0, MAX_LOG_CANDIDATES)
     for (const c of top) {
       const score = computeCandidateScore(c, currentTrackKey)
-      const trackKey = `${normalizeSongKey(c?.name)}::${normalizeArtistKey(c?.artist)}`
+      const name = c?.song_info?.name || c?.name
+      const artist = c?.song_info?.artist || c?.artist
+      const trackKey = `${normalizeSongKey(name)}::${normalizeArtistKey(artist)}`
       state.insertShadowRerankCandidate({
         reason: reason || null,
         track_key: trackKey,

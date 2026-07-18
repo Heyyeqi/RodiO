@@ -7031,3 +7031,19 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 
 ### 遗留问题
 - 本次未部署 Railway；正式环境仍需随下一次部署带上 `v51` 缓存版本。
+- 用户实机验证极区修复时，控制台显示 12 errors / 2 warnings，比开发期间"3条无关错误"的说法数量更多，未及时展开核实（无痕模式下无法点开详情）。不阻塞本次保存，部署 Railway 前应补一次核实，排除是否为本次改动引入的真实回归。
+
+## 2026-07-18 HZ修复候选打分字段读取（Dislike评分与选歌脱节的根因之一）
+
+### 做了什么
+- 排查 issue #25（dislike评分未接入候选排序）时发现 `core/candidate-rerank.js` 的 `computeCandidateScore()` 和 `logShadowRerank()` 都直接读取候选对象的顶层 `name`/`artist` 字段，但真实候选数据（`fillQueueFromSpotifyPlaylists()` 返回的队列项）统一使用嵌套的 `song_info: { name, artist }` 结构，导致这两个字段实际拿到的是 `undefined`，`feedback` 维度打分（内部调用 `getSongFeedbackScore`）和 `shadow_rerank_candidates` 观测写入均使用了归一化后的空字符串拼出的错误 `track_key`。
+- 修复为优先读取 `candidateSong?.song_info?.name`，找不到再退回顶层 `name`（兼容两种候选来源结构），`logShadowRerank()` 内部计算 `trackKey` 时同步使用同一取值逻辑。
+- 复核确认 `shadow_rerank_candidates` 此前查到的 1 行数据是手动插入的测试记录（`track_key='testsong::testartist'`），非真实生产数据；已清理该测试行。真实数据为空的另一部分原因是本地验证环境缺少已授权的 Spotify session（`fillQueueFromSpotifyPlaylists` 在无 token 时直接返回空数组），不是本次代码问题。
+
+### 改动文件
+- `core/candidate-rerank.js`
+- `devlog.md`
+
+### 遗留问题
+- 尚未在有效 Spotify session 下端到端验证修复后 `shadow_rerank_candidates` 能写入非测试的真实数据；建议下次有真实候选数据时抽查 `track_key` 是否不再是 `"::"` 形式的空拼接。
+- issue #19（选歌模块v2 Phase1毕业检查）的"连续7天"计时需要在本次修复生效、真实数据重新开始累积后重新起算。
