@@ -12,7 +12,7 @@ RodiO 是一个个人 AI 电台应用。核心体验是：由 AI（DeepSeek）�
 
 - 线上地址：https://web-production-a5193.up.railway.app
 - 仓库：Heyyeqi/RodiO，**主干直入策略**：所有建设任务直接小步提交到 main，不开长期功能分支；通过 GitHub Issue + Milestone 追踪任务边界（见 `docs/roadmap/STATUS.md` §2、§5）。`wip/easter-themes` 等少数归档分支例外保留，见 STATUS.md 分支状态表。
-- 部署方式：Railway + Procfile（`web: node server.js`）
+- 部署方式：Railway + Procfile（`web: node server.js`），**迁移中**：计划从 Railway 迁移到腾讯云，过渡期以本地开发环境为主要验证环境，Railway production 仅作为迁移完成前的临时兜底。Spotify token 持久化已从"Railway优先"改为"本机 SQLite（`core/state.js`）优先"，Railway GraphQL push 仍保留但已是可选兜底层（详见 `core/spotify.js` `loadPersistedUserToken()`/`persistUserToken()`）。
 
 ---
 
@@ -107,7 +107,7 @@ Spotify 搜索失败时降级到 NCM；Phase 1 补货失败时降级到 Qwen。
 - 每次任务完成后，在 `devlog.md` 末尾追加记录
 - 不引入新的全局状态管理库，状态统一走 `core/state.js`（SQLite）
 - TTS 请求必须走 `core/tts.js` 的串行队列，不得绕过
-- Spotify token 变更必须同步持久化到 Railway 环境变量
+- Spotify token 变更必须同步持久化到本机 SQLite（`state.setPref`）；Railway 环境变量持久化保留但已降级为可选兜底，未配置 Railway 时会自动跳过
 
 ---
 
