@@ -51,7 +51,11 @@ async function synthesizeWithOptions(text, options = {}) {
   if (fs.existsSync(cachePath)) return `/cache/tts/${filename}`
 
   const apiKey = process.env.MINIMAX_API_KEY
-  if (!apiKey) throw new Error('MINIMAX_API_KEY 未配置')
+  if (!apiKey) {
+    const err = new Error('MINIMAX_API_KEY 未配置')
+    err.code = 'missing_key'
+    throw err
+  }
 
   fs.mkdirSync(CACHE_DIR, { recursive: true })
 
@@ -82,14 +86,27 @@ async function synthesizeWithOptions(text, options = {}) {
   console.log('[tts-queue] starting request, queue length:', queueLength)
   lastMiniMaxRequestAt = Date.now()
 
-  const response = await fetch(MINIMAX_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+
+  let response
+  try {
+    response = await fetch(MINIMAX_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    const err = new Error(`MiniMax TTS 网络请求失败: ${e.message}`)
+    err.code = e.name === 'AbortError' ? 'timeout' : 'network_error'
+    throw err
+  }
+  clearTimeout(timeoutId)
 
   console.log('[minimax-tts] response status:', response.status)
 
@@ -98,12 +115,22 @@ async function synthesizeWithOptions(text, options = {}) {
 
   const payload = rawText ? JSON.parse(rawText) : {}
   if (!response.ok) {
-    throw new Error(payload?.base_resp?.status_msg || payload?.message || `MiniMax TTS 请求失败: ${response.status}`)
+    const msg = payload?.base_resp?.status_msg || payload?.message || `MiniMax TTS 请求失败: ${response.status}`
+    const err = new Error(msg)
+    const code = payload?.base_resp?.status_code
+    if (code === 1008) err.code = 'insufficient_balance'
+    else if (code === 1000 || code === 1001) err.code = 'auth_failed'
+    else if (code === 1004) err.code = 'rate_limited'
+    else if (response.status === 429) err.code = 'rate_limited'
+    else err.code = 'service_unavailable'
+    throw err
   }
 
   const base64Audio = payload?.data?.audio
   if (!base64Audio) {
-    throw new Error('MiniMax TTS 未返回音频数据')
+    const err = new Error('MiniMax TTS 未返回音频数据')
+    err.code = 'no_audio'
+    throw err
   }
 
   const isHexAudio = typeof base64Audio === 'string' && /^[0-9a-f]+$/i.test(base64Audio) && base64Audio.length % 2 === 0

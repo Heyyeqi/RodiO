@@ -994,16 +994,21 @@ async function resolveDjSelection(input, options = {}) {
     queue = markBatchEdges(queue)
   }
 
-  const say_audio = includeSpeech && result.say
-    ? await tts.synthesize(result.say).catch(e => {
-        console.error('[tts]', e.message)
-        return null
-      })
-    : null
+  let say_audio = null
+  let tts_error = null
+  if (includeSpeech && result.say) {
+    try {
+      say_audio = await tts.synthesize(result.say)
+    } catch (e) {
+      console.error('[tts]', e.code, e.message)
+      tts_error = { code: e.code || 'unknown', message: e.message }
+    }
+  }
 
   return {
     say: includeSpeech ? result.say : null,
     say_audio,
+    ...(tts_error ? { tts_error } : {}),
     queue,
     replace_pool: !!result.replace_pool,
     reason: result.reason,

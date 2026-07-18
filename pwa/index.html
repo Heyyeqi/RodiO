@@ -761,6 +761,12 @@
     letter-spacing: inherit;
     cursor: pointer;
   }
+  .msg-tts-unavailable {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.7;
+  }
 
   .composer {
     padding: 14px 28px 18px;
@@ -2214,6 +2220,7 @@
           <div class="msg-time">
             ${escapeHtml(message.time)}
             ${message.replayUrl ? `<button class="msg-replay" data-replay="${escapeHtml(message.replayUrl)}" data-duck="${commentary ? '1' : '0'}">REPLAY</button>` : ''}
+            ${message.ttsError ? '<span class="msg-tts-unavailable">语音暂不可用</span>' : ''}
           </div>
         </div>
       `
@@ -2439,7 +2446,7 @@
     renderMessages()
   }
 
-  function appendDj(text, audioUrl) {
+  function appendDj(text, audioUrl, ttsError) {
     if (!text) return
     appendMessage({
       id: makeId('dj'),
@@ -2447,10 +2454,11 @@
       text,
       time: ts(),
       replayUrl: audioUrl || null,
+      ttsError: ttsError || null,
     })
   }
 
-  function appendCommentary(text, audioUrl) {
+  function appendCommentary(text, audioUrl, ttsError) {
     if (!text) return
     appendMessage({
       id: makeId('commentary'),
@@ -2459,6 +2467,7 @@
       text,
       time: ts(),
       replayUrl: audioUrl || null,
+      ttsError: ttsError || null,
     })
   }
 
@@ -2703,6 +2712,7 @@
           prefetchCache.set(key, {
             explain_text: data.explain_text,
             say_audio: data.say_audio || null,
+            tts_error: data.tts_error || null,
             cachedAt: Date.now(),
           })
         }
@@ -2967,7 +2977,7 @@
           })
           if (lastPlaylistSignature !== signature) {
             lastPlaylistSignature = signature
-            appendDj(data.say, data.say_audio || null)
+            appendDj(data.say, data.say_audio || null, data.tts_error)
             if (hasUnlockedAudio && !state.showStartOverlay) {
               if (!pendingTuneInAutoplay && !consumedTuneInSpeech && data.say_audio) {
                 setTimeout(() => playVoice(data.say_audio, true), audio.src ? 180 : 260)
@@ -2999,7 +3009,7 @@
       })
       const data = await response.json()
       if (Array.isArray(data.queue)) setLocalQueue(data.queue)
-      if (data.say) appendDj(data.say, data.say_audio || null)
+      if (data.say) appendDj(data.say, data.say_audio || null, data.tts_error)
       if (Array.isArray(data.queue) && data.queue.length === 0 && data.say) return
       ensurePrimaryPlayback()
       if (data.say_audio) {
@@ -3018,7 +3028,7 @@
       const key = state.currentTrack.name + '::' + state.currentTrack.artist
       const cached = prefetchCache.get(key)
       if (cached) {
-        appendCommentary(cached.explain_text)
+        appendCommentary(cached.explain_text, cached.say_audio || null, cached.tts_error)
         if (cached.say_audio) playVoice(cached.say_audio, true)
         prefetchCache.delete(key)
         return
@@ -3058,7 +3068,7 @@
       state.heroCommentary = data.explain_text || ''
       console.log('[explain] 设置 heroCommentary:', state.heroCommentary)
       renderHero()
-      appendCommentary(data.explain_text, data.say_audio || null)
+      appendCommentary(data.explain_text, data.say_audio || null, data.tts_error)
       if (data.say_audio) playVoice(data.say_audio, true)
     } catch {
       if (requestToken !== activeExplainToken) return
@@ -3102,7 +3112,7 @@
         state.heroCommentary = cached.explain_text || ''
         console.log('[explain] 设置 heroCommentary:', state.heroCommentary)
         renderHero()
-        appendCommentary(cached.explain_text, cached.say_audio || null)
+        appendCommentary(cached.explain_text, cached.say_audio || null, cached.tts_error)
         if (cached.say_audio) playVoice(cached.say_audio, true)
         prefetchCache.delete(explainKey)
         return
