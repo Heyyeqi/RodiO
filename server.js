@@ -1716,7 +1716,15 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
 
     const explainText = sanitizeSayText((response.choices[0]?.message?.content || '').trim())
     rememberExplainOpening(explainText)
-    const sayAudio = await tts.synthesizeSlow(explainText)
+
+    let sayAudio = null
+    let ttsError = null
+    try {
+      sayAudio = await tts.synthesizeSlow(explainText)
+    } catch (e) {
+      console.error('[/api/explain][tts]', e.code, e.message)
+      ttsError = { code: e.code || 'unknown', message: e.message }
+    }
 
     try {
       state.insertCommentaryHistory({
@@ -1735,6 +1743,7 @@ ${envSnapshot.inferredEmotions?.length > 0 ? `此刻情绪信号：${envSnapshot
     return res.json({
       explain_text: explainText,
       say_audio: sayAudio,
+      ...(ttsError ? { tts_error: ttsError } : {}),
     })
   } catch (e) {
     console.error('[/api/explain]', e)
