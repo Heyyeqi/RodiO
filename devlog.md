@@ -7047,3 +7047,29 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 ### 遗留问题
 - 尚未在有效 Spotify session 下端到端验证修复后 `shadow_rerank_candidates` 能写入非测试的真实数据；建议下次有真实候选数据时抽查 `track_key` 是否不再是 `"::"` 形式的空拼接。
 - issue #19（选歌模块v2 Phase1毕业检查）的"连续7天"计时需要在本次修复生效、真实数据重新开始累积后重新起算。
+
+## 2026-07-18 HZ本地实机验证#20/#25/#26/#27/#34 + 修复explain端点TTS漏洞
+
+### 做了什么
+- 修复 `.claude/launch.json`：端口从8081改为8080（匹配`.env`的`PORT=8080`）；`runtimeExecutable`从`/Users/rw-mac/.local/bin/node`(v22)改为`/opt/homebrew/bin/node`(v26)，解决`better-sqlite3`原生模块NODE_MODULE_VERSION不匹配导致本地服务起不来的问题。
+- 启动本地服务后逐个实机验证#20/#26/#27/#34：
+  - #27：刷新页面确认`dj-speaking`类不再残留，通过。
+  - #34：真实触发DJ播报，生成文案37/55字，均在硬上限内，未出现整段外文，通过。
+  - #20 skip_penalty：模拟一次skip事件，DB正确生成track/7×tag/artist独立衰减行，半衰期均正确，通过。
+  - #20 discovery/validation：模拟一首新曲目3次高质量播放，`validation_plays/validation_ok/early_skip_count`记录正确；但发现晋升条件里的"≥2个不同scene_id"因`server.js`三处调用全部硬编码`scene_id: null`而永远不可达——全代码库没有任何地方真正计算scene_id，是结构性缺口而非本次修复的bug，拆出新issue [#38](https://github.com/Heyyeqi/RodiO/issues/38)。
+  - #26：实测发现原修复只覆盖了`resolveDjSelection()`，`/api/explain`（Explain按钮+预取路径）的`tts.synthesizeSlow()`调用完全没被同一套try/catch保护，MiniMax欠费（`status_code 1008`，实测确认账户仍未充值）时直接抛到外层catch返回裸500，连生成好的文案都丢了，比修复前的静默失败还差。当场修复（`server.js`），补上局部try/catch返回`{explain_text, tts_error}`，与`resolveDjSelection()`路径一致；实测确认文案正常渲染、"语音暂不可用"正确显示。
+- 给`core/candidate-rerank.js`的`logShadowRerank()`加了成功路径日志行（此前只有失败路径打日志，是此前Marvis"0 rows"误报排查耗时的原因之一）。
+- 全部改动push后确认Railway自动部署成功（deployment `93291dbd`，SUCCESS）。检查production日志：#25代码本身审查确认正确且已部署，但`logShadowRerank`只在补货周期（reason=next/heartbeat）触发、不含启动时的`startup-prewarm`，本次部署后production队列一直饱满未触发自然补货，未能拿到生产环境正数据实锤，留在Review。
+- 同步GitHub：#20/#26/#27/#34移至Done（各自issue留言记录验证细节），#25留在Review并说明卡点，新建issue #38记录scene_id缺口并加入看板Backlog，更新STATUS.md优先级队列和追踪表。
+
+### 改动文件
+- `.claude/launch.json`
+- `server.js`（`/api/explain`端点TTS错误处理）
+- `core/candidate-rerank.js`（成功路径日志）
+- `docs/roadmap/STATUS.md`
+- `devlog.md`
+
+### 遗留问题
+- #25仍未拿到生产环境真实数据验证；需要等真实听歌行为把production队列耗到heartbeat低水位线以下，或后续人工确认后再改Done。
+- #38（scene_id生产者缺失）需要产品决策scene_id的语义（时段/天气/mood-intent标签）后才能开工，当前在Backlog。
+- #13星空已知问题复核关闭仍未完成，只差用户肉眼确认。

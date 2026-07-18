@@ -213,17 +213,21 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 ### 第一梯队：本周就做（真实故障 + 近零成本清账）
 
 > **2026-07-18 更新**：#34/#26/#27/#20 代码均已提交并经 Claude Code 独立核对（非仅信任报告），#25 更早前已提交。五个issue看板状态已同步改为 **Review**（不是Done——都还没部署Railway、没有实机/真实数据验证）。commit：#26=`27c9b01`，#27=`7143114`，#34=`b31a024`，#20=`fdd1753`，#25=`4515ef6`（更早）。
+>
+> **2026-07-18 夜间更新（本地实时+生产验证）**：启动本地服务实测 #26/#27/#34/#20，全部确认通过并已推送部署到 Railway production（deployment `93291dbd`，SUCCESS）。四个issue已移到看板 **Done**。
+> - 验证过程中发现 #26 的原修复只覆盖了 `resolveDjSelection()`，`/api/explain`（Explain按钮+预取）的TTS调用完全没被保护，欠费时直接500丢文案——已修复（commit `1c39eb1`），现已部署验证通过。
+> - #20 的 skip_penalty 分层衰减验证通过；discovery→validated 晋升管线发现结构性缺口（scene_id 全线硬编码 null，晋升条件永远不可达），已拆出新 issue [#38](https://github.com/Heyyeqi/RodiO/issues/38)，不阻塞 #20 本身标 Done。
+> - #25 代码审查确认正确，已部署，但 production 的 shadow-rerank 只在补货周期（reason=next/heartbeat）触发、不含 startup-prewarm，且本次部署后队列一直饱满未触发自然补货，**仍未拿到生产环境正数据实锤**，留在 Review。顺带给 `logShadowRerank` 加了成功路径日志（commit `fd60374`）方便下次直接查 railway logs 而不必戳数据库。
 
-0. **[#34](https://github.com/Heyyeqi/RodiO/issues/34) 天外来信/DJ播报文本长度失控** — ✅代码已提交（`b31a024`），含prompt根源修复（删除整节纯英文示范+改写核心语言指令）。**待实机验证**：需真实触发一次DJ播报确认LLM生成文本确实变短、不再整段外文。**必须在给MiniMax账户充值之前或同时做完**，否则充值也是白烧
-1. **[#26](https://github.com/Heyyeqi/RodiO/issues/26) MiniMax TTS 静默失败无降级** — ✅代码已提交（`27c9b01`），8种错误码+15s超时+前端全链路透传。**待部署+重启验证**，根因已确认是账户欠费（#34是欠费的真正诱因）
-2. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — ✅代码已提交（`4515ef6`），反馈闭环架构性断裂已修复；**待Spotify真实session下端到端验证**（本地测试环境缺有效token，这也是#19卡住的原因）
-3. **[#13](https://github.com/Heyyeqi/RodiO/issues/13) 星空已知问题复核关闭** — 95%把握已过期，只差用户肉眼看一眼确认，几分钟的事，拖了多轮审计，**仍未完成**
-4. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 已查：fallback_rate 0.5%✅、candidate_empty_count 0✅达标；avg_transition_cost因shadow_rerank_candidates曾无真实数据无法计算（#25修复已提交，待验证后应能恢复）；7天连续性差1天。待#25端到端验证完成后重新计时复查
+0. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — ✅代码已提交（`4515ef6`）并部署，反馈闭环架构性断裂已修复；**仍待生产环境自然补货周期或人工确认**验证 shadow_rerank_candidates 真的写入非空数据（本地/本次部署窗口内队列一直饱满，补货周期未自然触发）
+1. **[#13](https://github.com/Heyyeqi/RodiO/issues/13) 星空已知问题复核关闭** — 95%把握已过期，只差用户肉眼看一眼确认，几分钟的事，拖了多轮审计，**仍未完成**
+2. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 已查：fallback_rate 0.5%✅、candidate_empty_count 0✅达标；avg_transition_cost因shadow_rerank_candidates曾无真实数据无法计算（#25修复已部署，待验证后应能恢复）；7天连续性差1天。待#25端到端验证完成后重新计时复查
+3. **[#38](https://github.com/Heyyeqi/RodiO/issues/38) discovery_candidates晋升管线缺scene_id生产者** — 2026-07-18本地验证时新发现，需要先决定scene_id的产品语义（时段/天气/mood-intent标签）才能接线，不阻塞其他任务
 
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — 无阻塞，插入点已定位，用户明确标注过"优先做"
 6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** — 依赖Stage1的UI状态存在（唤出手势需要有状态可唤出）
-7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅代码已提交（`7143114`），待实机验证（连续快速切歌5-10次确认歌名不再闪回）。原计划顺路和Stage1/2一起做，实际提前完成
+7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅已提交（`7143114`）并本地实测验证通过（刷新页面确认`dj-speaking`类不再残留），已标Done
 8. **[#11](https://github.com/Heyyeqi/RodiO/issues/11) P4 Stage 3：最小地球拖拽** — 依赖GestureRouter把drag意图路由过来；P4文档原话"极高用户价值"
 9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
 
@@ -236,7 +240,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 ### 第四梯队：AI/产品深度功能
 14. **[#21](https://github.com/Heyyeqi/RodiO/issues/21) 此刻入口+祈求系统** — 确认的真实缺口，产品原始愿景的核心部分之一
 15. **[#16](https://github.com/Heyyeqi/RodiO/issues/16) 天外来信+选曲风格调优** — 纯调参非架构，风险低，可穿插在别的任务间隙做
-16. **[#20](https://github.com/Heyyeqi/RodiO/issues/20) 选歌模块v2缺口：skip_penalty分层+discovery_candidates** — ✅代码已提交（`fdd1753`），四维度独立衰减公式+三表管线+三处真实接线（均shadow模式）。**待真实数据验证**（需要真实skip事件发生后查表确认写入正确）。原计划排在#19之后，实际提前完成
+16. **[#20](https://github.com/Heyyeqi/RodiO/issues/20) 选歌模块v2缺口：skip_penalty分层+discovery_candidates** — ✅已提交（`fdd1753`）并本地模拟验证通过（skip事件正确生成4维度独立衰减行），已标Done。晋升管线的scene_id缺口拆到 [#38](https://github.com/Heyyeqi/RodiO/issues/38)
 
 ### 第五梯队：锦上添花（价值明确但不紧急）
 17. **[#29](https://github.com/Heyyeqi/RodiO/issues/29) IP地域首曲本地化** — 基础设施已有，方言级别识别精度是唯一顾虑
@@ -274,7 +278,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#17](https://github.com/Heyyeqi/RodiO/issues/17) | 画面流畅度 + 镜头切换渲染延迟专项审计 | Performance and Rendering Polish | P2 | Backlog |
 | [#18](https://github.com/Heyyeqi/RodiO/issues/18) | 长期backlog: RDL集成 / Astronomy剩余字段 / Agent Mesh / 彩蛋 | Long-Term Backlog | P3 | Backlog |
 | [#19](https://github.com/Heyyeqi/RodiO/issues/19) | 选歌模块v2 Phase1完成确认 + Phase2 graduation监控标准 | Song Selection v2 — Phase 2 Graduation | P1 | Backlog |
-| [#20](https://github.com/Heyyeqi/RodiO/issues/20) | 选歌模块v2缺口: skip_penalty分层衰减 + discovery_candidates pipeline | Song Selection v2 — Phase 2 Graduation | P2 | Review（代码已提交 fdd1753，待真实数据验证） |
+| [#20](https://github.com/Heyyeqi/RodiO/issues/20) | 选歌模块v2缺口: skip_penalty分层衰减 + discovery_candidates pipeline | Song Selection v2 — Phase 2 Graduation | P2 | Done（fdd1753，本地模拟验证通过） |
 | [#21](https://github.com/Heyyeqi/RodiO/issues/21) | 此刻入口 + 祈求系统实现 | Companion and Prayer System | P1 | Backlog |
 | [#22](https://github.com/Heyyeqi/RodiO/issues/22) | Earth Visual Foundation 正式收口验收 | Earth Visual Foundation Formal Closure | P2 | Backlog |
 | [#23](https://github.com/Heyyeqi/RodiO/issues/23) | RDL 技术方案存档：BMNG+GEBCO+GSHHG 三层LOD具体路线 | Long-Term Backlog | P3 | Backlog |
@@ -283,10 +287,11 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#35](https://github.com/Heyyeqi/RodiO/issues/35) | 云层系统升级：多层云+天空美景谱系+Cloud View视角 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#36](https://github.com/Heyyeqi/RodiO/issues/36) | 地平线视角深化：真正贴地平视 + 独立局部地形场景 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
-| [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 4515ef6，待Spotify真实session验证） |
-| [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 b31a024，含prompt根源修复，待实机验证） |
-| [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Review（代码已提交 27c9b01，待部署+重启验证） |
-| [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Review（代码已提交 7143114，待实机验证） |
+| [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Review（4515ef6，已部署，待生产环境自然补货周期验证） |
+| [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Done（b31a024，本地实测验证通过） |
+| [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Done（27c9b01 + 1c39eb1补完/api/explain路径，实测验证通过） |
+| [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Done（7143114，本地实测验证通过） |
+| [#38](https://github.com/Heyyeqi/RodiO/issues/38) | discovery_candidates晋升管线缺scene_id生产者 | Song Selection v2 — Phase 2 Graduation | P2 | Backlog |
 | [#28](https://github.com/Heyyeqi/RodiO/issues/28) | 镜头模式库 (Daily Modes) + 智能编排/去重引擎 | P4 Stage 7 — Motion Profiles Productization | P1 | Backlog |
 | [#29](https://github.com/Heyyeqi/RodiO/issues/29) | IP地域首曲本地化 | Long-Term Backlog | P2 | Backlog |
 | [#30](https://github.com/Heyyeqi/RodiO/issues/30) | 天气视觉映射系统（雨/雪/风） | Long-Term Backlog | P3 | Backlog |
