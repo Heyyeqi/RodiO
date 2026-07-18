@@ -195,10 +195,11 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 不再按 P0-P3 桶装，改成单条可执行序列，越靠前越先做。排序依据：①正在发生的真实故障优先于新功能；②近乎零成本的存量清账任务插空处理；③P4主线交互闭环按依赖顺序走完；④"材料已具备、只差编排"的高杠杆视觉任务提前；⑤纯粹待定/需要更多前置研究/用户已明确说"中后期"的任务放最后。GitHub 看板 Backlog 列的卡片顺序已同步调整为这个序列。
 
 ### 第一梯队：本周就做（真实故障 + 近零成本清账）
-1. **[#26](https://github.com/Heyyeqi/RodiO/issues/26) MiniMax TTS 静默失败无降级** — 用户直接反馈"没有语音朗读"，播放体验核心功能失效，且已确认多点静默吞错误
-2. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — 反馈闭环架构性断裂，AI"越用越懂你"的承诺目前完全不生效
+0. **[#34](https://github.com/Heyyeqi/RodiO/issues/34) 天外来信/DJ播报文本长度失控** — 2026-07-18账单核实：¥25.76/2.5个月，平均每次调用859字符，根因是`/api/explain` prompt中间档无长度约束+`core/tts.js`从不截断。**必须在给MiniMax账户充值之前或同时做完**，否则充值也是白烧
+1. **[#26](https://github.com/Heyyeqi/RodiO/issues/26) MiniMax TTS 静默失败无降级** — 用户直接反馈"没有语音朗读"，播放体验核心功能失效，根因已确认是账户欠费（#34是欠费的真正诱因，需要先修#34再充值再验证#26）
+2. **[#25](https://github.com/Heyyeqi/RodiO/issues/25) Dislike评分未接入候选排序** — 反馈闭环架构性断裂，AI"越用越懂你"的承诺目前完全不生效；代码修复已完成（`candidateSong?.song_info?.name || candidateSong?.name`），待Spotify真实session下最终验证
 3. **[#13](https://github.com/Heyyeqi/RodiO/issues/13) 星空已知问题复核关闭** — 95%把握已过期，只差用户肉眼看一眼确认，几分钟的事，拖了多轮审计
-4. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 只是查3张shadow日志表，可能会发现已经默默达标可以转正，信息价值高、成本低
+4. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 已查：fallback_rate 0.5%✅、candidate_empty_count 0✅达标；avg_transition_cost因shadow_rerank_candidates曾无真实数据无法计算（#25修复后应能恢复）；7天连续性差1天。待#25验证完成后重新计时复查
 
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — 无阻塞，插入点已定位，用户明确标注过"优先做"
@@ -258,6 +259,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
 | [#33](https://github.com/Heyyeqi/RodiO/issues/33) | 多套地球配色主题（Palette Variants）— 复用Noon Air管线 | Long-Term Backlog | P2 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
+| [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Backlog（看板置顶） |
 | [#26](https://github.com/Heyyeqi/RodiO/issues/26) | MiniMax TTS 静默失败 + 无降级机制 | Playback Reliability and Core Bug Fixes | P0 | Backlog |
 | [#27](https://github.com/Heyyeqi/RodiO/issues/27) | 入场动画状态残留 + 切歌歌名闪回（竞态） | Playback Reliability and Core Bug Fixes | P1 | Backlog |
 | [#28](https://github.com/Heyyeqi/RodiO/issues/28) | 镜头模式库 (Daily Modes) + 智能编排/去重引擎 | P4 Stage 7 — Motion Profiles Productization | P1 | Backlog |
