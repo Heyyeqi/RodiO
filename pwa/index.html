@@ -902,6 +902,24 @@
     }
   }
 
+  /* ── P4 Stage 4: Earth Only — 全藏只留地球 ──────────────────────── */
+  #app.ui-state-earthOnly .hero,
+  #app.ui-state-earthOnly .progress-wrap,
+  #app.ui-state-earthOnly .controls,
+  #app.ui-state-earthOnly .page1-footer {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #app.ui-state-earthOnly .hero,
+    #app.ui-state-earthOnly .progress-wrap,
+    #app.ui-state-earthOnly .controls,
+    #app.ui-state-earthOnly .page1-footer {
+      transition: opacity 50ms ease;
+    }
+  }
+
   .error-overlay {
     position: fixed;
     left: 16px;
@@ -1886,6 +1904,7 @@
     if (state.uiMode !== 'full') {
       state.uiMode = 'full'
       app.classList.remove('ui-state-minimal')
+      app.classList.remove('ui-state-earthOnly')
     }
     resetIdleTimer()
   }
@@ -1894,6 +1913,17 @@
     state.uiMode = 'minimal'
     app.classList.add('ui-state-minimal')
   }
+
+  function enterEarthOnly() {
+    if (idleTimer) clearTimeout(idleTimer)
+    state.uiMode = 'earthOnly'
+    app.classList.remove('ui-state-minimal')
+    app.classList.add('ui-state-earthOnly')
+  }
+  // Theme Tuner 是独立的 <script> 标签（不共享这个闭包），debug 按钮要跨脚本调用
+  // enterFull()/enterEarthOnly() 得走 window 暴露，不能直接引用裸的 state/函数名
+  window.__rodioEnterFull = enterFull
+  window.__rodioEnterEarthOnly = enterEarthOnly
 
   function resetIdleTimer() {
     if (idleTimer) clearTimeout(idleTimer)
@@ -2548,7 +2578,13 @@
     const autoExplain = options.autoExplain !== false
     if (!item) return
     if (!item.play_url && !item.spotify_uri) return
+    const wasEarthOnly = state.uiMode === 'earthOnly'
     enterFull()  // P4: 新歌开始/切歌 → 强制回到 Full
+    if (wasEarthOnly) {
+      setTimeout(() => {
+        if (state.uiMode === 'full') enterEarthOnly()
+      }, 2500)
+    }
     activeExplainToken += 1
     if (pendingAutoExplainTimer) {
       clearTimeout(pendingAutoExplainTimer)
@@ -5003,7 +5039,7 @@
       // 否则地球会在已经转动之后又猛地弹回去，比不做还难看。
       if (st.earthDragStarted) { if (window.earth3d) window.earth3d.endDrag() }
       if (currentPage === 1) {
-        if (state.uiMode === 'minimal') enterFull()
+        if (state.uiMode === 'minimal' || state.uiMode === 'earthOnly') enterFull()
         else resetIdleTimer()
       }
     }
@@ -5527,6 +5563,17 @@
     fGrammar.add(gramPrimitiveCtl, 'primitive', ['hold', 'latitudeDrift', 'longitudeDrift', 'diagonalDrift', 'breathe', 'rollDrift', 'targetShift', 'orbitalArc'])
       .name('Motion Primitive')
       .onChange(function (v) { e3d.setGramPrimitive?.(v) })
+
+    // ── Earth Only (P4 Stage 4 debug) ──────────────────────────────────────
+    gui.add({
+      toggleEarthOnly: function () {
+        // 独立 <script> 块，不能直接引用主脚本闭包里的 state/enterFull/enterEarthOnly，
+        // 走 window.__rodioVisualState（已有的跨脚本桥接对象）和 window.__rodioEnterFull/EnterEarthOnly
+        var vs = window.__rodioVisualState
+        if (vs && vs.uiMode === 'earthOnly') window.__rodioEnterFull?.()
+        else window.__rodioEnterEarthOnly?.()
+      }
+    }, 'toggleEarthOnly').name('◐ Earth Only (debug)')
 
     // ── Copy config snippet ───────────────────────────────────────────────
     gui.add({
