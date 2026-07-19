@@ -252,7 +252,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 
 > **2026-07-18 更新**：用户拍板 #39 优先级为"中前段"，排进本梯队最前面，且提前到 #14 之前——原因是 #14（锚点密度不够）和 #39（锚点间怎么过渡）虽是正交问题，但 #39 是底层机制，先做 #39 再做 #14 可以避免 #14 的成果之后又要为了适配新架构返工一次。
 
-10. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** `[Cat A，但跨系统改动需走影子验证]` — 架构级改造（跨天空/海洋/云/大气/星空/城市灯光），排在#14前面，避免#14成果日后为适配新架构返工。只改参数计算方式，不改相机-几何体关系；具体做法见 CLAUDE.md「3D渲染/相机新功能」一节。**进行中，拆成两步走**：第一步（插值函数+边界验证，不接入真实渲染）✅已提交`d0b8f5a`并本地验证通过，经历两轮打回（都是t=0/t=1边界测试测不出来、必须测中间值才暴露的bug：颜色大小写+undefined错误转null；字段名`texture`同时命中"不可插值名单"和"该递归的嵌套对象"两种含义导致整个子树被当原子值处理）。第二步（真正接入`applyTheme()`/`setTimeOfDay()`/调度器，切断硬跳变）待开工，这一步才会真正改动渲染逻辑，需要重新评估风险
+10. **[#39](https://github.com/Heyyeqi/RodiO/issues/39) 连续日夜过渡系统（Day Cycle Controller）** `[Cat A，但跨系统改动需走影子验证]` — 架构级改造（跨天空/海洋/云/大气/星空/城市灯光），排在#14前面，避免#14成果日后为适配新架构返工。只改参数计算方式，不改相机-几何体关系；具体做法见 CLAUDE.md「3D渲染/相机新功能」一节。**两步都已提交，留在Review**：第一步（插值函数+边界验证）`d0b8f5a`，经历两轮打回（t=0/t=1边界测试测不出来、必须测中间值才暴露的bug）。第二步（接入调度器，切断硬跳变）`b85d485`，本地实测真实uniform（不只看纯函数返回值）确认dawn→sunrise在t=0/0.5/1严格线性插值，画面正常渲染无回归；范围明确排除天空平面/海洋色调/星星sprite/主题名专属特效（方案本身列为独立后续步骤，保持现有瞬切）。**仍缺**：真实8分钟窗口自然穿越的端到端验证，目前只验证了直接函数调用
 11. **[#28](https://github.com/Heyyeqi/RodiO/issues/28) 镜头模式库+智能编排引擎** `[Cat A]` — 直接回应"角度太少"，10种构图/多数运动原语已存在，只差组合成命名模式库；建议和Stage3地球拖拽前后衔接做，上下文连续
 12. **[#14](https://github.com/Heyyeqi/RodiO/issues/14) P4 Stage 6：白天背景第一轮** `[Cat A]` — 已定位精确技术根因（8-12锚点spec vs 实际3-4锚点），色值表现成可用；开工前需要你对"是否把Evan的大气方案几个子项打包一起做"拍板（issue里列了这个决策点）；建议在#39之后开工
 13. **[#22](https://github.com/Heyyeqi/RodiO/issues/22) Earth Visual Foundation正式收口验收** — 大部分问题已经在#22评论里回答完（地形维度、城市灯光分层现状），剩下主要是走一遍截图验收流程，成本不高；验收性质，不涉及新开发，无需分级
@@ -319,7 +319,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#30](https://github.com/Heyyeqi/RodiO/issues/30) | 天气视觉映射系统（雨/雪/风） | Long-Term Backlog | P3 | Backlog |
 | [#31](https://github.com/Heyyeqi/RodiO/issues/31) | 天体可视化扩展：流星+星座+月球渲染 | P4 Stage 5 — Star System Verification and Polish | P2 | Backlog |
 | [#32](https://github.com/Heyyeqi/RodiO/issues/32) | 真实驱动地形事件：火山喷发等 | Long-Term Backlog | P3 | Backlog |
-| [#39](https://github.com/Heyyeqi/RodiO/issues/39) | 连续日夜过渡系统（Day Cycle Controller）：11时段从互斥主题改为太阳驱动的连续插值 | Continuous Day Cycle System | P2 | In Progress（第一步d0b8f5a已完成并验证，第二步待开工） |
+| [#39](https://github.com/Heyyeqi/RodiO/issues/39) | 连续日夜过渡系统（Day Cycle Controller）：11时段从互斥主题改为太阳驱动的连续插值 | Continuous Day Cycle System | P2 | Review（d0b8f5a+b85d485，缺真实窗口穿越端到端验证） |
 | [#40](https://github.com/Heyyeqi/RodiO/issues/40) | 航线视角 Flight View：巡航高度沿大圆航线飞行，连接Cloud与Horizon的中间层 | Living Earth — Vertical Space Journey (Cloud/Flight/Horizon/Underwater) | P3 | Backlog |
 
 - 每次开始一个任务，先把对应 issue 在看板上拖到 In Progress；完成验收后拖到 Done，并在本文件和 devlog.md 都留下记录。
