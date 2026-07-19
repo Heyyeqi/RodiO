@@ -5706,6 +5706,179 @@
         return _deepInterp(fromCfg, toCfg, t, null);
       }
 
+      /**
+       * applyInterpolatedTheme(fromKey, toKey, t)
+       * 过渡中每帧调用：把 THEME_VISUAL_CONFIG 覆盖的字段（大气 / 夜景色调 / 云 /
+       * 发光边缘 / 城市灯光 / 材质发光强度 / 星球体透明度）按 t 平滑写入对应 uniform /
+       * 材质属性。只动这些字段，故意不碰贴图本身、天空平面、海洋色调表、星星 sprite
+       * 透明度、以及 deepNight 专属的七曜 / 深空特效（这些仍由过渡结束时的硬
+       * setTimeOfDay 一次性收尾）。
+       */
+      function applyInterpolatedTheme(fromKey, toKey, t) {
+        const config = interpolateThemeConfig(fromKey, toKey, t)
+        if (!config) return false
+
+        // 材质发光强度（不动贴图；emissiveMap 在插值结果里冻结在 fromKey）
+        const useNightEmissive = config.texture.emissiveMap === 'night'
+        earthMaterial.emissiveIntensity = useNightEmissive ? config.texture.emissiveIntensity : 0
+
+        // Atmosphere
+        atmosphereMaterial.uniforms.uColor.value.set(config.atmosphere.color)
+        atmosphereMaterial.uniforms.uColorOuter.value.set(config.atmosphere.colorOuter ?? config.atmosphere.color)
+        atmosphereMaterial.uniforms.uOpacity.value = config.atmosphere.opacity
+        if (config.atmosphere.power != null) atmosphereMaterial.uniforms.uPower.value = config.atmosphere.power
+        atmosphereMaterial.uniforms.uPowerOuter.value    = config.atmosphere.powerOuter    ?? 3.2
+        atmosphereMaterial.uniforms.uStrengthOuter.value = config.atmosphere.strengthOuter ?? 0.0
+        atmosphereMaterial.uniforms.uRadius.value        = config.atmosphere.radius        ?? 2.10
+
+        // Night grade + ocean/land shader uniforms —— 与 applyTheme() 中 6197-6272
+        // 那一整块逻辑一致，数据源换成插值结果 config（不是主题主键），不重新发明
+        if (earthShaderUniforms) {
+          earthShaderUniforms.uCityHighlightClamp.value = config.lighting?.cityLightClamp ?? 0.88
+          const ng = config.nightGrade
+          if (ng) {
+            const isDaybase = !!ng.daybaseMode
+            earthShaderUniforms.uDaybaseMode.value = isDaybase ? 1 : 0
+            if (isDaybase) {
+              earthShaderUniforms.uNightExposure.value   = ng.nightExposure   ?? 0.30
+              earthShaderUniforms.uNightSaturation.value = ng.nightSaturation ?? 0.62
+              earthShaderUniforms.uNightGamma.value      = ng.nightGamma      ?? 0.90
+              earthShaderUniforms.uNightBlueBias.value   = ng.nightBlueBias   ?? 0.06
+              earthShaderUniforms.uNightGreenBias.value  = ng.nightGreenBias  ?? 0.02
+              earthShaderUniforms.uNightRedReduce.value  = ng.nightRedReduce  ?? 0.04
+              earthShaderUniforms.uTropicalDarken.value      = ng.tropicalDarken      ?? 0
+              earthShaderUniforms.uTropicalGreenReduce.value = ng.tropicalGreenReduce ?? 0
+              earthShaderUniforms.uAridDarken.value          = ng.aridDarken          ?? 0
+              earthShaderUniforms.uAridWarmReduce.value      = ng.aridWarmReduce      ?? 0
+              earthShaderUniforms.uIceNeutralize.value       = ng.iceNeutralize       ?? 0
+            }
+            earthShaderUniforms.uDayOceanGrade.value      = ng.dayOceanGrade ? 1 : 0
+            earthShaderUniforms.uOceanBlendStrength.value = ng.oceanBlendStrength ?? 0
+            earthShaderUniforms.uOceanDarken.value        = ng.oceanDarken ?? 1
+            earthShaderUniforms.uOceanContrast.value      = ng.oceanContrast ?? 1
+            earthShaderUniforms.uOceanSaturation.value    = ng.oceanSaturation ?? 1
+            earthShaderUniforms.uOceanBlueBias.value      = ng.oceanBlueBias ?? 0
+            earthShaderUniforms.uOceanRedReduce.value     = ng.oceanRedReduce ?? 0
+            earthShaderUniforms.uOceanGreenReduce.value   = ng.oceanGreenReduce ?? 0
+            earthShaderUniforms.uCoastProtection.value    = ng.coastProtection ?? 0.75
+            if (oceanMaskTextureLoadState === 'ready') {
+              earthShaderUniforms.uOceanLift.value    = ng.oceanLift   ?? (isDaybase ? 0 : 0.5)
+              if (earthShaderUniforms.uOceanLiftTint) {
+                const _lt = ng.oceanLiftTint
+                earthShaderUniforms.uOceanLiftTint.value.set(_lt?.[0] ?? 0.35, _lt?.[1] ?? 0.50, _lt?.[2] ?? 1.0)
+              }
+              earthShaderUniforms.uOceanTeal.value    = ng.oceanTeal   ?? 0
+              earthShaderUniforms.uLandLift.value     = ng.landLift    ?? 0.04
+              earthShaderUniforms.uLandGamma.value    = ng.landGamma   ?? 0.85
+              earthShaderUniforms.uLandStr.value      = ng.landStr     ?? (isDaybase ? 0 : 0.75)
+              earthShaderUniforms.uLandRedRed.value   = ng.landRedRed  ?? 0.025
+              earthShaderUniforms.uLandGreenB.value   = ng.landGreenB  ?? 0.045
+              earthShaderUniforms.uLandGlowStr.value  = ng.landGlowStr ?? (isDaybase ? 0 : 0.10)
+            }
+            earthShaderUniforms.uCityLumLow.value   = ng.cityLumLow  ?? 0.008
+            earthShaderUniforms.uCityLumHigh.value  = ng.cityLumHigh ?? 0.040
+          }
+        }
+
+        // 星球体（sphere，不是 sprite）透明度——星星 sprite opacity 这一步不碰
+        if (starSphereLoaded && starSphereMaterial) {
+          starSphereMaterial.uniforms.uOpacity.value = config.starSphereOpacity ?? 0
+        }
+
+        // 云——applyCloudThemeConfig 是纯 config 驱动、可复用；config.clouds.texture
+        // 在插值结果里冻结在 fromKey，不会每帧重复切纹理
+        if (cloudMaterial?.uniforms && cloudTexture) {
+          applyCloudThemeConfig(config.clouds)
+        }
+
+        // Rim glow —— 不调用 applyRimGlowThemeConfig(config.rimGlow, toKey)，
+        // 那个函数内部会做 themeName==='deepNight' 的七曜色调 / deepSpaceProfile
+        // 判断，过渡中传"假的"主题名会错误触发只该在真正到达 deepNight 时才生效的特效。
+        // 直接把 config.rimGlow 的纯数值写进 uniform，跳过 _tintColor（七曜混色）
+        // 与 deepSpaceProfile / themeName 分支，颜色保持原样（冻结在起点硬切换结果）。
+        const rgCfg = config.rimGlow
+        if (_emRimOverlayMat?.uniforms) {
+          const ru = _emRimOverlayMat.uniforms
+          const ro = rgCfg?.outer
+          const rsl = rgCfg?.sunLobe
+          if (ro) {
+            // uSkyHaloColor / uSkyHaloColorNear / uSkyHaloColorFar 依赖 _tintColor，跳过
+            ru.uCoreFraction.value    = ro.coreFraction ?? 0.43
+            ru.uCorePower.value       = ro.corePower     ?? 9.4
+            ru.uCoreStrength.value    = ro.coreStrength ?? 0.82
+            ru.uTailPower.value       = ro.tailPower     ?? 1.5
+            ru.uHaloStrength.value    = ro.haloStrength ?? 0.42
+            ru.uSoftComposite.value   = ro.softComposite ? 1.0 : 0.0
+            ru.uHaloEdgeFade.value    = 0.0
+            ru.uRimOffsetY.value      = ro.rimOffsetY   ?? 0.004
+            // 以下在 applyRimGlowThemeConfig 中依赖 rimRange(themeName) /
+            // deepSpaceProfile / themeName 分支，过渡中冻结不动：
+            //   uSkyHaloWidth, uHaloExtent, uFarGlowEnabled, uGlowScale, uAmbientRimLift
+          }
+          if (rsl) {
+            ru.uSunLobeEnabled.value     = rsl.enabled ? 1.0 : 0.0
+            ru.uSunLobeX.value           = rsl.x           ?? 0.86
+            ru.uSunLobeY.value           = rsl.y           ?? 0.35
+            ru.uSunLobeCoreColor.value.set(rsl.coreColor   ?? '#FFF8E8')
+            ru.uSunLobeMainColor.value.set(rsl.mainColor   ?? '#F2B36A')
+            ru.uSunLobeOuterColor.value.set(rsl.outerColor ?? '#496F86')
+            ru.uSunLobeStrength.value    = rsl.strength    ?? 0.72
+            ru.uSunLobeWidth.value       = rsl.width       ?? 0.18
+            ru.uSunLobeFalloff.value     = rsl.falloff     ?? 2.8
+            ru.uSunLobeRimBoost.value    = rsl.rimBoost    ?? 0.42
+            ru.uSunLobeHStretch.value    = rsl.hStretch    ?? 2.8
+            ru.uSunLobeVCompress.value   = rsl.vCompress   ?? 0.50
+            const ab = rsl.arcBand
+            if (ab) {
+              ru.uArcBandEnabled.value     = ab.enabled ? 1.0 : 0.0
+              ru.uArcBandColorNear.value.set(ab.colorNear  ?? '#F7E7C6')
+              ru.uArcBandColorMid.value.set( ab.colorMid   ?? '#AFCFE0')
+              ru.uArcBandColorFar.value.set( ab.colorFar   ?? '#4E6F86')
+              ru.uArcBandStrength.value    = ab.strength   ?? 0.38
+              ru.uArcBandWidth.value       = ab.width      ?? 0.055
+              ru.uArcBandSpread.value      = ab.spread     ?? 0.58
+              ru.uArcBandDirX.value        = ab.dirX       ?? 0.88
+              ru.uArcBandDirFalloff.value  = ab.dirFalloff ?? 1.8
+            } else {
+              ru.uArcBandEnabled.value     = 0.0
+            }
+            const sw = rsl.surfaceWarmth
+            const rv = _emInnerVeilMat?.uniforms
+            if (rv) {
+              if (sw) {
+                rv.uSurfWarmthEnabled.value  = sw.enabled ? 1.0 : 0.0
+                rv.uSurfWarmthX.value        = sw.x        ?? rsl.x ?? 0.90
+                rv.uSurfWarmthY.value        = sw.y        ?? rsl.y ?? 0.31
+                rv.uSurfWarmthColor.value.set(sw.color     ?? '#F1B46A')
+                rv.uSurfWarmthStrength.value = sw.strength ?? 0.08
+                rv.uSurfWarmthWidth.value    = sw.width    ?? 0.22
+                rv.uSurfWarmthFalloff.value  = sw.falloff  ?? 2.4
+                rv.uSurfWarmthVCompress.value= sw.vCompress ?? 0.50
+              } else {
+                rv.uSurfWarmthEnabled.value = 0.0
+              }
+            }
+          } else {
+            ru.uSunLobeEnabled.value = 0.0
+            ru.uArcBandEnabled.value = 0.0
+            if (_emInnerVeilMat?.uniforms) _emInnerVeilMat.uniforms.uSurfWarmthEnabled.value = 0.0
+          }
+        }
+        if (_emInnerVeilMat?.uniforms) {
+          const rv = _emInnerVeilMat.uniforms
+          const ri = rgCfg?.inner
+          if (ri) {
+            // uInnerVeilColor 依赖 _tintColor，跳过；uGlowScale 依赖 themeName 分支，冻结不动
+            rv.uInnerVeilWidth.value    = ri.width    ?? 0.16
+            rv.uInnerVeilStrength.value = ri.strength ?? 0.36
+            rv.uInnerVeilFalloff.value  = ri.falloff  ?? 1.8
+          }
+        }
+
+        forceRenderInvalidation()
+        return true
+      }
+
       const _THEME_ORDER = ['dawn','sunrise','earlyMorning','morning','noon','afternoon','goldenApproach','sunset','evening','lateEvening','deepNight'];
 
       function _deepEqual(a, b, path) {
@@ -7426,6 +7599,7 @@
           return isReady && !permanentlyUnavailable
         },
         interpolateThemeConfig,
+        applyInterpolatedTheme,
         debugVerifyThemeInterpolation,
         setDebugLocation(lon, lat, options = {}) {
           useAuditCenterTarget = Boolean(options.center)
@@ -7881,6 +8055,19 @@
             dragLonOffset: earthInteractionState.dragLonOffset,
             dragLatOffset: earthInteractionState.dragLatOffset,
             earthQuaternion: { x: earth.quaternion.x, y: earth.quaternion.y, z: earth.quaternion.z, w: earth.quaternion.w },
+          }
+        },
+        // #39 第二步调试用：暴露 applyInterpolatedTheme 实际写入的关键 uniform 真实值
+        getThemeUniformSnapshot() {
+          return {
+            emissiveIntensity: earthMaterial.emissiveIntensity,
+            atmosphereOpacity: atmosphereMaterial.uniforms.uOpacity.value,
+            atmosphereColor: '#' + atmosphereMaterial.uniforms.uColor.value.getHexString(),
+            nightExposure: earthShaderUniforms?.uNightExposure?.value,
+            oceanDarken: earthShaderUniforms?.uOceanDarken?.value,
+            cityHighlightClamp: earthShaderUniforms?.uCityHighlightClamp?.value,
+            starSphereOpacity: starSphereMaterial?.uniforms?.uOpacity?.value,
+            rimCoreStrength: _emRimOverlayMat?.uniforms?.uCoreStrength?.value,
           }
         },
         getRenderQualityInfo() {

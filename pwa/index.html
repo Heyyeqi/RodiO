@@ -2113,20 +2113,20 @@
 
     const windows = getPhaseWindows(nowMs, state.sunriseTs, state.sunsetTs)
     const currentWindow = windows.find(item => item.key === themeKey)
-    if (!currentWindow) return { themeKey, themeState, transitioning: false }
+    const { prev } = getAdjacentThemeKeys(themeKey)
+    if (!currentWindow) return { themeKey, themeState, transitioning: false, prev, t: 1 }
 
     const transitionDuration = 8 * 60000
-    const { prev } = getAdjacentThemeKeys(themeKey)
     if (nowMs - currentWindow.start < transitionDuration) {
       const prevState = getThemeState(prev, nowMs)
       const t = clamp((nowMs - currentWindow.start) / transitionDuration, 0, 1)
       const keys = Object.keys(themeState).filter(key => key !== 'bgGradient')
       const blended = { bgGradient: t > 0.5 ? themeState.bgGradient : prevState.bgGradient }
       for (const key of keys) blended[key] = mixColor(prevState[key], themeState[key], t)
-      return { themeKey, themeState: blended, transitioning: true }
+      return { themeKey, themeState: blended, transitioning: true, prev, t }
     }
 
-    return { themeKey, themeState, transitioning: false }
+    return { themeKey, themeState, transitioning: false, prev, t: 1 }
   }
 
   function setTheme(theme, themeKey) {
@@ -4910,7 +4910,13 @@
 
     if (window.earth3d?.setTimeOfDay) {
       const nextEarth3DThemeKey = state.themeKey || 'night'
-      if (lastSentEarth3DThemeKey !== nextEarth3DThemeKey) {
+      if (themed.transitioning && window.earth3d.applyInterpolatedTheme) {
+        // 过渡中：每帧按插值进度更新，不触发硬切换那套逻辑
+        window.earth3d.applyInterpolatedTheme(themed.prev, nextEarth3DThemeKey, themed.t)
+        lastSentEarth3DThemeKey = null // 过渡还没定，允许过渡结束时正常触发下面的硬切换
+      } else if (lastSentEarth3DThemeKey !== nextEarth3DThemeKey) {
+        // 过渡已结束（或者根本没有过渡窗口）：走原来的硬切换，保证纹理/天空/海洋色调/
+        // 星星精灵等未被插值覆盖的子系统被正确、完整地收尾到目标主题
         const applied = window.earth3d.setTimeOfDay(nextEarth3DThemeKey)
         if (applied) lastSentEarth3DThemeKey = nextEarth3DThemeKey
       }

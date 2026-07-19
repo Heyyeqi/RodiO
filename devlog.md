@@ -7073,3 +7073,28 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - #25仍未拿到生产环境真实数据验证；需要等真实听歌行为把production队列耗到heartbeat低水位线以下，或后续人工确认后再改Done。
 - #38（scene_id生产者缺失）需要产品决策scene_id的语义（时段/天气/mood-intent标签）后才能开工，当前在Backlog。
 - #13星空已知问题复核关闭仍未完成，只差用户肉眼确认。
+
+## 2026-07-19 HZ #39第二步：插值函数接入调度器，切断硬跳变
+
+### 做了什么
+- **任务#39第二步（共两步）**：把第一步写好的`interpolateThemeConfig`真正接入运行时，让`THEME_VISUAL_CONFIG`覆盖的字段（大气/夜间调色/云/发光边缘/城市灯光/材质发光强度/星球体透明度）在8分钟过渡窗口内逐帧平滑过渡，消除时段切换的硬跳变。
+- `pwa/index.html` `getInterpolatedThemeState()`：将内部已算出的`prev`（上一主题key）和`t`（0-1进度）塞进返回值（两处return都加），逻辑不变，UI的CSS过渡不受影响。
+- `pwa/index.html` 主循环：改写`earth3d`接入段——过渡中每帧调用新函数`applyInterpolatedTheme(prev, toKey, t)`，并把`lastSentEarth3DThemeKey`置null；过渡结束（或不在过渡窗口）仍走原来的"仅在主题真正变化才调用一次`setTimeOfDay`"硬切换，保证纹理/天空/海洋色调/星星精灵等未被插值覆盖的子系统正确收尾到目标主题。
+- `pwa/earth3d.js` 新增`applyInterpolatedTheme(fromKey, toKey, t)`：调用`interpolateThemeConfig`拿插值config，逐条写进对应uniform/材质属性（材质发光强度、Atmosphere、Night grade+海洋/陆地shader、星球体sphere透明度、云、Rim glow outer/inner）。
+  - Rim glow**不走**`applyRimGlowThemeConfig()`（其内部有`themeName==='deepNight'`七曜色调/深空辉光特效判断，过渡中传假主题名会误触发），改为直接把`config.rimGlow`的数值写进uniform，跳过所有`_tintColor()`/`deepSpaceProfile`相关行。
+  - 范围外子系统（天空平面、海洋色调、星星精灵sprite透明度、仅按主题名索引的特效）本步不处理、保持现状，符合方案拆分。
+- 在`window.earth3d` API 暴露`applyInterpolatedTheme`。
+
+### 验证（Playwright + 软件WebGL 实机，非仅看返回值）
+- 数值层：dawn→sunrise，t=0→0.5→1 序列调用后实测读取**真实uniform**：atmosphere.uOpacity、uColor、night grade 全系、云opacity、rim glow、starSphereOpacity 共 **34项全部 PASS**（含 `between=端点`的字段也用多采样点确认确为线性插值，仅在`daybaseMode`/`sunLobe`/`dayOceanGrade`等非插值/非对称配置下按设计冻结或回退，符合范围边界）。
+- 画面层：截取`t=0`（纯dawn）与`t=0.5`两帧，Node端`sharp`算像素差——meanAbsDiff≈较大值、maxDiff高，证明调用前后大气/夜景色调有**可见变化**，且因贴图/天空本步不变，画面不会变成完整sunrise，符合预期。
+- 回归层：确认`lastSentEarth3DThemeKey`硬切换逻辑在过渡结束后照常触发；`t=1`时`oceanDarken`等到达真实sunrise端点，`daybaseMode`门控在t<1期间正确插值、t=1瞬间close（此时已由硬`setTimeOfDay`接管），无"半吊子"残留。
+- 临时调试getter（`getLiveUniformSnapshot`）验证后已**完全移除**，最终`earth3d.js`通过`node --check`，`applyInterpolatedTheme`已暴露、无任何调试残留引用。
+
+### 改动文件
+- `pwa/index.html`（`getInterpolatedThemeState` 暴露 prev/t；主循环 earth3d 接入改写）
+- `pwa/earth3d.js`（新增`applyInterpolatedTheme`；`window.earth3d` API 暴露）
+
+### 遗留问题
+- 天空/海洋/星星sprite/主题名索引特效的平滑过渡是方案后续独立一步，本步未做（保持现有瞬切行为）。
+- 回归验证为本地实机+软件WebGL，未跑生产环境真实时段切换（需等自然过渡窗口或后续人工确认）。
