@@ -4961,24 +4961,6 @@
   document.getElementById('btn-heart').addEventListener('click', () => { resetIdleTimer(); sendFeedback('like') })
   page1Footer.addEventListener('click', () => { resetIdleTimer(); goToPage2() })
   page2Back.addEventListener('click', goToPage1)
-
-  // 触摸滑动支持
-  let touchStartY = 0
-  let touchStartX = 0
-
-  pagesContainer.addEventListener('touchstart', (e) => {
-    touchStartY = e.touches[0].clientY
-    touchStartX = e.touches[0].clientX
-  }, { passive: true })
-
-  pagesContainer.addEventListener('touchend', (e) => {
-    const dy = e.changedTouches[0].clientY - touchStartY
-    const dx = e.changedTouches[0].clientX - touchStartX
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 60) {
-      if (dy < 0 && currentPage === 1) goToPage2()
-      if (dy > 0 && currentPage === 2) goToPage1()
-    }
-  }, { passive: true })
   playButton.addEventListener('click', () => { resetIdleTimer(); togglePlay() })
   composerSend.addEventListener('click', send)
   composerInput.addEventListener('input', renderControls)
@@ -4989,16 +4971,138 @@
     }
   })
   startButton.addEventListener('click', () => { resetIdleTimer(); startListening() })
-  progressLine.addEventListener('click', (e) => { resetIdleTimer(); seekTo(e) })
+  progressLine.addEventListener('click', (e) => { resetIdleTimer(); seekTo(e) });
 
-  // P4 Stage 1: page1 空白区域短触 — Minimal 下恢复 Full，Full 下重置计时
-  const page1 = document.getElementById('page1')
-  page1.addEventListener('click', (e) => {
-    // 不拦截已绑定控件的点击
-    if (e.target.closest('.controls, .progress-wrap, .page1-footer, button')) return
-    if (state.uiMode === 'minimal') enterFull()
-    else resetIdleTimer()
-  })
+  // ── P4 Stage 2: GestureRouter — 统一手势仲裁 ────────────────────────
+  (() => {
+    const TAP_MAX_DISPLACEMENT  = 10   // px，总位移阈值
+    const TAP_MAX_DURATION      = 400  // ms
+    const SWIPE_MIN_DY          = 60   // px
+    const SWIPE_DIRECTION_RATIO = 1.5  // abs(dy) > abs(dx) * ratio
+    const SWIPE_MIN_VELOCITY    = 0.3  // px/ms
+    const DRAG_MIN_DISPLACEMENT = 10   // px，开始判定拖拽的最小位移
+    const UI_ZONE_SELECTOR      = '.controls, .progress-wrap, .page1-footer, button'
+
+    const pointers = new Map()
+
+    function makeState(id, x, y) {
+      return { pointerId: id, startX: x, startY: y, lastX: x, lastY: y,
+        startTime: performance.now(), totalDx: 0, totalDy: 0,
+        velocityX: 0, velocityY: 0, pointerCount: pointers.size + 1,
+        startedInUIZone: false, resolvedIntent: null }
+    }
+
+    function isUIZone(el) { return !!(el && el.closest(UI_ZONE_SELECTOR)) }
+
+    function resolveTap(st) {
+      st.resolvedIntent = 'tap'
+      console.log('[gesture] tap', { dx: st.totalDx, dy: st.totalDy,
+        duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
+      if (currentPage === 1) {
+        if (state.uiMode === 'minimal') enterFull()
+        else resetIdleTimer()
+      }
+    }
+
+    function resolveDrag(st) {
+      st.resolvedIntent = 'drag'
+      console.log('[gesture] drag', { dx: st.totalDx, dy: st.totalDy,
+        duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
+      // #11 会在这里触发地球旋转；本轮只识别不动作
+    }
+
+    function resolveSwipe(st) {
+      st.resolvedIntent = 'swipe'
+      console.log('[gesture] swipe', { dx: st.totalDx, dy: st.totalDy,
+        duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
+      if (st.totalDy < 0 && currentPage === 1) goToPage2()
+      if (st.totalDy > 0 && currentPage === 2) goToPage1()
+    }
+
+    function cancelAll() { pointers.clear() }
+
+    pagesContainer.addEventListener('pointerdown', (e) => {
+      // 计算当前活跃指针数（含即将加入的这个）
+      const activeCount = pointers.size + 1
+
+      // 多指：取消所有已有意图
+      if (activeCount >= 2) { cancelAll(); return }
+
+      // UI zone：不追踪，但重置空闲计时
+      if (isUIZone(e.target)) { resetIdleTimer(); return }
+
+      // 非 UI zone：开始追踪
+      pointers.set(e.pointerId, makeState(e.pointerId, e.clientX, e.clientY))
+    })
+
+    pagesContainer.addEventListener('pointermove', (e) => {
+      const st = pointers.get(e.pointerId)
+      if (!st || st.resolvedIntent) return
+
+      const dx = e.clientX - st.lastX
+      const dy = e.clientY - st.lastY
+      st.totalDx += dx
+      st.totalDy += dy
+
+      // velocity 估算：最近两次 move
+      const dt = performance.now() - st._lastMoveTime
+      if (st._lastMoveTime && dt > 0) {
+        st.velocityX = Math.abs(dx) / dt
+        st.velocityY = Math.abs(dy) / dt
+      }
+      st._lastMoveTime = performance.now()
+      st.lastX = e.clientX
+      st.lastY = e.clientY
+
+      const absDx = Math.abs(st.totalDx)
+      const absDy = Math.abs(st.totalDy)
+      const maxD = Math.max(absDx, absDy)
+
+      // 位移不够，暂不判定
+      if (maxD < DRAG_MIN_DISPLACEMENT) return
+
+      // move 阶段只在明确判定为 swipe 时提前锁定+触发（更好的实时反馈：满足条件立刻翻页，
+      // 不用等松手）。其余情况（可能是慢拖，也可能是还在累积位移/速度、暂时无法判断的
+      // swipe候选）一律不在这里锁定，留给 pointerup 的 tap→swipe→drag 三段式兜底统一判定
+      // ——第一次跨过 DRAG_MIN_DISPLACEMENT 阈值时 velocity 往往还没来得及算出来（默认0），
+      // 如果这里贸然把"暂时不满足swipe条件"当成"已确定是drag"锁死，会让真实的快速甩动
+      // 永远判不出来（因为 resolvedIntent 一旦锁定，后续 move 和 pointerup 都会跳过判定）。
+      if (absDy > absDx * SWIPE_DIRECTION_RATIO && absDy > SWIPE_MIN_DY && st.velocityY > SWIPE_MIN_VELOCITY) {
+        resolveSwipe(st)
+      }
+    })
+
+    pagesContainer.addEventListener('pointerup', (e) => {
+      const st = pointers.get(e.pointerId)
+      if (!st || st.resolvedIntent) { pointers.delete(e.pointerId); return }
+      pointers.delete(e.pointerId)
+
+      const duration = performance.now() - st.startTime
+      const displacement = Math.sqrt(st.totalDx * st.totalDx + st.totalDy * st.totalDy)
+      const absDy = Math.abs(st.totalDy)
+
+      // 短触 Tap：位移小 + 时间短
+      if (displacement < TAP_MAX_DISPLACEMENT && duration < TAP_MAX_DURATION) {
+        resolveTap(st); return
+      }
+
+      // 快速翻页：纵轴主导 + 位移够大 + 速度够快
+      if (absDy > Math.abs(st.totalDx) * SWIPE_DIRECTION_RATIO && absDy > SWIPE_MIN_DY) {
+        if (st.velocityY > SWIPE_MIN_VELOCITY) { resolveSwipe(st); return }
+      }
+
+      // 其余归为 Drag
+      resolveDrag(st)
+    })
+
+    pagesContainer.addEventListener('pointercancel', (e) => {
+      pointers.delete(e.pointerId)
+    })
+
+    pagesContainer.addEventListener('lostpointercapture', (e) => {
+      pointers.delete(e.pointerId)
+    })
+  })()
   queueList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-queue-index]')
     if (!button) return
