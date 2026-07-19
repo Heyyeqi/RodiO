@@ -4998,6 +4998,10 @@
       st.resolvedIntent = 'tap'
       console.log('[gesture] tap', { dx: st.totalDx, dy: st.totalDy,
         duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
+      // 极少数边界情况：位移曾经超过阈值触发了实时拖拽，但最终净位移又缩回了tap范围
+      // （比如往右拖了一下又拖回来）。这种要走 endDrag() 平滑收尾，不能 cancelDrag() 瞬间归零，
+      // 否则地球会在已经转动之后又猛地弹回去，比不做还难看。
+      if (st.earthDragStarted) { if (window.earth3d) window.earth3d.endDrag() }
       if (currentPage === 1) {
         if (state.uiMode === 'minimal') enterFull()
         else resetIdleTimer()
@@ -5008,13 +5012,16 @@
       st.resolvedIntent = 'drag'
       console.log('[gesture] drag', { dx: st.totalDx, dy: st.totalDy,
         duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
-      // #11 会在这里触发地球旋转；本轮只识别不动作
+      if (window.earth3d) window.earth3d.endDrag()
     }
 
     function resolveSwipe(st) {
       st.resolvedIntent = 'swipe'
       console.log('[gesture] swipe', { dx: st.totalDx, dy: st.totalDy,
         duration: Math.round(performance.now() - st.startTime), pointerCount: st.pointerCount })
+      // swipe 分支在 move 阶段一旦满足条件会立刻 return，理论上不会先进入过 drag 分支，
+      // 这里的判断只是防御性的（万一顺序调整过），真正生效的情况极少
+      if (st.earthDragStarted) { if (window.earth3d) window.earth3d.endDrag() }
       if (st.totalDy < 0 && currentPage === 1) goToPage2()
       if (st.totalDy > 0 && currentPage === 2) goToPage1()
     }
@@ -5031,7 +5038,8 @@
       // UI zone：不追踪，但重置空闲计时
       if (isUIZone(e.target)) { resetIdleTimer(); return }
 
-      // 非 UI zone：开始追踪
+      // 非 UI zone：开始追踪。beginDrag() 不在这里调用——挪到 pointermove 里
+      // 排除掉swipe模糊区间之后才懒触发，否则每次tap/swipe手势期间地球都会先抖一下
       pointers.set(e.pointerId, makeState(e.pointerId, e.clientX, e.clientY))
     })
 
@@ -5049,6 +5057,7 @@
       if (st._lastMoveTime && dt > 0) {
         st.velocityX = Math.abs(dx) / dt
         st.velocityY = Math.abs(dy) / dt
+        st.velocityKnown = true // 第一次拿到真实的速度采样，之前velocityY一直是初始值0
       }
       st._lastMoveTime = performance.now()
       st.lastX = e.clientX
@@ -5061,14 +5070,33 @@
       // 位移不够，暂不判定
       if (maxD < DRAG_MIN_DISPLACEMENT) return
 
+      const isVerticalDominant = absDy > absDx * SWIPE_DIRECTION_RATIO
+
       // move 阶段只在明确判定为 swipe 时提前锁定+触发（更好的实时反馈：满足条件立刻翻页，
       // 不用等松手）。其余情况（可能是慢拖，也可能是还在累积位移/速度、暂时无法判断的
       // swipe候选）一律不在这里锁定，留给 pointerup 的 tap→swipe→drag 三段式兜底统一判定
       // ——第一次跨过 DRAG_MIN_DISPLACEMENT 阈值时 velocity 往往还没来得及算出来（默认0），
       // 如果这里贸然把"暂时不满足swipe条件"当成"已确定是drag"锁死，会让真实的快速甩动
       // 永远判不出来（因为 resolvedIntent 一旦锁定，后续 move 和 pointerup 都会跳过判定）。
-      if (absDy > absDx * SWIPE_DIRECTION_RATIO && absDy > SWIPE_MIN_DY && st.velocityY > SWIPE_MIN_VELOCITY) {
+      if (isVerticalDominant && absDy > SWIPE_MIN_DY && st.velocityY > SWIPE_MIN_VELOCITY) {
         resolveSwipe(st)
+        return
+      }
+
+      // #11: 排除掉"纵向为主+速度快+还没到60px"这个仍可能变成swipe的模糊区间后，
+      // 剩下的情况（横向为主，或纵向但确认速度慢）已经明确不会是swipe，可以开始实时拖拽地球。
+      // 不能像之前那样在pointerdown就无条件beginDrag、每次move都无条件updateDrag——
+      // 那样连一次快速swipe手势期间地球都会先跟着抖一下，直到resolve时才cancelDrag()复位。
+      // 注意：!st.velocityKnown（第一次move，velocity还是初始值0）也要算模糊——
+      // 跟上面swipe判定犯过的同一个错误：第一帧速度采样不到，不能当成"已确认慢速"，
+      // 否则快速纵向甩动的第一下就会被误判成可以拖地球（实测复现过，这里改前有真实bug）。
+      const isAmbiguousSwipeCandidate = isVerticalDominant && (!st.velocityKnown || st.velocityY > SWIPE_MIN_VELOCITY)
+      if (!isAmbiguousSwipeCandidate) {
+        if (!st.earthDragStarted) {
+          st.earthDragStarted = true
+          if (window.earth3d) window.earth3d.beginDrag()
+        }
+        if (window.earth3d) window.earth3d.updateDrag(dx, dy)
       }
     })
 

@@ -210,8 +210,17 @@
   let _gramTransitionRef = null
   let _gramSettledZRef = null
 
+  // P4 Stage 3: 地球拖拽交互状态
+  let earthInteractionState = {
+    mode: 'auto', // auto | dragging | holding | returning
+    dragLonOffset: 0,
+    dragLatOffset: 0,
+    holdUntil: 0,
+  }
+
   function _updateGramMotion() {
     if (!_gramMotion.enabled) return
+    if (earthInteractionState.mode !== 'auto') return  // P4 Stage 3: 拖拽中抑制环境漂移，避免和用户输入打架
     if (!_gramMotion.startTime) _gramMotion.startTime = performance.now() / 1000
     const elapsed = (performance.now() / 1000) - _gramMotion.startTime
     const prim = _gramActivePrimitive
@@ -5654,13 +5663,17 @@
         const precomputeOffset = _precomputeMotion.enabled ? (vs._precomputeLonOffset || 0) : 0
         const gramLatOffset = _gramMotion.enabled ? (vs._gramLatOffset || 0) : 0
         const gramLonOffset = _gramMotion.enabled ? (vs._gramLonOffset || 0) : 0
+        // P4 Stage 3: 地球拖拽偏移，与其余offset源同一套叠加逻辑
+        const dragLonOffset = vs._dragLonOffset || 0
+        const dragLatOffset = vs._dragLatOffset || 0
         const lon = normalizeLon(
-          (Number.isFinite(vs.lon) ? vs.lon : 121.4737) + level1Offset + precomputeOffset + gramLonOffset
+          (Number.isFinite(vs.lon) ? vs.lon : 121.4737) + level1Offset + precomputeOffset + gramLonOffset + dragLonOffset
         )
+        const latClampAbs = earthInteractionState.mode === 'auto' ? 80 : 75
         const lat = clamp(
-          (Number.isFinite(vs.lat) ? vs.lat : 31.2304) + gramLatOffset,
-          -80,
-          80
+          (Number.isFinite(vs.lat) ? vs.lat : 31.2304) + gramLatOffset + dragLatOffset,
+          -latClampAbs,
+          latClampAbs
         )
         const targetPoint = lonLatToVector3(lon, lat, 1).normalize()
         const sourceNorth = lonLatToNorthTangent(lon, lat)
@@ -6826,6 +6839,7 @@
 
       function _updateGramAutoPilot() {
         if (!_gramAutoPilot.enabled) return
+        if (earthInteractionState.mode !== 'auto') return  // P4 Stage 3: 拖拽中抑制切歌构图切换
         const vs = window.__rodioVisualState || {}
         const cur = vs.currentTrack
         const trackKey = cur ? `${String(cur.name || '').trim()}::${String(cur.artist || '').trim()}` : ''
@@ -7065,6 +7079,10 @@
 
       function _updateGramTransition() {
         if (!_gramTransition) return
+        // P4 Stage 3: 只在 dragging/holding 阶段挡住——returning 阶段必须放行，
+        // 因为 endDrag() 的归位动画正是靠这个函数每帧处理 transitionToComposition('homeGlobe', ...)
+        // 创建出来的 _gramTransition；用 `!== 'auto'` 会连 returning 也挡住，归位动画永远播不完，相机卡死
+        if (earthInteractionState.mode === 'dragging' || earthInteractionState.mode === 'holding') return
         const now = performance.now() / 1000
         const t = Math.min(1, (now - _gramTransition.startTime) / _gramTransition.duration)
         const e = _gramTransition.envelope(t)
@@ -7710,6 +7728,15 @@
             position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
           }
         },
+        // P4 Stage 3 调试用：暴露地球当前朝向和拖拽状态，验证拖拽是否真的驱动了旋转
+        getEarthDragDebugInfo() {
+          return {
+            mode: earthInteractionState.mode,
+            dragLonOffset: earthInteractionState.dragLonOffset,
+            dragLatOffset: earthInteractionState.dragLatOffset,
+            earthQuaternion: { x: earth.quaternion.x, y: earth.quaternion.y, z: earth.quaternion.z, w: earth.quaternion.w },
+          }
+        },
         getRenderQualityInfo() {
           return {
             isMobileDetected: isMobileDevice(),
@@ -7933,6 +7960,48 @@
             out[key] = earthShaderUniforms[key]?.value
           }
           return out
+        },
+        beginDrag() {
+          earthInteractionState.mode = 'dragging'
+          earthInteractionState.dragLonOffset = 0
+          earthInteractionState.dragLatOffset = 0
+        },
+        updateDrag(dxPx, dyPx) {
+          if (earthInteractionState.mode !== 'dragging') return
+          const DEG_PER_PX = 0.15
+          earthInteractionState.dragLonOffset -= dxPx * DEG_PER_PX
+          earthInteractionState.dragLatOffset += dyPx * DEG_PER_PX
+          if (!window.__rodioVisualState) window.__rodioVisualState = {}
+          window.__rodioVisualState._dragLonOffset = earthInteractionState.dragLonOffset
+          window.__rodioVisualState._dragLatOffset = earthInteractionState.dragLatOffset
+        },
+        endDrag() {
+          if (earthInteractionState.mode !== 'dragging') return
+          earthInteractionState.mode = 'holding'
+          earthInteractionState.holdUntil = performance.now() + 3000
+          setTimeout(() => {
+            if (earthInteractionState.mode !== 'holding') return
+            earthInteractionState.mode = 'returning'
+            transitionToComposition('homeGlobe', { duration: 0.4, envelope: 'easeOutCubic' })
+            setTimeout(() => {
+              earthInteractionState.mode = 'auto'
+              earthInteractionState.dragLonOffset = 0
+              earthInteractionState.dragLatOffset = 0
+              if (window.__rodioVisualState) {
+                window.__rodioVisualState._dragLonOffset = 0
+                window.__rodioVisualState._dragLatOffset = 0
+              }
+            }, 450)
+          }, 3000)
+        },
+        cancelDrag() {
+          earthInteractionState.mode = 'auto'
+          earthInteractionState.dragLonOffset = 0
+          earthInteractionState.dragLatOffset = 0
+          if (window.__rodioVisualState) {
+            window.__rodioVisualState._dragLonOffset = 0
+            window.__rodioVisualState._dragLatOffset = 0
+          }
         },
       })
       window.__earth3dBootStage = 'after-api-export'
