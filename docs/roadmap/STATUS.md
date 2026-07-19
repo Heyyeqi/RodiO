@@ -22,6 +22,7 @@
 | `06_Song_Selection_Module_v2.md` | 选歌模块v2完整工程方案（Mood Intent JSON、track_profile schema、transition_cost、skip反馈） | 阶段完成时更新 |
 | `07_Song_Selection_Multi_AI_Assessment.md` | 九份AI对选歌模块的评估意见整合底稿，v2方案的决策依据 | 很低，仅作参考 |
 | `08_Dynamic_Earth_Camera_System_Design.md` | 动态地球镜头系统v2.0/v3.0完整设计方案（10构图×14运动原语×6缓动×24日常模式×8特殊模式），当前相机语法系统的原始设计蓝图 | 很低，仅作参考 |
+| `09_Horizon_Mode_Aesthetic_Brief_v1.0.md` | Horizon Mode（#36）美学基调："从上帝视角切换到真实的看见"、海水地理差异（清澈/浑浊/深邃）、云作为山地场景必要点缀、克制不等于抽象化。Phase 2/3/5/8施工时应直接参考 | 低，除非美学方向调整 |
 | `source_appendix/` | 历史规划文档（v3.1 Master Pack 8份 + 开发路线v3 + Sky Design v3.2 + Integrated Roadmap v1.7），大部分已被上述文件取代或归类为历史参考；**例外：`C_Sky_Design_v3.2.md` 含未被吸收的精确11时段色彩锚点表和物理散射原理，issue #14施工时应直接参考**，不是纯历史文档 | 不更新 |
 | `STATUS.md`（本文件） | 实时现状、差距矩阵、优先级、GitHub Issue 映射 | **每次任务完成后更新** |
 
