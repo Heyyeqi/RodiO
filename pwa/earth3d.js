@@ -5620,6 +5620,150 @@
           starSphereOpacity: 0.39,
         },
       }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // #39 Step 1: Theme config interpolation — pure function.
+      // ═══════════════════════════════════════════════════════════════════
+
+      const COLOR_NUMBER_KEYS = new Set(['mapColor','emissiveColor','specular','sunColor']);
+      const COLOR_STRING_KEYS = new Set(['color','colorOuter','colorNear','colorFar','coreColor','mainColor','outerColor','colorCore','colorMain','colorOuter']);
+      const NON_INTERPOLATABLE_KEYS = new Set(['map','emissiveMap','texture','daybaseMode','dayOceanGrade','enabled','softComposite']);
+
+      function _hexNumToRGB(hex) {
+        if (typeof hex !== 'number' || !isFinite(hex)) return null;
+        return { r: (hex >> 16) & 0xff, g: (hex >> 8) & 0xff, b: hex & 0xff };
+      }
+      function _rgbToHexNum(r, g, b) {
+        return ((Math.round(r) & 0xff) << 16) | ((Math.round(g) & 0xff) << 8) | (Math.round(b) & 0xff);
+      }
+      function _hexStrToRGB(str) {
+        if (typeof str !== 'string' || !str.startsWith('#')) return null;
+        const h = str.slice(1);
+        if (h.length === 6) return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) };
+        return null;
+      }
+      function _rgbToHexStr(r, g, b) {
+        const c = v => Math.max(0, Math.min(255, Math.round(v)));
+        return '#' + [r,g,b].map(v => c(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+      }
+      function _lerp(a, b, t) { return a + (b - a) * t; }
+
+      function _deepInterp(a, b, t, keyName) {
+        if (a === null || a === undefined) return t >= 1 ? b : a;
+        if (b === null || b === undefined) return t >= 1 ? b : a;
+        const aT = typeof a, bT = typeof b;
+        // Non-interpolatable
+        // Non-interpolatable — only intercept leaf values, never nested objects
+        // (e.g. clouds.texture is a filename string, but top-level texture is an object)
+        if (keyName && NON_INTERPOLATABLE_KEYS.has(keyName) && aT !== 'object' && bT !== 'object') return t >= 1 ? b : a;
+        // Color strings '#rrggbb'
+        if (keyName && COLOR_STRING_KEYS.has(keyName) && aT === 'string' && a.startsWith('#') && bT === 'string' && b.startsWith('#')) {
+          const ar = _hexStrToRGB(a), br = _hexStrToRGB(b);
+          if (ar && br) return _rgbToHexStr(_lerp(ar.r,br.r,t), _lerp(ar.g,br.g,t), _lerp(ar.b,br.b,t));
+        }
+        // Color numbers 0xRRGGBB
+        if (keyName && COLOR_NUMBER_KEYS.has(keyName) && aT === 'number' && bT === 'number') {
+          const ar = _hexNumToRGB(a), br = _hexNumToRGB(b);
+          if (ar && br) return _rgbToHexNum(_lerp(ar.r,br.r,t), _lerp(ar.g,br.g,t), _lerp(ar.b,br.b,t));
+        }
+        // Arrays
+        if (Array.isArray(a) && Array.isArray(b)) {
+          const len = Math.max(a.length, b.length), res = [];
+          for (let i = 0; i < len; i++) {
+            const va = i < a.length ? a[i] : 0, vb = i < b.length ? b[i] : 0;
+            res.push(typeof va === 'number' && typeof vb === 'number' ? _lerp(va, vb, t) : (t >= 1 ? vb : va));
+          }
+          return res;
+        }
+        // sunDirection vector object {x,y,z}
+        if (keyName === 'sunDirection' && aT === 'object' && bT === 'object' && a && b && typeof a.x === 'number' && typeof b.x === 'number') {
+          return { x: _lerp(a.x, b.x, t), y: _lerp(a.y, b.y, t), z: _lerp(a.z, b.z, t) };
+        }
+        // Nested objects
+        if (aT === 'object' && bT === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+          const allKeys = new Set([...Object.keys(a), ...Object.keys(b)]), res = {};
+          for (const k of allKeys) {
+            const va = a[k], vb = b[k];
+            res[k] = _deepInterp(va, vb, t, k);
+          }
+          return res;
+        }
+        // Numbers
+        if (aT === 'number' && bT === 'number') return _lerp(a, b, t);
+        // Fallback
+        return t >= 1 ? b : a;
+      }
+
+      /**
+       * interpolateThemeConfig(fromKey, toKey, t)
+       * Pure function: returns a new interpolated config. Does NOT modify rendering state.
+       * Exposed via window.earth3d.interpolateThemeConfig for debugging.
+       */
+      function interpolateThemeConfig(fromKey, toKey, t) {
+        const fromCfg = THEME_VISUAL_CONFIG[fromKey];
+        const toCfg   = THEME_VISUAL_CONFIG[toKey];
+        if (!fromCfg || !toCfg) { console.warn('[interpolateThemeConfig] unknown key:', fromKey, toKey); return null; }
+        return _deepInterp(fromCfg, toCfg, t, null);
+      }
+
+      const _THEME_ORDER = ['dawn','sunrise','earlyMorning','morning','noon','afternoon','goldenApproach','sunset','evening','lateEvening','deepNight'];
+
+      function _deepEqual(a, b, path) {
+        const diffs = [];
+        if (a === b) return diffs;
+        // Hex color strings: case-insensitive compare
+        if (typeof a === 'string' && typeof b === 'string' && a.startsWith('#') && b.startsWith('#') && a.length === 7 && b.length === 7) {
+          if (a.toUpperCase() !== b.toUpperCase()) diffs.push(path + ': ' + JSON.stringify(a) + ' !== ' + JSON.stringify(b));
+          return diffs;
+        }
+        if (a === null || b === null || a === undefined || b === undefined) { if (a !== b) diffs.push(path + ': ' + JSON.stringify(a) + ' !== ' + JSON.stringify(b)); return diffs; }
+        if (typeof a !== typeof b) { diffs.push(path + ': type mismatch ' + typeof a + ' vs ' + typeof b); return diffs; }
+        if (Array.isArray(a) && Array.isArray(b)) {
+          for (let i = 0; i < Math.max(a.length, b.length); i++) diffs.push(..._deepEqual(a[i], b[i], path + '[' + i + ']'));
+          return diffs;
+        }
+        if (typeof a === 'object') {
+          const allKeys = new Set([...Object.keys(a||{}), ...Object.keys(b||{})]);
+          for (const k of allKeys) diffs.push(..._deepEqual(a?.[k], b?.[k], path ? path + '.' + k : k));
+          return diffs;
+        }
+        if (typeof a === 'number') { if (Math.abs(a - b) > 1e-9) diffs.push(path + ': ' + a + ' !== ' + b); return diffs; }
+        if (a !== b) diffs.push(path + ': ' + JSON.stringify(a) + ' !== ' + JSON.stringify(b));
+        return diffs;
+      }
+
+      function debugVerifyThemeInterpolation() {
+        const results = [];
+        let pass = 0, fail = 0;
+        for (let i = 0; i < _THEME_ORDER.length - 1; i++) {
+          const fk = _THEME_ORDER[i], tk = _THEME_ORDER[i + 1];
+          [0, 1].forEach(tVal => {
+            const r = interpolateThemeConfig(fk, tk, tVal);
+            const expect = tVal === 0 ? THEME_VISUAL_CONFIG[fk] : THEME_VISUAL_CONFIG[tk];
+            const d = _deepEqual(r, expect, '');
+            const pairLabel = fk + ' -> ' + tk;
+            results.push({ pair: pairLabel, t: tVal, expect: tVal === 0 ? fk : tk, pass: d.length === 0, diffs: d });
+            if (d.length === 0) pass++; else fail++;
+          });
+        }
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('  Theme Interpolation Boundary Verification');
+        console.log('  ' + results.length + ' tests total');
+        console.log('═══════════════════════════════════════════════════════');
+        for (const r of results) {
+          if (r.pass) { console.log('  PASS  [' + r.pair + ']  t=' + r.t + '  → matches ' + r.expect); }
+          else {
+            console.log('  FAIL  [' + r.pair + ']  t=' + r.t + '  → expected ' + r.expect + ', ' + r.diffs.length + ' mismatch(es):');
+            r.diffs.forEach(d => console.log('        ' + d));
+          }
+        }
+        console.log('───────────────────────────────────────────────────────');
+        console.log('  PASS: ' + pass + '  |  FAIL: ' + fail);
+        if (fail === 0) console.log('  ALL PASS — boundary values verified.');
+        console.log('═══════════════════════════════════════════════════════');
+        return { total: results.length, pass, fail, details: results };
+      }
+
       const AUDIT_LIGHTING_CONFIG = {
         themeHour: 13,
         texture: {
@@ -7281,6 +7425,8 @@
         isAvailable() {
           return isReady && !permanentlyUnavailable
         },
+        interpolateThemeConfig,
+        debugVerifyThemeInterpolation,
         setDebugLocation(lon, lat, options = {}) {
           useAuditCenterTarget = Boolean(options.center)
           window.__rodioVisualState = {
