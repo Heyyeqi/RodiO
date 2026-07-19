@@ -246,7 +246,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — ✅已提交（`5f33b0f`）并本地实机验证通过，已标Done。验证时发现并修复两个真实bug：①IIFE前漏分号导致整段代码在浏览器里从未执行过（`node --check`测不出来）②pointermove过早锁定drag导致真实swipe手势永远判不出来。给#11留了提示：这轮drag只在pointerup兜底解析，#11接入真实地球旋转时大概率需要在move阶段也加实时锁定
 7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅已提交（`7143114`）并本地实测验证通过（刷新页面确认`dj-speaking`类不再残留），已标Done
 8. **[#11](https://github.com/Heyyeqi/RodiO/issues/11) P4 Stage 3：最小地球拖拽** `[Cat A]` — ✅已提交（`b26ae56`）并本地实机验证通过，已标Done。**重要教训**：Marvis首次提交声称6处改动"全部通过"，独立核对diff后发现4处根本不存在（`getTargetOrientation()`从未接入拖拽offset，核心链路写入端和读取端没打通，功能对画面完全没有视觉效果）——Claude直接补完并修了两个连带bug（`_updateGramTransition`的guard条件不能一刀切、GestureRouter里velocity判定复现了#10同一个"第一帧velocity=0"的坑）
-9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** `[Cat A]` — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
+9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** `[Cat A]` — ✅已提交（`a0d7596`）并本地实机验证通过，已标Done。经历两轮打回（前两次Marvis报"全部完成"但diff里6项只有1项真实存在），第三次才对上；独立验证时还发现Claude自己brief里带的一个跨script作用域bug（Theme Tuner是独立script标签，不能直接引用主脚本闭包变量）并修复。P4 Stage 1-4 全部完成，P4主线暂告一段落
 
 ### 第三梯队：高杠杆视觉任务（材料大半已具备，缺编排/收口）
 
@@ -292,7 +292,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#9](https://github.com/Heyyeqi/RodiO/issues/9) | P4 Stage 1: 三态UI — Full/Minimal 切换 | P4 Stage 1 — Three-State UI | P0 | Done（325c379，本地实机验证通过） |
 | [#10](https://github.com/Heyyeqi/RodiO/issues/10) | P4 Stage 2: GestureRouter — 统一手势仲裁 | P4 Stage 2 — GestureRouter | P0 | Done（5f33b0f，本地实机验证通过） |
 | [#11](https://github.com/Heyyeqi/RodiO/issues/11) | P4 Stage 3: 最小地球拖拽交互 | P4 Stage 3 — Earth Drag Interaction | P0 | Done（b26ae56，本地实机验证通过） |
-| [#12](https://github.com/Heyyeqi/RodiO/issues/12) | P4 Stage 4: Earth Only 候选态 | P4 Stage 4 — Earth Only Candidate | P1 | Backlog |
+| [#12](https://github.com/Heyyeqi/RodiO/issues/12) | P4 Stage 4: Earth Only 候选态 | P4 Stage 4 — Earth Only Candidate | P1 | Done（a0d7596，本地实机验证通过） |
 | [#13](https://github.com/Heyyeqi/RodiO/issues/13) | 星空已知问题复核关闭 + CLAUDE.md更新 | P4 Stage 5 — Star System Verification and Polish | P0 | Backlog |
 | [#14](https://github.com/Heyyeqi/RodiO/issues/14) | P4 Stage 6: 白天背景第一轮 | P4 Stage 6 — Day Sky Pass | P1 | Backlog |
 | [#15](https://github.com/Heyyeqi/RodiO/issues/15) | P4 Stage 7: 运动方向产品化 (Motion Profiles) | P4 Stage 7 — Motion Profiles Productization | P1 | Backlog |
