@@ -7088,6 +7088,10 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 ### 验证（Playwright + 软件WebGL 实机，非仅看返回值）
 - 数值层：dawn→sunrise，t=0→0.5→1 序列调用后实测读取**真实uniform**：atmosphere.uOpacity、uColor、night grade 全系、云opacity、rim glow、starSphereOpacity 共 **34项全部 PASS**（含 `between=端点`的字段也用多采样点确认确为线性插值，仅在`daybaseMode`/`sunLobe`/`dayOceanGrade`等非插值/非对称配置下按设计冻结或回退，符合范围边界）。
 - 画面层：截取`t=0`（纯dawn）与`t=0.5`两帧，Node端`sharp`算像素差——meanAbsDiff≈较大值、maxDiff高，证明调用前后大气/夜景色调有**可见变化**，且因贴图/天空本步不变，画面不会变成完整sunrise，符合预期。
+- **端到端过渡验证（补完）**：Patch `Date.now()` 以20倍速加速时间流逝，让主循环**自然穿越** dawn→sunrise 的完整8分钟过渡窗口 + 过渡后硬切换收尾。结果：
+  - 主循环共 **1330次** 驱动 `applyInterpolatedTheme`（每帧一次），过渡窗口内7帧截图覆盖 t=0.01~0.88。
+  - 过渡期间帧间像素差稳定在 meanAbs≈0.08~0.15（平滑渐进）；**过渡结束→硬切换瞬间跳到 meanAbs=3.27, 34.7%像素变化**（纹理/天空/海洋色调等未被插值覆盖的子系统被正确一次性应用）。
+  - 硬切换 `setTimeOfDay` 在过渡结束后正确触发（共2次：初始+收尾），最终 themeKey=`'sunrise'`。**5项断言全部PASS**。截图+报告保存在 `/tmp/rodio_e2e/`。
 - 回归层：确认`lastSentEarth3DThemeKey`硬切换逻辑在过渡结束后照常触发；`t=1`时`oceanDarken`等到达真实sunrise端点，`daybaseMode`门控在t<1期间正确插值、t=1瞬间close（此时已由硬`setTimeOfDay`接管），无"半吊子"残留。
 - 临时调试getter（`getLiveUniformSnapshot`）验证后已**完全移除**，最终`earth3d.js`通过`node --check`，`applyInterpolatedTheme`已暴露、无任何调试残留引用。
 
@@ -7097,4 +7101,4 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 
 ### 遗留问题
 - 天空/海洋/星星sprite/主题名索引特效的平滑过渡是方案后续独立一步，本步未做（保持现有瞬切行为）。
-- 回归验证为本地实机+软件WebGL，未跑生产环境真实时段切换（需等自然过渡窗口或后续人工确认）。
+- ~~回归验证为本地实机+软件WebGL，未跑生产环境真实时段切换~~ → **已补完端到端过渡验证**（20倍速加速穿越完整8分钟窗口，5项断言PASS），但尚未在生产环境观察自然时段切换（需等部署后实际触发）。
