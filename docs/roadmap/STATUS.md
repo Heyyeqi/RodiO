@@ -241,7 +241,22 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 2. **[#19](https://github.com/Heyyeqi/RodiO/issues/19) 选歌模块v2 Phase1确认+Phase2毕业监控** — 已查：fallback_rate 0.5%✅、candidate_empty_count 0✅达标；avg_transition_cost因shadow_rerank_candidates曾无真实数据无法计算（#25修复已部署，待验证后应能恢复）；7天连续性差1天。待#25端到端验证完成后重新计时复查
 3. **[#38](https://github.com/Heyyeqi/RodiO/issues/38) discovery_candidates晋升管线缺scene_id生产者** — 2026-07-18本地验证时新发现，需要先决定scene_id的产品语义（时段/天气/mood-intent标签）才能接线，不阻塞其他任务
 
-### 第二梯队：P4 交互闭环主线（有先后依赖，按序做）
+### 第一点五梯队：Horizon Mode 完整方案二建设（2026-07-19 用户明确要求优先，插到P4主线之后）
+
+> P4 Stage 1-4已全部完成（#9-12），用户在此之后明确要求"先做#36"，且要求完整方案二（独立场景），不做缩水版本。已拆Phase 0-9，milestone "Horizon Mode — Independent Scene Build"，Phase 0资源审计已完成，结论见 #36 评论。
+
+4. **[#41](https://github.com/Heyyeqi/RodiO/issues/41) Phase 0.5：资源补充** — 水面法线贴图/仰视云层技术路线/GEBCO近景细节噪声方案/美学基调文字，四项缺口逐一补齐，当前最前面待开工的任务
+5. **[#42](https://github.com/Heyyeqi/RodiO/issues/42) Phase 1：隔离试验场景骨架** — `?earthCandidate=horizonLab`，独立Scene+相机+渲染循环，Category B纪律第一步
+6. **[#43](https://github.com/Heyyeqi/RodiO/issues/43) Phase 2：天空穹顶** — 含月光方向这个真实缺口（客户端从未实现）
+7. **[#44](https://github.com/Heyyeqi/RodiO/issues/44) Phase 3：真反射海面** — 做完这一步海平线场景（最高优先级场景）技术上就完整
+8. **[#45](https://github.com/Heyyeqi/RodiO/issues/45) Phase 4：Orbit↔Horizon进出场过渡**
+9. **[#46](https://github.com/Heyyeqi/RodiO/issues/46) Phase 5：海面美学打磨** — 海平线场景真正决定观感的部分，Phase 0-5做完海平线就是打磨过的完整场景，不是半成品
+10. **[#47](https://github.com/Heyyeqi/RodiO/issues/47) Phase 6：海岸与岛屿场景**（第二优先级场景）
+11. **[#48](https://github.com/Heyyeqi/RodiO/issues/48) Phase 7：地形高度图导出管线** — GEBCO数据已有，缺"原始高程转灰度PNG"这最后一步
+12. **[#49](https://github.com/Heyyeqi/RodiO/issues/49) Phase 8：山地平线场景**（第三优先级场景）
+13. **[#50](https://github.com/Heyyeqi/RodiO/issues/50) Phase 9：陆地平视场景**（最低优先级，方案原文自己警告容易变成游戏场景）
+
+### 第二梯队：P4 交互闭环主线（有先后依赖，按序做，已全部完成）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — ✅已提交（`325c379`）并本地实机验证通过，已标Done。范围只做Full/Minimal，Earth Only留给#12
 6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — ✅已提交（`5f33b0f`）并本地实机验证通过，已标Done。验证时发现并修复两个真实bug：①IIFE前漏分号导致整段代码在浏览器里从未执行过（`node --check`测不出来）②pointermove过早锁定drag导致真实swipe手势永远判不出来。给#11留了提示：这轮drag只在pointerup兜底解析，#11接入真实地球旋转时大概率需要在move阶段也加实时锁定
 7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅已提交（`7143114`）并本地实测验证通过（刷新页面确认`dj-speaking`类不再残留），已标Done
@@ -276,7 +291,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 25. **[#24](https://github.com/Heyyeqi/RodiO/issues/24) 彩蛋系统清单存档** — P3，不进当前主线
 26. **[#18](https://github.com/Heyyeqi/RodiO/issues/18) 长期backlog总类** — 兜底条目，逐步被上面拆出的具体issue替代
 27. **[#35](https://github.com/Heyyeqi/RodiO/issues/35) 云层系统升级** `[混合：光照/纹理增强部分Cat A，Cloud View新相机视角部分Cat B]` — 长期愿景，milestone "Living Earth — Vertical Space Journey"，开工前需重新拆分子任务确认各自分级
-28. **[#36](https://github.com/Heyyeqi/RodiO/issues/36) 地平线视角深化** `[Cat B，需先建独立试验场景]` — 同上milestone，注意这不是全新功能，是现有`horizon`/`lowOrbit`构图（刚修过清晰度）的深化，但相机距地表极近，改变了相机-几何体关系
+~~28. #36 地平线视角深化~~ — 已移到"第一点五梯队"，见上方，不再属于本梯队的"明确延后"范围
 29. **[#37](https://github.com/Heyyeqi/RodiO/issues/37) 深海模式** `[Cat B，需先建独立试验场景]` — 同上milestone，三者中和现有系统耦合最少，若未来三选一优先启动，风险相对最独立；方案文档自己明确"不建议直接把摄像机塞进现有海洋球层"
 30. **[#40](https://github.com/Heyyeqi/RodiO/issues/40) 航线视角 Flight View** `[Cat B，需先建独立试验场景]` — 同上milestone，2026-07-18新提出，连接Cloud与Horizon的中间层，原文认为优先级可高于纯Horizon（#36），但仍属于本梯队"当前不启动"的范围；相机沿路径持续移动+新LOD策略，改变了相机-几何体关系
 
@@ -307,7 +322,17 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#24](https://github.com/Heyyeqi/RodiO/issues/24) | 彩蛋系统清单存档 + §20.3收缩规则应用 | Long-Term Backlog | P3 | Backlog |
 | [#33](https://github.com/Heyyeqi/RodiO/issues/33) | 多套地球配色主题（Palette Variants）— 复用Noon Air管线 | Long-Term Backlog | P2 | Backlog |
 | [#35](https://github.com/Heyyeqi/RodiO/issues/35) | 云层系统升级：多层云+天空美景谱系+Cloud View视角 | Living Earth — Vertical Space Journey | P3 | Backlog |
-| [#36](https://github.com/Heyyeqi/RodiO/issues/36) | 地平线视角深化：真正贴地平视 + 独立局部地形场景 | Living Earth — Vertical Space Journey | P3 | Backlog |
+| [#36](https://github.com/Heyyeqi/RodiO/issues/36) | 地平线视角深化：真正贴地平视 + 独立局部地形场景（完整方案二，见Horizon Mode milestone） | Living Earth — Vertical Space Journey | P3 | In Progress（Phase 0审计完成，Phase 1-9见下） |
+| [#41](https://github.com/Heyyeqi/RodiO/issues/41) | Horizon Mode Phase 0.5：资源补充 | Horizon Mode — Independent Scene Build | P2 | Backlog（队列最前） |
+| [#42](https://github.com/Heyyeqi/RodiO/issues/42) | Horizon Mode Phase 1：隔离试验场景骨架 | Horizon Mode — Independent Scene Build | P2 | Backlog |
+| [#43](https://github.com/Heyyeqi/RodiO/issues/43) | Horizon Mode Phase 2：天空穹顶 | Horizon Mode — Independent Scene Build | P2 | Backlog |
+| [#44](https://github.com/Heyyeqi/RodiO/issues/44) | Horizon Mode Phase 3：真反射海面（海平线场景技术完整） | Horizon Mode — Independent Scene Build | P2 | Backlog |
+| [#45](https://github.com/Heyyeqi/RodiO/issues/45) | Horizon Mode Phase 4：Orbit↔Horizon 进出场过渡 | Horizon Mode — Independent Scene Build | P2 | Backlog |
+| [#46](https://github.com/Heyyeqi/RodiO/issues/46) | Horizon Mode Phase 5：海面美学打磨 | Horizon Mode — Independent Scene Build | P2 | Backlog |
+| [#47](https://github.com/Heyyeqi/RodiO/issues/47) | Horizon Mode Phase 6：海岸与岛屿场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
+| [#48](https://github.com/Heyyeqi/RodiO/issues/48) | Horizon Mode Phase 7：地形高度图导出管线 | Horizon Mode — Independent Scene Build | P3 | Backlog |
+| [#49](https://github.com/Heyyeqi/RodiO/issues/49) | Horizon Mode Phase 8：山地平线场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
+| [#50](https://github.com/Heyyeqi/RodiO/issues/50) | Horizon Mode Phase 9：陆地平视场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Done（4515ef6，端到端验证通过） |
 | [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Done（b31a024，本地实测验证通过） |
