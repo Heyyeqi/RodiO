@@ -39,3 +39,6 @@ pwa/assets/textures/stars/milkyway_2020_8k.jpg
 pwa/assets/textures/stars/milkyway_2020_8k_gal.jpg
 pwa/assets/textures/stars/starmap_2020_8k_gal.jpg
 # hiptyc_2020_8k.jpg kept as optional low-noise fallback (small, 6.6MB)
+
+# workbuddy (external AI coding tool) local scaffolding — not RodiO source
+.workbuddy/
