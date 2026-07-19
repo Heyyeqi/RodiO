@@ -7102,3 +7102,22 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 ### 遗留问题
 - 天空/海洋/星星sprite/主题名索引特效的平滑过渡是方案后续独立一步，本步未做（保持现有瞬切行为）。
 - ~~回归验证为本地实机+软件WebGL，未跑生产环境真实时段切换~~ → **已补完端到端过渡验证**（20倍速加速穿越完整8分钟窗口，5项断言PASS），但尚未在生产环境观察自然时段切换（需等部署后实际触发）。
+
+## 2026-07-20 00:00 HZ #41 Phase 0.5 资源补充
+
+### 做了什么
+- **水面法线贴图**: 从 mrdoob/three.js r128 仓库获取官方 waternormals.jpg（1024×1024, 243KB），放置于 `pwa/assets/textures/water/waternormals.jpg`。通过 Playwright + Three.js r128 实机加载测试确认：文件正常解码、尺寸正确、像素统计符合标准水面法线贴图特征（meanR≈127, meanG≈127, meanB≈250，高方差）。
+- **仰视云层 fBm 原型**: 独立 HTML+Three.js 测试页（`/tmp/rodio_assets/cloud_proto.html`），使用 Ashima 2D simplex noise 实现 5-octave fBm，3 层半透明视差卡片。两组预设：①"海平线场景"（稀薄克制、铺满天空、柔软边缘）；②"山地场景"（密度高、窄高度带遮罩模拟"缠绕山腰"、更锐利边缘）。Playwright 截图存档并量化对比（像素差 meanAbs=35, 67.7% 像素变化），两预设视觉差异明确。
+- **GEBCO 近景细节噪声技术方案**: `docs/roadmap/source_appendix/horizon_terrain_detail_noise_v1.md`（237 行）。核心内容：(a) fBm vs Voronoi/预烘焙/Wavelet 方案选型论证；(b) 振幅–距离衰减曲线设计（smoothstep C¹ 连续，nearDist 3-5km / farDist 35-50km）；(c) 频率/octave 配置（baseFreq 1/80m，5 octaves 默认，lacunarity=2.0, persistence=0.5）；(d) 混合策略（加性叠加 + 可选坡度遮罩）；(e) 顶点位移 vs 法线扰动混合方案建议。
+- **水质参数化系统技术方案（扩展版）**: `docs/roadmap/source_appendix/horizon_water_quality_system_v1.md`（515 行）。9 个正交维度（clarity/turbidity/baseColorDeep/baseColorShallow/substrateColor/depthColorFalloff/surfaceRoughness/foamCoverage/colorTint），每个维度含物理定义、uniform 类型与取值范围、shader 实现伪代码。11 组完整预设参数集（热带浅滩珊瑚礁、热带深水开阔洋面、温带开阔大洋、河口浑浊水域、极地冷水、深海远洋、半封闭内海、火山黑沙海岸、潟湖环礁内湖、季风浑浊期沿海、藻华赤潮演示），每组全部 9 维均有具体数值 + 参考依据。含"为什么这组数字能表现这种水质"的逐组解释（如 P1 的 clarity×substrateColor 协同效应、P8 与 P1 仅 substrateColor 不同导致的完全不同美学体验等）。11 组预设均不建议合并（各有独立签名组合）。colorTint 维度作为特殊事件扩展口已在 P11 中实际演示其工作方式。
+
+### 改动文件
+- 新增 `pwa/assets/textures/water/waternormals.jpg`
+- 新增 `docs/roadmap/source_appendix/horizon_terrain_detail_noise_v1.md`
+- 新增 `docs/roadmap/source_appendix/horizon_water_quality_system_v1.md`
+- （云层原型为临时测试产物，存放于 `/tmp/rodio_assets/`，不纳入项目源码）
+
+### 遗留问题
+- 云层原型当前是全屏四边形+shader 方案；Phase 2 天空穹顶实现时需将此 GLSL 逻辑迁移到球面几何上（UV 映射从平面直角坐标转为球面经纬度或 cube map）。
+- 水质系统的 substrateColor 当前假设全局统一值；如果有全球底质分类数据（如 GEOSEABED），可实现 per-pixel substrateColor —— 会显著增强 P1 vs P8 等依赖底质差异的预设表现力。
+- waternormals.jpg 已就位但尚未接入任何水面 shader（Phase 3/#44 时集成 THREE.Water 或自定义水面材质时使用）。
