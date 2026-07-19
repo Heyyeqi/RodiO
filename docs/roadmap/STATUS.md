@@ -243,7 +243,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — ✅已提交（`325c379`）并本地实机验证通过，已标Done。范围只做Full/Minimal，Earth Only留给#12
-6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — 依赖Stage1的UI状态存在（唤出手势需要有状态可唤出）
+6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — ✅已提交（`5f33b0f`）并本地实机验证通过，已标Done。验证时发现并修复两个真实bug：①IIFE前漏分号导致整段代码在浏览器里从未执行过（`node --check`测不出来）②pointermove过早锁定drag导致真实swipe手势永远判不出来。给#11留了提示：这轮drag只在pointerup兜底解析，#11接入真实地球旋转时大概率需要在move阶段也加实时锁定
 7. **[#27](https://github.com/Heyyeqi/RodiO/issues/27) 入场动画残留+歌名闪回竞态** — ✅已提交（`7143114`）并本地实测验证通过（刷新页面确认`dj-speaking`类不再残留），已标Done
 8. **[#11](https://github.com/Heyyeqi/RodiO/issues/11) P4 Stage 3：最小地球拖拽** `[Cat A]` — 依赖GestureRouter把drag意图路由过来；P4文档原话"极高用户价值"；复用已有经纬度控制，不引入新相机-几何体关系
 9. **[#12](https://github.com/Heyyeqi/RodiO/issues/12) P4 Stage 4：Earth Only候选态** `[Cat A]` — 依赖Stage1（UI状态）+ Stage3（拖拽）都先做完
@@ -290,7 +290,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | Issue | 标题 | Milestone | Label | 看板状态 |
 |---|---|---|---|---|
 | [#9](https://github.com/Heyyeqi/RodiO/issues/9) | P4 Stage 1: 三态UI — Full/Minimal 切换 | P4 Stage 1 — Three-State UI | P0 | Done（325c379，本地实机验证通过） |
-| [#10](https://github.com/Heyyeqi/RodiO/issues/10) | P4 Stage 2: GestureRouter — 统一手势仲裁 | P4 Stage 2 — GestureRouter | P0 | Backlog |
+| [#10](https://github.com/Heyyeqi/RodiO/issues/10) | P4 Stage 2: GestureRouter — 统一手势仲裁 | P4 Stage 2 — GestureRouter | P0 | Done（5f33b0f，本地实机验证通过） |
 | [#11](https://github.com/Heyyeqi/RodiO/issues/11) | P4 Stage 3: 最小地球拖拽交互 | P4 Stage 3 — Earth Drag Interaction | P0 | Backlog |
 | [#12](https://github.com/Heyyeqi/RodiO/issues/12) | P4 Stage 4: Earth Only 候选态 | P4 Stage 4 — Earth Only Candidate | P1 | Backlog |
 | [#13](https://github.com/Heyyeqi/RodiO/issues/13) | 星空已知问题复核关闭 + CLAUDE.md更新 | P4 Stage 5 — Star System Verification and Polish | P0 | Backlog |
