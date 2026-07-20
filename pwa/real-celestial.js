@@ -11,10 +11,13 @@
  *     的 subSolarPoint() 经交叉验证偏差 <1°）；月亮用同风格移植的 _computeSublunarPoint()。
  *     方向换算 world 单位向量时，复用 earth3d 内部 updateSunPosition 的同一公式（不乘 earth.quaternion），
  *     保证太阳天光晕正好落在受光半球正上方（与现有 FAR_VIEW 光照一致）。
- *  ── 距离分档可见性（按"相机到地心的实际直线距离"，不按构图名字）：
- *       MOON_VISIBLE_DIST = 20  → 相机距 ≥20 显示月亮（覆盖 farOrbit 25.15，明显高于近景 ≤15.9）
+ *  ── 距离分档可见性（按"相机到地心的实际直线距离"，不按构图名字，三档独立）：
+ *       MOON_VISIBLE_DIST = 35, MOON_HIDE_DIST = 65
+ *         → 相机距 ∈ [35,65) 显示月亮（moonView 48 / lunarHalo 58 在内，farOrbit 25.15 与 deepSpace 80 越过隐藏）
  *       SUN_VISIBLE_DIST  = 50  → 相机距 ≥50 显示太阳（覆盖 deepSpace 80，高于 farOrbit 25.15）
- *     这样新构图（如 #40 Flight View）只要算出的距离落在区间就自动生效，不用改判断逻辑。
+ *       PLANETS_VISIBLE_DIST = 70 → 相机距 ≥70 显示行星（独立于太阳，仅 deepSpace）
+ *     阈值命名遵循可扩展模式 XXX_VISIBLE_DIST / XXX_HIDE_DIST：新构图/新天体只需加一对常量。
+ *     这样新构图（如 #40 Flight View）只要算出的距离落在对应区间就自动生效，不用改判断逻辑。
  *  ── 压缩距离（艺术化，但自洽、可推导）：
  *       月亮放置距离 = MOON_PLACE_FRAC(0.45) × 相机→地球距离 → farOrbit≈11.3 / deepSpace≈36
  *       太阳放置距离 = SUN_PLACE_FRAC(0.70) × 相机→地球距离 → deepSpace≈56（明显比月亮远）
@@ -35,14 +38,23 @@
   if (params.get('earthCandidate') !== 'realCelestial') return // 红线：不影响正常用户
 
   // ── 命名常量（不散落魔法数字）──
-  const MOON_VISIBLE_DIST = 20   // 相机距地心 ≥ 此值 → 月亮可见（覆盖 farOrbit 25.15）
-  const SUN_VISIBLE_DIST = 50    // 相机距地心 ≥ 此值 → 太阳可见（覆盖 deepSpace 80）
+  // 三档拆分可见性（按"相机到地心的实际直线距离"，不按构图名字）。
+  // 阈值命名遵循可扩展模式 XXX_VISIBLE_DIST / XXX_HIDE_DIST：未来新增构图或新天体
+  // 只需加一对常量 + 一行判断，无需重设计。当前各档边界（场景单位，相机距地心）：
+  //   月亮 : [MOON_VISIBLE_DIST(35), MOON_HIDE_DIST(65))   → moonView 48 / lunarHalo 58 可见，farOrbit 25.15 与 deepSpace 80 越过隐藏
+  //   太阳 : [SUN_VISIBLE_DIST(50),  ∞)                     → 不变（覆盖 deepSpace 80）
+  //   行星 : [PLANETS_VISIBLE_DIST(70), ∞)                  → 独立于太阳阈值，仅 deepSpace
+  const MOON_VISIBLE_DIST = 35   // 相机距地心 ≥ 此值 → 月亮可见（moonView 48 / lunarHalo 58 在内；farOrbit 25.15 与 deepSpace 80 越过 → 隐藏）
+  const MOON_HIDE_DIST = 65      // 相机距地心 ≥ 此值 → 月亮隐藏（deepSpace 80 越过，避免与太阳/行星拥挤）
+  const SUN_VISIBLE_DIST = 50    // 相机距地心 ≥ 此值 → 太阳可见（覆盖 deepSpace 80，高于 farOrbit 25.15）
+  const PLANETS_VISIBLE_DIST = 70 // 相机距地心 ≥ 此值 → 行星可见（不再与太阳共用阈值，仅 deepSpace）
 
-  // 固定摆放距离（场景单位，地球半径=2）。
-  // 保证在任何合格构图（相机距地心 ≥ 阈值）的视锥内始终可见：
-  //   月亮：阈值=20, atan(3/20)=8.5° < FOV/2(14°)。farOrbit(25): atan(3/25)=6.9°。
-  //   太阳：阈值=50, atan(6/50)=6.8°。deepSpace(80): atan(6/80)=4.3°。
-  const MOON_DIST = 3            // 月亮距地心 = 1.5 R_earth（真实 60R_e 的艺术压缩）
+  // 固定摆放距离（场景单位，地球半径=2）。不随相机比例，保证合格构图视锥内可见：
+  //   月亮：MOON_DIST=6 → 与地球(半径2)明显分离（不再贴着/穿透）。
+  //        moonView(48): 最大角偏移 asin(6/48)=7.2° << FOV/2(14°)，任意方向完整在框。lunarHalo(58): atan(6/58)=5.9° 余量更大。
+  //        farOrbit(25.15) 与 deepSpace(80) 下月亮已被隐藏（MOON_VISIBLE_DIST=35 越过），无需考虑。
+  //   太阳：SUN_DIST≈12.25（审计后）；deepSpace(80): atan(12.25/80)=8.7° < 14°。
+  const MOON_DIST = 6            // 月亮距地心 = 3 R_earth（真实 60R_e 的艺术压缩；原 3 → 6 拉开视觉分离）
 
   // ── #53 Phase 2 统一距离比例尺（审计锁定，见 solar_system_scale_audit.js）──
   // 约束：deepSpace 相机距地心 80.01，FOV 28°，半 FOV 14°，硬上限 = 80.01*tan14° = 19.95；
@@ -392,7 +404,7 @@
     scene.add(earthMarker)
 
     const state = {
-      camDistEarth: 0, moonVisible: false, sunVisible: false,
+      camDistEarth: 0, moonVisible: false, sunVisible: false, planetsVisible: false,
       moonWorldRadius: 0, sunWorldDiameter: 0,
       moonAngDiamDeg: 0, sunAngDiamDeg: 0,
       moonNDC: [0, 0], sunNDC: [0, 0],
@@ -407,10 +419,12 @@
       earthCenter.copy(api.getEarthCenter())
       const camDistEarth = api.getCameraDistanceToEarth()
       state.camDistEarth = round(camDistEarth, 3)
-      const showMoon = camDistEarth >= MOON_VISIBLE_DIST
+      const showMoon = camDistEarth >= MOON_VISIBLE_DIST && camDistEarth < MOON_HIDE_DIST
       const showSun = camDistEarth >= SUN_VISIBLE_DIST
+      const showPlanets = camDistEarth >= PLANETS_VISIBLE_DIST
       state.moonVisible = showMoon
       state.sunVisible = showSun
+      state.planetsVisible = showPlanets
 
       // 真实方向（前端权威来源）→ 经地球朝向变换 → 世界方向
       const sp = api.getSubsolarPoint(nowMs)
@@ -427,12 +441,12 @@
       moon.visible = showMoon
       sun.visible = showSun
 
-      // ── #53 Phase 2 行星更新：可见性同太阳档(SUN_VISIBLE_DIST)，仅 deepSpace ──
+      // ── #53 Phase 2 行星更新：独立可见性档(PLANETS_VISIBLE_DIST)，仅 deepSpace ──
       for (const name of PLANET_NAMES) {
         const P = planets[name]
-        P.visible = showSun   // 与太阳同档
-        P.sprite.visible = showSun
-        if (showSun) {
+        P.visible = showPlanets   // 独立档，不再与太阳共用阈值
+        P.sprite.visible = showPlanets
+        if (showPlanets) {
           const dir = planetGeoDir(name, nowMs)        // 真实地心方向（日心−地球日心）
           const pos = earthCenter.clone().add(new T.Vector3(dir.x, dir.y, dir.z).multiplyScalar(P.dist))
           P.sprite.position.copy(pos)
@@ -509,6 +523,7 @@
           camDistEarth: state.camDistEarth,
           moonVisible: state.moonVisible,
           sunVisible: state.sunVisible,
+          planetsVisible: state.planetsVisible,
           moonWorldRadius: state.moonWorldRadius,
           sunWorldDiameter: state.sunWorldDiameter,
           moonAngDiamDeg: state.moonAngDiamDeg,

@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-07-20T10:54:49.389Z",
+  "tests": {
+    "defaultPath": {
+      "realCelestialMounted": false,
+      "realErrors": 0,
+      "PASS": true
+    },
+    "farOrbit": {
+      "camDist": 25.186,
+      "moonVisible": true,
+      "sunVisible": false,
+      "planetsVisible": false,
+      "planetsHidden": true,
+      "moonDist": 6,
+      "realErrors": 0,
+      "PASS": true
+    },
+    "lunarHalo": {
+      "camDist": 58.017,
+      "moonVisible": true,
+      "sunVisible": true,
+      "planetsVisible": false,
+      "planetsHidden": true,
+      "moonDist": 6,
+      "sunDist": 12.25,
+      "sunNDC": [
+        1.2748,
+        0.3131
+      ],
+      "moonNDC": [
+        -0.0054,
+        0.2726
+      ],
+      "realErrors": 0,
+      "PASS": true
+    },
+    "deepSpace": {
+      "camDist": 80.012,
+      "moonVisible": false,
+      "sunVisible": true,
+      "planetsAllVisible": true,
+      "moonDist": 6,
+      "realErrors": 0,
+      "PASS": true
+    },
+    "moonSeparation": {
+      "moonDistFromEarth": 6,
+      "earthRadius": 2,
+      "ratio": 3,
+      "realErrors": 0,
+      "PASS": true
+    }
+  }
+}

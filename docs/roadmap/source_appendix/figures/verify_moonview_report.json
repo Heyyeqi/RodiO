@@ -1,0 +1,73 @@
+{
+  "T1_default_zeroImpact": {
+    "realCelestialMounted": false,
+    "realErrors": 0
+  },
+  "T2_farOrbit_revert": {
+    "camDist": 25.19,
+    "moonVisible": false,
+    "sunVisible": false,
+    "planetsVisible": false,
+    "orbitVisible": false,
+    "expected": "all hidden (moon/sun/planets/orbit all false)",
+    "pass": true
+  },
+  "T3_moonView": {
+    "camDist": 48.02,
+    "moonVisible": true,
+    "sunVisible": false,
+    "planetsVisible": false,
+    "moonNDC": [
+      0.1311,
+      0.3693
+    ],
+    "aspect": 1.667,
+    "geometry": {
+      "ndcHalfW": 0.049,
+      "ndcHalfH": 0.0816,
+      "margins": {
+        "left": 1.0821,
+        "right": 0.8199,
+        "bottom": 1.2877,
+        "top": 0.5491
+      },
+      "minMargin": 0.5491,
+      "inFrame": true
+    },
+    "minMarginPx": 164.7,
+    "pass": true
+  },
+  "T4_lunarHalo": {
+    "camDist": 58.02,
+    "moonVisible": true,
+    "sunVisible": true,
+    "planetsVisible": false,
+    "pass": true
+  },
+  "T5_deepSpace": {
+    "camDist": 80.01,
+    "moonVisible": false,
+    "sunVisible": true,
+    "planetsCount": 5,
+    "planetsAllVisible": true,
+    "pass": true
+  },
+  "geometryContrast": {
+    "farOrbitWorstCase": {
+      "sepDeg": 13.802,
+      "ndcCenter": 0.9859,
+      "ndcHalf": 0.0816,
+      "topEdge": 1.0674,
+      "clipped": true
+    },
+    "moonViewWorstCase": {
+      "sepDeg": 7.181,
+      "ndcCenter": 0.5129,
+      "ndcHalf": 0.0816,
+      "topEdge": 0.5945,
+      "clipped": false
+    }
+  },
+  "realErrors": [],
+  "allPass": true
+}

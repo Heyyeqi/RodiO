@@ -673,7 +673,7 @@
 
 
       // ── 构图集合（必须在 applyTheme / transitionToComposition 定义之前）──
-      const FAR_COMPOSITIONS = new Set(['farOrbit', 'oceanExpanse', 'deepSpace', 'polarDiagonal', 'cityAnchor', 'portraitMarble', 'terminatorPortrait'])
+      const FAR_COMPOSITIONS = new Set(['farOrbit', 'oceanExpanse', 'deepSpace', 'polarDiagonal', 'cityAnchor', 'portraitMarble', 'terminatorPortrait', 'lunarHalo', 'moonView'])
       let _currentCompositionKey = 'homeGlobe'
       // One distance grammar for the screen-space rim stack. Theme configs
       // provide the authored color/strength; composition distance only scales
@@ -7416,6 +7416,23 @@
         deepSpace: {
           lat: 31.23, lon: 121.47,
           cameraOffsetZ: 80.0,
+          fov: 28,
+        },
+        // moonView：月亮专属构图（天体分层用，farOrbit 不再承担月亮展示后新增）。
+        // 相机距地心 ≈48 ∈ [MOON_VISIBLE_DIST(35), MOON_HIDE_DIST(65))，故仅月亮可见、太阳/行星隐藏。
+        // 距地心=48 时月亮最大角偏移 asin(6/48)=7.2° << FOV/2(14°)，月亮任意方向都完整在框内（不贴边/不裁切）。
+        // 纯新增条目，沿用 deepSpace 的 cameraOffsetZ 写法（固定值，非 earthDiameterPct 百分比公式）。
+        moonView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 48.0,
+          fov: 28,
+        },
+        // lunarHalo：月亮 + 太阳同框的中间档（天体分层用）。
+        // 相机距地心 ≈58 ∈ [SUN_VISIBLE_DIST(50), MOON_HIDE_DIST(65))，故月亮+太阳可见、行星隐藏。
+        // 纯新增条目，沿用 deepSpace 的 cameraOffsetZ 写法（固定值，非 earthDiameterPct 百分比公式）。
+        lunarHalo: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 58.0,
           fov: 28,
         },
       }

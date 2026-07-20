@@ -7474,3 +7474,38 @@ RW反馈截图显示Earth贴图大量404（2702个console错误）、画面色�
 ### 遗留 / 下一步
 - #54：天王星/海王星/冥王星 + 代表性卫星（伽利略卫星/土卫六/土星环），可以直接复用这套开普勒+统一比例尺+Sprite渲染的基础设施，不用重新设计。
 - 五颗行星目前用的是"典型地球距离"（固定值），跟太阳/月亮一样是稳定摆放，不是逐帧精确的真实地心距离浮动——这是有意简化（现实里肉眼也感知不到深度差异，只有方向和亮度是真实感知得到的信息），已在此前审计对话里明确过。
+
+---
+
+## 2026-07-20 — 天体场景构图分层：月亮距离拉开 + 新增moonView/lunarHalo构图
+
+### 背景
+RW看过#53行星deepSpace截图后反馈"不精致"，给出三条规则：①月亮不能跟其他行星同框 ②月亮可以单独跟地球出现、也可以跟地球+太阳出现 ③月亮距地球的距离要拉开，不要贴着。我先写了设计文档`celestial_scene_composition_v1.md`，诊断出一个真实几何bug：`MOON_DIST=3`+恒定角直径缩放，在deepSpace(80单位)距离下会让月亮球体实际穿透进地球球体内部（近边缘1.43 < 地球半径2）——这不只是审美问题。
+
+### 做了什么（分两轮，第一轮有真实缺陷，第二轮修正）
+
+**第一轮**：`MOON_DIST`3→6，新增`lunarHalo`构图(cameraOffsetZ=58)，可见性拆成三档独立阈值（`MOON_VISIBLE_DIST=20~MOON_HIDE_DIST=65`月亮 / `SUN_VISIBLE_DIST=50`太阳 / `PLANETS_VISIBLE_DIST=70`行星，从共用阈值里拆开）。
+
+**验证时发现第一轮的真实问题**：farOrbit(25.15)下，`MOON_DIST=6`导致月亮最大角偏移达到13.4°，逼近FOV半角14°的硬上限——"能看见"但贴着屏幕边缘被裁切，跟`realCelestial.getState().moonVisible=true`这个布尔值和workbuddy自己的像素计数验证方法（"702px月亮存在"）都对不上真实观感。我截图实测确认月亮被裁到只剩一个月牙卡在顶部，还被Theme Tuner面板挡住——这是自动化验证（布尔/像素计数）和人眼判断的真实差距。
+
+**第二轮修正**：新增`moonView`专属构图(cameraOffsetZ=48)专门给月亮用，`farOrbit`不再承担月亮展示（月亮可见性下限从20提到35，farOrbit的25.15不再落在区间内）。这次验证方法升级为**几何级证明**（NDC空间月亮四边距离画面边界的余量，不是布尔值也不是像素计数）：`moonView`下四边margin全部为正（我独立重算过，同一时刻margin值不同但结构一致，验证了公式本身正确不是编的），`farOrbit(25.15)`若强行显示月亮的话理论上边缘会到1.067 NDC（>1，即6.7%裁切），跟`moonView(48)`的0.594形成对比，数学上证明了迁移的必要性。
+
+### 最终四档分层矩阵
+| 构图 | 距地心 | 月亮 | 太阳 | 行星 |
+|---|---|---|---|---|
+| farOrbit | 25.15 | ✗ | ✗ | ✗ |
+| moonView（新） | 48 | ✓ | ✗ | ✗ |
+| lunarHalo（新） | 58 | ✓ | ✓ | ✗ |
+| deepSpace | 80 | ✗ | ✓ | ✓ |
+
+### 独立复核方式
+用`__debugSetCameraDistance()`+暴露的API（`getSubsolarPoint`/`getSublunarPoint`/`lonLatToVector3`等）自己重算了一遍moonView下月亮的NDC位置+角直径半张角，独立验证四边margin全部为正（跟报告数字不完全一致，因为测试时刻不同导致月亮真实方位不同，但"全部为正"这个结构性结论一致，证明公式本身可靠不是凑出来的）。另外直接用四档阈值常量对四个构图的真实相机距离做算术核对（不依赖渲染/rAF，因为这次预览浏览器标签页又是hidden状态，动画过渡系统没法用），farOrbit/moonView/lunarHalo/deepSpace四档结果精确匹配设计表。
+
+### 改动文件
+- 改 `pwa/earth3d.js`（新增`moonView`+`lunarHalo`两个构图条目，加入`FAR_COMPOSITIONS`）
+- 改 `pwa/real-celestial.js`（`MOON_DIST`3→6，可见性三档独立拆分，`MOON_VISIBLE_DIST`20→35）
+- 新增 `docs/.../celestial_scene_composition_v1.md`（设计文档，含几何bug诊断）
+- 新增 `docs/.../layering_visibility_report.md`、`layering_moonview_report.md`及对应截图/JSON
+
+### 遗留
+- "不精致"这个反馈里，几何裁切bug已经解决，但RW明确说"后续解决，需要看调整后的效果"——整体视觉打磨（天体呈现方式区分度、公转环质感、画面构图空旷感）还没处理，等RW看完这轮效果再定下一步。
