@@ -7556,3 +7556,19 @@ RW看过`lunarHalo`截图后反馈"这个星环有点丑，太简单了"——�
 - 代理阻断 Copernicus/NASA 二进制服务器 → 生产环境需用 §2 命令+免费账号复现月度合成下载（文件大小/维度待核实）。
 - Copernicus `SPM`/`CDM` 单位与参考波长待首次下载后查属性确认（影响 <1%，可忽略）。
 - 工作量判断：首个可见里程碑（烘焙一张全球水色静态纹理）~3-4 天；完整集成 ~2-3 周/3-4 阶段。
+
+## 2026-07-20 #57 阶段A 数据获取+烘焙脚本（真实全球水色纹理）
+
+### 做了什么
+- 用 .env 凭证（正确映射为 copernicusmarine 2.4.1 期望的 COPERNICUSMARINE_SERVICE_USERNAME/PASSWORD，非 .env 旧名）经官方工具真实下载 Copernicus GlobColour BGC L4 月度（OCEANCOLOUR_GLO_BGC_L4_MY_009_104）2024-06 三 part：CHL 149.4MB / SPM+KD490 298.7MB / CDM 149.4MB，共 597.5MB，4km 4320x8640 Plate Carree，SHA256 已记录。
+- 扩展 Step 0 管线（prep_copernicus.py→run_pipeline_real.js→render_texture.py，二进制交换避免大 JSON）：逐变量读 _FillValue=-999 掩膜+量纲裁剪，重采样到 4096x2048，对 4,095,588 真实像素逐个跑未改动的 water_params_reference.js deriveWaterParams({chl,spm,kd490,cdm,wind})。
+- 产出交付纹理 global_watercolor_rgba.png（4096x2048 RGBA，陆地/云/冰透明=51.2%）+ 预览图。掩膜验证：撒哈拉/喜马拉雅/南极/西伯利亚均透明，开阔洋不透明；按纬度透明比例符合真实地理。
+- 海洋色调交叉核对 5 站位：南太平洋/萨加索 #006982 蓝、长江口 #b36d00 黄褐、亚马逊口 #a74200 红褐、本格拉 #546905 绿，符合真实特征。hue 47.1-221.7°。
+
+### 改动文件
+- 新增 temp/ocean_color_real/：3 个 .nc + prep_copernicus.py/run_pipeline_real.js/render_texture.py/download_global.py + 纹理/中间产物
+- 新增 docs/roadmap/source_appendix/global_ocean_color_phaseA.md（验证报告）
+
+### 遗留问题
+- 仅下载未集成 earth3d.js（阶段B）。纹理按 dayTexture 同投影映射即可，透明处露陆地/云。
+- .env 的 COPERNICUS_MARINE_* 是旧变量名，当前工具需 COPERNICUSMARINE_SERVICE_*；本次已在脚本内正确映射。

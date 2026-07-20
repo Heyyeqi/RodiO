@@ -1,0 +1,30 @@
+[
+  {
+    "file": "chl_2024-06.nc",
+    "size_bytes": 149386878,
+    "vars": [
+      "CHL"
+    ],
+    "dataset": "cmems_obs-oc_glo_bgc-plankton_my_l4-multi-4km_P1M",
+    "dt_s": 27.4
+  },
+  {
+    "file": "spm_kd490_2024-06.nc",
+    "size_bytes": 298689874,
+    "vars": [
+      "SPM",
+      "KD490"
+    ],
+    "dataset": "cmems_obs-oc_glo_bgc-transp_my_l4-multi-4km_P1M",
+    "dt_s": 34.7
+  },
+  {
+    "file": "cdm_2024-06.nc",
+    "size_bytes": 149386878,
+    "vars": [
+      "CDM"
+    ],
+    "dataset": "cmems_obs-oc_glo_bgc-optics_my_l4-multi-4km_P1M",
+    "dt_s": 22.5
+  }
+]
