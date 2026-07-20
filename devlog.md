@@ -7572,3 +7572,21 @@ RW看过`lunarHalo`截图后反馈"这个星环有点丑，太简单了"——�
 ### 遗留问题
 - 仅下载未集成 earth3d.js（阶段B）。纹理按 dayTexture 同投影映射即可，透明处露陆地/云。
 - .env 的 COPERNICUS_MARINE_* 是旧变量名，当前工具需 COPERNICUSMARINE_SERVICE_*；本次已在脚本内正确映射。
+
+## 2026-07-20 #57 阶段B 尝试：真实水色纹理接入earth3d.js（技术验证通过，颜色质感未过关，已撤回）
+
+### 做了什么
+- 在`earthMaterial.onBeforeCompile`里接入了阶段A产出的真实水色纹理（`uWaterColorMap`/`uWaterColorMix`，复用#53 Blue Marble远景混合同款手法，默认零影响，`?earthCandidate=realOceanColor`调试开关激活）。
+- 独立验证：默认路径`getWaterColorMix()`确认为0、网络日志确认纹理文件从未被请求、控制台零报错；激活开关后起真实`node server.js`截图对比，陆地（城市灯光/地形）逐像素跟基线一致零污染，多主题（夜间/noon）下海洋颜色都能看到真实的近岸浑浊→开阔洋清澈过渡结构。技术层面全部达标。
+
+### 为什么撤回
+RW看过真机截图后判断颜色不对——近岸浑浊区是高饱和荧光橙、开阔洋是高饱和青绿，看起来像科研数据热力图配色，不是真实卫星摄影里海水该有的克制自然色调，跟陆地贴图的摄影质感不统一，没做到RodiO一贯的"克制真实"调性。根源是`deriveWaterParams()`输出的物理反射率色值直接喂给了贴图，中间缺一道"物理色→自然照片色"的色调映射/降饱和处理。
+
+### 处理
+- `pwa/earth3d.js`已用`git checkout`完全还原到接入前状态（无残留代码）。
+- `pwa/assets/textures/ocean/global_watercolor_2024_06.png`（这次接入用的贴图副本）已删除——原始文件依然完好保存在已提交的`docs/roadmap/source_appendix/ocean_color_phaseA/global_watercolor_rgba.png`，不受影响。
+- 报告`global_ocean_color_phaseB.md`+验证截图保留作为记录（技术验证方法/结论依然成立，数据管线和纹理数据本身没问题，不用重新验证这部分），补记了§五结论说明撤回原因。
+
+### 遗留问题
+- 需要先做一轮色调映射/降饱和设计（参考真实卫星true color合成图的色彩分布做校准），色调调对了再重新考虑接入`earth3d.js`。
+- 这轮的技术接入方式（uWaterColorMap/uWaterColorMix、alpha天然遮罩、默认零影响的开关模式）本身是验证过可行的，下次直接复用这套接入手法，只需要换算法出来的颜色输入。
