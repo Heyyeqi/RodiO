@@ -324,6 +324,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#17](https://github.com/Heyyeqi/RodiO/issues/17) | 画面流畅度 + 镜头切换渲染延迟专项审计 | Performance and Rendering Polish | P2 | Backlog |
 | [#18](https://github.com/Heyyeqi/RodiO/issues/18) | 长期backlog: RDL集成 / Astronomy剩余字段 / Agent Mesh / 彩蛋 | Long-Term Backlog | P3 | Backlog |
 | [#55](https://github.com/Heyyeqi/RodiO/issues/55) | 歌曲地理联动：镜头/场景随歌曲所属地域切换 | Long-Term Backlog | P3 | Backlog（纯记录，无设计方案） |
+| [#56](https://github.com/Heyyeqi/RodiO/issues/56) | 地面仰视天空场景：区别于Horizon Mode平视，与#37海里仰视对称 | Long-Term Backlog | P3 | Backlog（纯记录，无设计方案） |
 | [#19](https://github.com/Heyyeqi/RodiO/issues/19) | 选歌模块v2 Phase1完成确认 + Phase2 graduation监控标准 | Song Selection v2 — Phase 2 Graduation | P1 | Backlog |
 | [#20](https://github.com/Heyyeqi/RodiO/issues/20) | 选歌模块v2缺口: skip_penalty分层衰减 + discovery_candidates pipeline | Song Selection v2 — Phase 2 Graduation | P2 | Done（fdd1753，本地模拟验证通过） |
 | [#21](https://github.com/Heyyeqi/RodiO/issues/21) | 此刻入口 + 祈求系统实现 | Companion and Prayer System | P1 | Backlog |
