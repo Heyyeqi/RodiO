@@ -93,8 +93,9 @@
   // 红线：不触碰上方太阳/月亮任何逻辑（摆放/角直径/月相），此处只新增"轨道环 + 地球标记"。
   // 与 near-field 太阳晕是两套独立语言，允许共存、不必物理一致。
   const ORBIT_RING_DIST = 8        // 轨道环半径（场景单位，地球半径=2；> SUN_DIST=6，环包住太阳晕）
-  const ORBIT_RING_OPACITY = 0.26  // 克制、不抢戏
-  const ORBIT_MARKER_OPACITY = 0.92
+  const ORBIT_RING_WIDTH = 0.18    // 柔边光带半宽（innerR=dist-width, outerR=dist+width）
+  const ORBIT_RING_COLOR = 0x7fa8d0 // 环色（克制、不抢戏）
+  const MARKER_BASE_SIZE = 0.62    // 地球标记呼吸光点基准世界尺寸
   const OBLIQ = 23.4393 * DEG      // 黄赤交角（低精度，足够示意）
 
   // 太阳径向渐变光晕贴图（程序生成 CanvasTexture，避免外部依赖）
@@ -375,29 +376,75 @@
     }
 
     // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
-    const orbitSegs = 160
-    const orbitPts = []
-    for (let i = 0; i <= orbitSegs; i++) {
-      const th = (i / orbitSegs) * Math.PI * 2
-      orbitPts.push(eclipticToEquatorialDir(th).multiplyScalar(ORBIT_RING_DIST))
+    // 环：RingGeometry 细圆环 mesh + ShaderMaterial（柔边光带 + 角度衰减，最亮段跟随地球黄经）
+    const ringInner = ORBIT_RING_DIST - ORBIT_RING_WIDTH
+    const ringOuter = ORBIT_RING_DIST + ORBIT_RING_WIDTH
+    const orbitGeo = new T.RingGeometry(ringInner, ringOuter, 256, 1)
+    const orbitUniforms = {
+      uEarthAngleRad: { value: 0 },                       // 地球当前黄经（弧度），每帧更新，与 earthMarker 同源
+      uTime: { value: 0 },
+      uColor: { value: new T.Color(ORBIT_RING_COLOR) },
+      uInner: { value: ringInner },
+      uOuter: { value: ringOuter },
     }
-    const orbitGeo = new T.BufferGeometry().setFromPoints(orbitPts)
-    const orbitMat = new T.LineBasicMaterial({
-      color: 0x7fa8d0, transparent: true, opacity: ORBIT_RING_OPACITY,
-      depthWrite: false, depthTest: false,
+    const orbitVert = `
+      varying float vAngle;
+      varying float vRadial;
+      uniform float uInner;
+      uniform float uOuter;
+      void main() {
+        // 局部 XY 平面角度（与 eclipticToEquatorialDir 同一经度量，旋转前）
+        vAngle = atan(position.y, position.x);
+        float r = length(position.xy);
+        vRadial = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0); // 0=内边 1=外边
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `
+    const orbitFrag = `
+      precision highp float;
+      varying float vAngle;
+      varying float vRadial;
+      uniform float uEarthAngleRad;   // 地球当前黄经（弧度）
+      uniform float uTime;
+      uniform vec3 uColor;
+      const float TAU = 6.28318530718;
+      void main() {
+        // 径向：中心亮，边缘柔和衰减（非硬边）
+        float radial = 1.0 - smoothstep(0.0, 1.0, abs(vRadial - 0.5) * 2.0);
+        // 角度：当前像素角度与地球黄经的劣弧距离
+        float pa = vAngle;
+        if (pa < 0.0) pa += TAU;
+        float angDist = abs(pa - uEarthAngleRad);
+        angDist = min(angDist, TAU - angDist);
+        float angularFade = smoothstep(3.14159, 0.0, angDist);  // 近地球越亮
+        float alpha = radial * mix(0.08, 0.5, angularFade);     // 0.08=最暗底限（不完全消失）
+        gl_FragColor = vec4(uColor, alpha);
+      }
+    `
+    const orbitMat = new T.ShaderMaterial({
+      uniforms: orbitUniforms,
+      vertexShader: orbitVert,
+      fragmentShader: orbitFrag,
+      transparent: true,
+      blending: T.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      side: T.DoubleSide,
     })
-    const orbitRing = new T.LineLoop(orbitGeo, orbitMat)
+    const orbitRing = new T.Mesh(orbitGeo, orbitMat)
+    orbitRing.rotation.x = OBLIQ   // 对齐黄道倾角（绕X转+ε，与 eclipticToEquatorialDir 一致）
     orbitRing.renderOrder = 15
     orbitRing.frustumCulled = false
     orbitRing.visible = false
     scene.add(orbitRing)
 
-    const markerGeo = new T.SphereGeometry(0.16, 16, 16)
-    const markerMat = new T.MeshBasicMaterial({
-      color: 0x8fd0ff, transparent: true, opacity: ORBIT_MARKER_OPACITY,
-      depthWrite: false, depthTest: false,
+    // 地球标记：呼吸光点（Sprite + 径向渐变，复用行星光晕生成手法 + 太阳同款 pulse 节奏）
+    const markerTex = makePlanetGlowTexture([143, 208, 255], 1.0) // 浅蓝，复用既有生成器
+    const markerMat = new T.SpriteMaterial({
+      map: markerTex, transparent: true,
+      blending: T.AdditiveBlending, depthWrite: false, depthTest: false,
     })
-    const earthMarker = new T.Mesh(markerGeo, markerMat)
+    const earthMarker = new T.Sprite(markerMat)
     earthMarker.renderOrder = 16
     earthMarker.frustumCulled = false
     earthMarker.visible = false
@@ -409,6 +456,7 @@
       moonAngDiamDeg: 0, sunAngDiamDeg: 0,
       moonNDC: [0, 0], sunNDC: [0, 0],
       orbitVisible: false, earthMarkerEclLonDeg: 0,
+      orbitEarthAngleRad: 0, earthMarkerNDC: [0, 0], earthCenterNDC: [0, 0],
     }
     const earthCenter = new T.Vector3()
     const sunDir = new T.Vector3(), moonDir = new T.Vector3()
@@ -464,6 +512,9 @@
       state.orbitVisible = showOrbit
       orbitRing.visible = showOrbit
       earthMarker.visible = showOrbit
+      // 视觉生命感（呼吸节奏，与太阳 pulse 同款）
+      const t = (performance.now() - t0) / 1000
+      const pulse = 1 + 0.05 * Math.sin(t * 0.8)
       if (showOrbit) {
         const tNow = nowParam ? nowMs : Date.now()
         const lamE = earthHeliocentricEclLon(tNow) * DEG
@@ -471,6 +522,17 @@
         const dir = eclipticToEquatorialDir(lamE).multiplyScalar(ORBIT_RING_DIST)
         earthMarker.position.copy(earthCenter).add(dir)
         orbitRing.position.copy(earthCenter)
+        // 环 shader：最亮段跟随地球黄经（与标记同源，不重算）
+        orbitUniforms.uEarthAngleRad.value = lamE
+        orbitUniforms.uTime.value = t
+        state.orbitEarthAngleRad = round(lamE, 5)
+        // 地球标记呼吸光点
+        const ms = MARKER_BASE_SIZE * pulse
+        earthMarker.scale.set(ms, ms, 1)
+        const mndc = earthMarker.position.clone().project(camera)
+        state.earthMarkerNDC = [round(mndc.x, 4), round(mndc.y, 4)]
+        const ecndc = earthCenter.clone().project(camera)
+        state.earthCenterNDC = [round(ecndc.x, 4), round(ecndc.y, 4)]
       }
 
       // 恒定角直径缩放：世界尺寸 = 相机距 × tan(角直径/2)
@@ -492,9 +554,7 @@
       // 月相：世界坐标 (太阳 − 月亮) 方向
       moonUniforms.uSunDir.value.copy(sunPos).sub(moonPos).normalize()
 
-      // 太阳轻微脉动（视觉生命感）
-      const t = (performance.now() - t0) / 1000
-      const pulse = 1 + 0.05 * Math.sin(t * 0.8)
+      // 太阳轻微脉动（与地球标记同款呼吸节奏，pulse 已在上方定义）
       if (showSun) sun.scale.set(state.sunWorldDiameter * pulse, state.sunWorldDiameter * pulse, 1)
 
       // 屏幕 NDC（用于验证"随时间在动"）
@@ -536,6 +596,9 @@
           moonDistFromEarth: round(moonPos.distanceTo(earthCenter), 3),
           orbitVisible: state.orbitVisible,
           earthMarkerEclLonDeg: state.earthMarkerEclLonDeg,
+          orbitEarthAngleRad: state.orbitEarthAngleRad,
+          earthMarkerNDC: state.earthMarkerNDC,
+          earthCenterNDC: state.earthCenterNDC,
           now: nowMs,
           subSolar: apiData ? [round(apiData.sun.subSolarLat, 3), round(apiData.sun.subSolarLon, 3)] : null,
           subLunar: apiData ? [round(apiData.moon.subLunarLat, 3), round(apiData.moon.subLunarLon, 3)] : null,

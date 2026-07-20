@@ -1,0 +1,26 @@
+{
+  "W": 1000,
+  "H": 600,
+  "nowA": {
+    "png": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/ring_nowA_deepSpace.png",
+    "earthMarkerNDC": [
+      -0.0962,
+      0.3041
+    ],
+    "earthCenterNDC": [
+      0,
+      -0.0702
+    ]
+  },
+  "nowB": {
+    "png": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/ring_nowB_deepSpace.png",
+    "earthMarkerNDC": [
+      0.0856,
+      -0.4166
+    ],
+    "earthCenterNDC": [
+      0,
+      -0.0702
+    ]
+  }
+}

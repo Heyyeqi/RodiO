@@ -1,0 +1,43 @@
+{
+  "T1_default_zeroImpact": {
+    "realCelestialMounted": false,
+    "realErrors": 0
+  },
+  "T2_deepSpace_newRing": {
+    "camDist": 80.01,
+    "orbitVisible": true,
+    "earthMarkerEclLonDeg": 297.851,
+    "orbitEarthAngleRad": 5.19849,
+    "pass": true
+  },
+  "T3_lunarHalo_newRing": {
+    "camDist": 58.02,
+    "orbitVisible": true,
+    "pass": true
+  },
+  "T4_angularFade": {
+    "nowA_orbitRad": 1.74607,
+    "nowA_markerDeg": 100.042,
+    "nowB_orbitRad": 4.88107,
+    "nowB_markerDeg": 279.665,
+    "angleShiftDeg": 179.62,
+    "uniformTracksMarker": true,
+    "notFixed": true,
+    "pass": true
+  },
+  "T5_markerBreathing": {
+    "sampledScales": [
+      0.5991,
+      0.5917,
+      0.589,
+      0.5912,
+      0.5979
+    ],
+    "scaleSpread": 0.0101,
+    "baseSize": 0.62,
+    "isBreathing": true,
+    "pass": true
+  },
+  "realErrors": [],
+  "allPass": true
+}

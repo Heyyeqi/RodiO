@@ -7509,3 +7509,31 @@ RW看过#53行星deepSpace截图后反馈"不精致"，给出三条规则：①�
 
 ### 遗留
 - "不精致"这个反馈里，几何裁切bug已经解决，但RW明确说"后续解决，需要看调整后的效果"——整体视觉打磨（天体呈现方式区分度、公转环质感、画面构图空旷感）还没处理，等RW看完这轮效果再定下一步。
+
+---
+
+## 2026-07-20 — 公转环视觉改造：硬线条 → 柔边光带 + 角度衰减 + 呼吸光点
+
+### 背景
+RW看过`lunarHalo`截图后反馈"这个星环有点丑，太简单了"——公转环是`THREE.LineLoop`画的均匀硬线，跟地球/月亮这种有质感的渲染完全不在一个视觉语言体系，像"调试用的几何辅助线"。
+
+### 做了什么
+- **环**：`LineLoop`（逐点采样+硬线）→ `THREE.RingGeometry`+自定义`ShaderMaterial`（`AdditiveBlending`）。mesh整体绕X轴转黄赤交角对齐（不再逐点算方向向量拼geometry，直接复用`RingGeometry`自带UV）。
+  - 径向：`smoothstep`中心亮、边缘柔和衰减，不是硬边
+  - 角度：`uEarthAngleRad`uniform（每帧=`earthHeliocentricEclLon(nowMs)*DEG`，跟`earthMarker.position`同源，没有重复计算导致的潜在错位）驱动"离地球标记点越近越亮"，最暗处留0.08的底限（不完全消失）
+- **地球标记**：`SphereGeometry`实心小球 → `Sprite`+径向渐变贴图（复用已有的`makePlanetGlowTexture`生成器，没有再造一套），呼吸脉动直接复用太阳已有的`1+0.05*sin(t*0.8)`节奏（还顺手把t/pulse的计算提到了共享位置，避免太阳和地球标记各算一份容易不同步）。
+
+### 验证结果
+| 测试 | 结果 |
+|------|------|
+| 默认路径零影响 | ✅ |
+| deepSpace/lunarHalo新环渲染 | ✅ |
+| 角度衰减跟随地球位置 | ✅ 两个相隔半年的`?now=`时刻，环上最亮段角度变化179.62°，跟真实地球半年公转角度（≈180.05°）吻合 |
+| 呼吸光点缩放变化 | ✅ scale在[0.589,0.599]区间波动（理论范围0.589-0.651，符合`0.62×(1±0.05)`） |
+
+### 独立复核方式
+起了真实`node server.js`（复用前先kill掉一个跑了1h20m的旧进程），直接读取live scene graph（`window.realCelestial.orbitRing`/`.earthMarker`），确认`orbitRing`确实是`Mesh+RingGeometry+ShaderMaterial`（uniform名字`uEarthAngleRad/uTime/uColor/uInner/uOuter`跟diff完全一致），`earthMarker`确实是`Sprite`——不是文字描述，是我自己重新连的服务器独立读出来的。切到`noon`主题截图，肉眼直接确认了角度衰减效果：环在地球标记点附近（右下）最亮，绕到对面（左上）几乎看不见，视觉效果比之前的硬线好非常多。
+
+### 改动文件
+- 改 `pwa/real-celestial.js`（公转环+地球标记渲染逻辑重写）
+- 改 `pwa/index.html`（我自己之前的修复：Camera Grammar V1调试面板补上`moonView`/`lunarHalo`两个按钮，这次一起提交）
