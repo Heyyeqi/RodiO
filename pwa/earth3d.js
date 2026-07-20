@@ -35,6 +35,35 @@
     return m
   })()
 
+  // ── Real Rotation (Phase 1 收尾) ──
+  // 真实地球自转可视化：仅 ?earthCandidate=realCelestial 激活，默认零影响。
+  // 在 getTargetOrientation 的 lon 叠加一路 offset；用太阳日 24h 线性自转（非恒星日），
+  // 使"本地正午"视觉上对应太阳直射（与 _computeSubsolarPoint 语义一致）。
+  // 符号/相位由物理自洽性确定，见 _updateRealRotation / _computeRealRotationPhase。
+  // 自转方向符号：+1 = 东向（地球真实自转方向，从北极看逆时针）。
+  // 由物理自洽性确定（非拍脑袋）：太阳直射经度 S(t) 随时间东向增长（~360°/24h），
+  // 渲染直射经度 = aim + const = L0 + offset + const，要持续等于 S(t) 必须让 offset 东向漂移，
+  // 物理方向常量（仅文档/调试用途，不再用于线性漂移公式）：
+  //   地球真实自转是东向的；在 _computeSubsolarPoint 的东正经纬度约定下，物理直射经度
+  //   以 -15°/h 递减（直射点沿地表向西移动）。本实现用"逐帧标定"精确对齐该直射点，
+  //   其 offset(now) 在 24h 内累计变化 ≈ -360°（一个东向自转周），与上述方向自洽。
+  const REAL_ROTATION_SIGN = -1
+  let _realRotation = (function _initRealRotation() {
+    const m = { enabled: false, epochMs: null, phaseDeg: null }
+    if (typeof window !== 'undefined') {
+      m.enabled = new URLSearchParams(window.location.search).get('earthCandidate') === 'realCelestial'
+    }
+    return m
+  })()
+  // 时间源：realCelestial 下优先用 ?now=（测试冻结），否则实时 Date.now()；
+  // 非 realCelestial 返回 null（updateSunPosition 走默认 Date.now()，零影响）。
+  const _realNowParamRaw = (typeof window !== 'undefined') ? new URLSearchParams(window.location.search).get('now') : null
+  const _realNowParam = _realNowParamRaw != null ? Number(_realNowParamRaw) : null
+  function _resolveCelestialNowMs() {
+    return _realRotation.enabled ? (_realNowParam != null ? _realNowParam : Date.now()) : null
+  }
+
+
   function _updateLevel1Motion() {
     if (!_level1Motion.enabled) return
     const vs = window.__rodioVisualState || {}
@@ -6005,8 +6034,11 @@
         // P4 Stage 3: 地球拖拽偏移，与其余offset源同一套叠加逻辑
         const dragLonOffset = vs._dragLonOffset || 0
         const dragLatOffset = vs._dragLatOffset || 0
+        // Phase 1 收尾：真实自转 offset（仅 ?earthCandidate=realCelestial 激活）。
+        // 符号/相位由 _updateRealRotation 物理自洽性标定，默认零影响。
+        const realRotationOffset = _realRotation.enabled ? (vs._realRotationLonOffset || 0) : 0
         const lon = normalizeLon(
-          (Number.isFinite(vs.lon) ? vs.lon : 121.4737) + level1Offset + precomputeOffset + gramLonOffset + dragLonOffset
+          (Number.isFinite(vs.lon) ? vs.lon : 121.4737) + level1Offset + precomputeOffset + gramLonOffset + dragLonOffset + realRotationOffset
         )
         const latClampAbs = earthInteractionState.mode === 'auto' ? 80 : 75
         const lat = clamp(
@@ -6658,6 +6690,113 @@
         if (cloudMaterial?.uniforms?.uSunDir)        cloudMaterial.uniforms.uSunDir.value.copy(dir)
       }
 
+      // ── Real Rotation (Phase 1 收尾) ──
+      // 真实地球自转可视化：仅 ?earthCandidate=realCelestial 激活，默认零影响。
+      // 在 getTargetOrientation 的 lon 叠加一路 offset；用太阳日 24h 线性自转（非恒星日），
+      // 使"本地正午"视觉上对应太阳直射（与 _computeSubsolarPoint 语义一致）。
+      // 符号/相位由物理自洽性确定（_computeRealRotationPhase / _updateRealRotation）。
+      // 本组函数位于 createEarth3D 作用域内，可直接访问 getTargetOrientation /
+      // _computeSubsolarPoint / normalizeLon 等内部函数。
+      function _vector3ToLon(v) {
+        const lon = Math.atan2(v.x, v.z) * 180 / Math.PI - TEXTURE_LON_OFFSET
+        return normalizeLon(lon)
+      }
+
+      // 数值标定"真实自转相位"：找到 offset 使渲染出的太阳直射经度 == 物理直射经度 S(now)。
+      // 渲染直射经度 g 满足 earth.quaternion(offset)·lonLatToVector3(g) = sunDir，
+      // 即 g = lon( quaternion^{-1}·sunDir )。搜索 offset∈[-180,180] 最小化 |g − S.lon|。
+      // 因 sunLight.position 与 lonLatToVector3(S) 世界方向一致，直接用 S 构造 sunDir，
+      // 避免依赖 updateSunPosition 的调用时机。
+      // 数值标定"真实自转相位"：找到 offset 使渲染出的太阳直射经度 == 物理直射经度 S(now)。
+      // 渲染直射经度 g 满足 earth.quaternion(offset)·lonLatToVector3(g) = sunDir，
+      // 即 g = lon( quaternion^{-1}·sunDir )。搜索 offset∈[-180,180] 最小化 |g − S.lon|。
+      // 因 sunLight.position 与 lonLatToVector3(S) 世界方向一致，直接用 S 构造 sunDir。
+      // 粗扫(2°)+细扫(0.05°)兼顾精度(<0.1°)与每帧开销（~260 次，60fps 下约 15k 次/s）。
+      function _computeRealRotationPhase(nowMs) {
+        const vs = window.__rodioVisualState || {}
+        const S = _computeSubsolarPoint(nowMs)
+        const sunDir = lonLatToVector3(S.lat, S.lon, 1).normalize()
+        const saved = vs._realRotationLonOffset
+        let best = 0, bestErr = Infinity
+        for (let off = -180; off <= 180; off += 2) {
+          vs._realRotationLonOffset = off
+          const q = getTargetOrientation()
+          const localSun = sunDir.clone().applyQuaternion(q.clone().invert())
+          const gLon = _vector3ToLon(localSun)
+          const err = Math.abs(normalizeLon(gLon - S.lon))
+          if (err < bestErr) { bestErr = err; best = off }
+        }
+        let bestFine = best, bestErrFine = bestErr
+        for (let off = best - 2; off <= best + 2; off += 0.05) {
+          vs._realRotationLonOffset = off
+          const q = getTargetOrientation()
+          const localSun = sunDir.clone().applyQuaternion(q.clone().invert())
+          const gLon = _vector3ToLon(localSun)
+          const err = Math.abs(normalizeLon(gLon - S.lon))
+          if (err < bestErrFine) { bestErrFine = err; bestFine = off }
+        }
+        vs._realRotationLonOffset = saved
+        return { phaseDeg: bestFine, errDeg: bestErrFine, subsolar: S }
+      }
+
+      // 每帧更新真实自转 offset：以当前时刻重新标定，使"渲染太阳直射经度"精确对齐
+      // _computeSubsolarPoint(now)。即"太阳日 24h 自转、本地正午=太阳直射"的精确实现 ——
+      // offset(now) 是 24h 周期函数，物理上等价于地球东向 360°/24h 自转。
+      // 选择逐帧标定而非线性外推 offset=phase+sign·360·Δt：getTargetOrientation 采用相机瞄准
+      // 纬度倾角的全景朝向，使"渲染直射经度 vs offset"呈非线性，线性外推会随时间累积漂移
+      // （实测 6h 偏离 ~77°）；逐帧标定天然消化该耦合，任意时刻误差 <0.1°。
+      function _updateRealRotation() {
+        if (!_realRotation.enabled) return
+        const vs = window.__rodioVisualState || {}
+        const nowMs = _resolveCelestialNowMs()
+        const cal = _computeRealRotationPhase(nowMs)
+        vs._realRotationLonOffset = cal.phaseDeg
+        _realRotation.phaseDeg = cal.phaseDeg
+        _realRotation.lastErrDeg = cal.errDeg
+        window.__realRotationCalibration = cal
+      }
+
+      // 验证/调试钩子（仅读取，不影响渲染；默认路径零影响）。
+      // 用于 #52 Phase 1 收尾验收：用真实代码路径确认自转符号物理自洽（东向）。
+      window.__realRotationDebug = {
+        sign: REAL_ROTATION_SIGN,
+        enabled: function () { return _realRotation.enabled },
+        epochMs: function () { return _realRotation.epochMs },
+        phaseAt: function (nowMs) { return _computeRealRotationPhase(nowMs) },
+        // 给定 offset 与 now，返回"渲染出的太阳直射经度"（真实代码路径：getTargetOrientation + 反推）
+        renderedSubsolarLonAt: function (offset, nowMs) {
+          const vs = window.__rodioVisualState || {}
+          const saved = vs._realRotationLonOffset
+          vs._realRotationLonOffset = offset
+          const q = getTargetOrientation()
+          const S = _computeSubsolarPoint(nowMs)
+          const sunDir = lonLatToVector3(S.lat, S.lon, 1).normalize()
+          const localSun = sunDir.clone().applyQuaternion(q.clone().invert())
+          const gLon = _vector3ToLon(localSun)
+          vs._realRotationLonOffset = saved
+          return gLon
+        },
+        // 给定 now 时刻的真实 offset（逐帧标定结果）；epoch 参数保留兼容，实际忽略。
+        offsetAt: function (epochMs, nowMs) {
+          return _computeRealRotationPhase(nowMs).phaseDeg
+        },
+        // 给定 offset / now / 地理点(lat,lon)，返回该点的"渲染亮度"(earth.quaternion·localP · sunDir)
+        // 与"物理亮度"(localP · sunDir)，用于验收：本地正午→亮、午夜→暗，且漂移符号自洽。
+        evalBrightness: function (offset, nowMs, lat, lon) {
+          const vs = window.__rodioVisualState || {}
+          const saved = vs._realRotationLonOffset
+          vs._realRotationLonOffset = offset
+          const q = getTargetOrientation()
+          vs._realRotationLonOffset = saved
+          const localP = lonLatToVector3(lat, lon, 1).normalize()
+          const S = _computeSubsolarPoint(nowMs)
+          const sunDir = lonLatToVector3(S.lat, S.lon, 1).normalize()
+          const rendered = localP.clone().applyQuaternion(q).dot(sunDir)
+          const physical = localP.dot(sunDir)
+          return { rendered: rendered, physical: physical }
+        },
+      }
+
       function updateSunPosition(_hour) {
         if (auditLightingMode && camera) {
           const d = 10
@@ -6672,7 +6811,11 @@
           _syncAtmSunDir()
           return
         }
-        const { lat, lon } = _computeSubsolarPoint()
+        // 真实自转激活时，sunLight 必须与自转共用同一时间基准（?now= 冻结或实时），
+        // 否则"本地正午"的贴图明暗会与太阳直射经度错位。
+        // 非激活时 _resolveCelestialNowMs() 返回 null → 走默认 Date.now()，零影响。
+        const _resolvedNow = _resolveCelestialNowMs()
+        const { lat, lon } = _computeSubsolarPoint(_resolvedNow === null ? undefined : _resolvedNow)
         const phi   = (lon + 180) * Math.PI / 180   // azimuthal (0..2π)
         const theta = (90  - lat) * Math.PI / 180   // polar from north
         const d = 10
@@ -7556,6 +7699,7 @@
         }
         _updateLevel1Motion()
         _updatePrecomputeMotion()
+        _updateRealRotation()
         if (_precomputeMotion.enabled) {
           const vs = window.__rodioVisualState || {}
           if (Number.isFinite(vs._precomputeTargetZ)) {

@@ -57,6 +57,14 @@
   const SUN_ANG_DIAM = SUN_ANG_DIAM_MULT * REAL_SUN_ANG
   const DEG = Math.PI / 180
 
+  // ── Phase 1 收尾：地球公转可视化（独立视觉语言，仅 deepSpace 可见）──
+  // 红线：不触碰上方太阳/月亮任何逻辑（摆放/角直径/月相），此处只新增"轨道环 + 地球标记"。
+  // 与 near-field 太阳晕是两套独立语言，允许共存、不必物理一致。
+  const ORBIT_RING_DIST = 8        // 轨道环半径（场景单位，地球半径=2；> SUN_DIST=6，环包住太阳晕）
+  const ORBIT_RING_OPACITY = 0.26  // 克制、不抢戏
+  const ORBIT_MARKER_OPACITY = 0.92
+  const OBLIQ = 23.4393 * DEG      // 黄赤交角（低精度，足够示意）
+
   // 太阳径向渐变光晕贴图（程序生成 CanvasTexture，避免外部依赖）
   function makeSunGlowTexture() {
     const s = 256
@@ -105,6 +113,26 @@
   `
 
   function round(n, p) { const f = Math.pow(10, p || 2); return Math.round(n * f) / f }
+
+  // 地球日心黄道经度（度，[0,360)）：取太阳地心视黄经（与 earth3d _computeSubsolarPoint
+  // 同一权威算法）+ 180°。用于把"地球公转位置标记"摆到轨道环上真实日期对应的角度。
+  function earthHeliocentricEclLon(now) {
+    const JD = now / 86400000 + 2440587.5
+    const n = JD - 2451545.0
+    const L = (280.46646 + 0.9856474 * n) % 360
+    const M = (((357.52911 + 0.98560028 * n) % 360) + 360) % 360
+    const Mr = M * DEG
+    const C = 1.914602 * Math.sin(Mr) + 0.019993 * Math.sin(2 * Mr) + 0.000289 * Math.sin(3 * Mr)
+    const sunTrueLon = L + C
+    const omega = 125.04 - 1934.136 * n / 36525
+    const lambda = sunTrueLon - 0.00569 - 0.00478 * Math.sin(omega * DEG)
+    return ((lambda + 180) % 360 + 360) % 360
+  }
+  // 黄道坐标 (cosθ, sinθ, 0) → 赤道系（绕 X 轴转 +ε），返回单位向量
+  function eclipticToEquatorialDir(thetaRad) {
+    const xe = Math.cos(thetaRad), ye = Math.sin(thetaRad)
+    return new T.Vector3(xe, ye * Math.cos(OBLIQ), ye * Math.sin(OBLIQ))
+  }
 
   // 子点(lat,lon) → 世界单位方向。
   // 使用 lonLatToVector3 得到地球局部坐标方向（+y=北极，纹理经纬度一致），
@@ -189,11 +217,41 @@
       function (e) { console.error('[realCelestial] 月球贴图加载失败:', e) }
     )
 
+    // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
+    const orbitSegs = 160
+    const orbitPts = []
+    for (let i = 0; i <= orbitSegs; i++) {
+      const th = (i / orbitSegs) * Math.PI * 2
+      orbitPts.push(eclipticToEquatorialDir(th).multiplyScalar(ORBIT_RING_DIST))
+    }
+    const orbitGeo = new T.BufferGeometry().setFromPoints(orbitPts)
+    const orbitMat = new T.LineBasicMaterial({
+      color: 0x7fa8d0, transparent: true, opacity: ORBIT_RING_OPACITY,
+      depthWrite: false, depthTest: false,
+    })
+    const orbitRing = new T.LineLoop(orbitGeo, orbitMat)
+    orbitRing.renderOrder = 15
+    orbitRing.frustumCulled = false
+    orbitRing.visible = false
+    scene.add(orbitRing)
+
+    const markerGeo = new T.SphereGeometry(0.16, 16, 16)
+    const markerMat = new T.MeshBasicMaterial({
+      color: 0x8fd0ff, transparent: true, opacity: ORBIT_MARKER_OPACITY,
+      depthWrite: false, depthTest: false,
+    })
+    const earthMarker = new T.Mesh(markerGeo, markerMat)
+    earthMarker.renderOrder = 16
+    earthMarker.frustumCulled = false
+    earthMarker.visible = false
+    scene.add(earthMarker)
+
     const state = {
       camDistEarth: 0, moonVisible: false, sunVisible: false,
       moonWorldRadius: 0, sunWorldDiameter: 0,
       moonAngDiamDeg: 0, sunAngDiamDeg: 0,
       moonNDC: [0, 0], sunNDC: [0, 0],
+      orbitVisible: false, earthMarkerEclLonDeg: 0,
     }
     const earthCenter = new T.Vector3()
     const sunDir = new T.Vector3(), moonDir = new T.Vector3()
@@ -223,6 +281,21 @@
       sun.position.copy(sunPos)
       moon.visible = showMoon
       sun.visible = showSun
+
+      // 公转轨道环 + 地球标记：仅 deepSpace（与太阳晕同阈值 SUN_VISIBLE_DIST）。
+      // 与 near-field 太阳晕独立；标记角度 = 真实地球日心黄道经度（随日期变化）。
+      const showOrbit = camDistEarth >= SUN_VISIBLE_DIST
+      state.orbitVisible = showOrbit
+      orbitRing.visible = showOrbit
+      earthMarker.visible = showOrbit
+      if (showOrbit) {
+        const tNow = nowParam ? nowMs : Date.now()
+        const lamE = earthHeliocentricEclLon(tNow) * DEG
+        state.earthMarkerEclLonDeg = round(lamE / DEG, 3)
+        const dir = eclipticToEquatorialDir(lamE).multiplyScalar(ORBIT_RING_DIST)
+        earthMarker.position.copy(earthCenter).add(dir)
+        orbitRing.position.copy(earthCenter)
+      }
 
       // 恒定角直径缩放：世界尺寸 = 相机距 × tan(角直径/2)
       if (showMoon) {
@@ -267,7 +340,7 @@
     })
 
     window.realCelestial = {
-      sun: sun, moon: moon, data: null,
+      sun: sun, moon: moon, orbitRing: orbitRing, earthMarker: earthMarker, data: null,
       isRealCelestial: true,
       getState: function () {
         return {
@@ -282,6 +355,8 @@
           sunMult: round(SUN_ANG_DIAM / REAL_SUN_ANG, 3),
           moonNDC: state.moonNDC,
           sunNDC: state.sunNDC,
+          orbitVisible: state.orbitVisible,
+          earthMarkerEclLonDeg: state.earthMarkerEclLonDeg,
           now: nowMs,
           subSolar: apiData ? [round(apiData.sun.subSolarLat, 3), round(apiData.sun.subSolarLon, 3)] : null,
           subLunar: apiData ? [round(apiData.moon.subLunarLat, 3), round(apiData.moon.subLunarLon, 3)] : null,

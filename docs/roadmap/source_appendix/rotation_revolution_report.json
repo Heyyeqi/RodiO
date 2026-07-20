@@ -1,0 +1,101 @@
+{
+  "baseline": {
+    "isReady": true,
+    "hasRealCelestial": false,
+    "hasRealRotationDebug": true,
+    "rotationOffset": null,
+    "myCodeErrs": [],
+    "pass": true,
+    "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_baseline_no_param.png"
+  },
+  "rotation": {
+    "sign": -1,
+    "cal0ErrDeg": 0.024542614735366897,
+    "cal1ErrDeg": 0.01553457142682646,
+    "subsolarLon_T0": -178.10256618359108,
+    "subsolarLon_T1": 91.87902717889904,
+    "subsolarAdvanceDeg_perHour": -15.00306530591456,
+    "rotationPer24h": -2.8499999999999517,
+    "signCorrect": true,
+    "anchorOk": true,
+    "signConsistent": true,
+    "shanghaiNoon": {
+      "now": 1773979200000,
+      "errLonDeg": 0.4114666135084235,
+      "rendered": 0.6227123222534503,
+      "physical": 0.9595733912156026,
+      "isDay": true,
+      "isLit": true,
+      "match": true,
+      "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_rotation_shanghai_noon.png"
+    },
+    "shanghaiMid": {
+      "now": 1774022400000,
+      "errLonDeg": 0.3745748147501331,
+      "rendered": -0.6235027627840632,
+      "physical": -0.9601134073117868,
+      "isDay": false,
+      "isLit": false,
+      "match": true,
+      "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_rotation_shanghai_midnight.png"
+    },
+    "myCodeErrs": [],
+    "pass": true
+  },
+  "revolution": {
+    "byComposition": {
+      "near": {
+        "camDistEarth": 11.825,
+        "orbitVisible": false,
+        "expectOrbit": false,
+        "pass": true
+      },
+      "farOrbit": {
+        "camDistEarth": 25.186,
+        "orbitVisible": false,
+        "expectOrbit": false,
+        "pass": true
+      },
+      "deepSpace": {
+        "camDistEarth": 80.012,
+        "orbitVisible": true,
+        "expectOrbit": true,
+        "pass": true,
+        "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_revolution_deepSpace.png"
+      }
+    },
+    "byDate": [
+      {
+        "name": "vernal",
+        "now": 1773964800000,
+        "earthMarkerEclLonDeg": 179.396,
+        "orbitVisible": true,
+        "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_revolution_vernal.png"
+      },
+      {
+        "name": "summer",
+        "now": 1782000000000,
+        "earthMarkerEclLonDeg": 269.669,
+        "orbitVisible": true
+      },
+      {
+        "name": "autumn",
+        "now": 1790035200000,
+        "earthMarkerEclLonDeg": 359.014,
+        "orbitVisible": true,
+        "shot": "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/rr_revolution_autumn.png"
+      },
+      {
+        "name": "winter",
+        "now": 1797811200000,
+        "earthMarkerEclLonDeg": 89.117,
+        "orbitVisible": true
+      }
+    ],
+    "lonSpreadDeg": 269.897,
+    "compPass": true,
+    "datePass": true,
+    "pass": true
+  },
+  "overallPass": true
+}

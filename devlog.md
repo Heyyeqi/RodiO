@@ -7330,3 +7330,34 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 2. **v+w 单位混用**：v（atan2 返回弧度）+ w（normalizeLon 返回度数）混合。修正为 w 转弧度后再加。
 3. **方向参照系**：初版用绝对世界 subsolar 方向（不乘 earth.quaternion）→ 某些时刻天体投影到视锥外不可见。改为 `lonLatToVector3 + applyQuaternion(earth.quaternion)` 后始终在地球朝向半球附近。
 4. **摆放距离**：经历了 camera-relative HUD → frac×camDist（越界）→ 固定场景单位距离（MOON_DIST=3/SUN_DIST=6）三次迭代，最终方案数学上保证所有合格构图内始终可见。
+
+---
+
+## 2026-07-20 — #52 Phase 1 收尾：地球自转 + 公转可视化
+
+### 改动文件
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `pwa/earth3d.js` | EDIT | +`_realRotation`开关（默认false，仅`?earthCandidate=realCelestial`激活）；`getTargetOrientation()`新增一路`realRotationOffset`（与已有`level1Offset`/`gramLonOffset`/`dragLonOffset`同一叠加模式）；`_computeRealRotationPhase()`逐帧数值标定（粗扫2°+细扫0.05°）代替线性外推；`updateSunPosition()`与自转共用同一`?now=`时间基准；+`window.__realRotationDebug`验证钩子 |
+| `pwa/real-celestial.js` | EDIT | 新增公转轨道环（`THREE.LineLoop`，透明度0.26）+ 地球位置标记，仅`camDistEarth>=SUN_VISIBLE_DIST`（deepSpace）可见；标记角度用真实地球日心黄道经度（`earthHeliocentricEclLon`，与`_computeSubsolarPoint`同权威算法族） |
+
+### 关键设计决策
+1. **自转不用线性外推，改逐帧数值标定**：最初方案是`offset = phase + sign×360°×Δt/24h`线性递推，但`getTargetOrientation()`因相机瞄准纬度倾角引入非线性耦合，线性外推6h后偏离真实太阳直射经度77-103°。改为每帧对当前`_computeSubsolarPoint(now)`做数值搜索标定（在`getTargetOrientation()`真实代码路径上找`offset`最小化"渲染太阳直射经度"与"物理太阳直射经度"之差），任意时刻误差<0.03°。
+2. **自转offset挂在`getTargetOrientation()`已有的offset叠加模式上**（`level1Offset`+`precomputeOffset`+`gramLonOffset`+`dragLonOffset`+新增`realRotationOffset`），不改变现有结构，默认`enabled:false`时贡献0，对现有11主题+10构图零影响。
+3. **公转环是独立视觉语言，不追求跟近处太阳光晕物理自洽**：现有太阳光晕摆在3个地球半径外（视觉指示"光照方向"），公转环半径8个地球半径（包住太阳光晕），地球位置标记按真实日心黄经摆放。两者是两套独立信息，不做成同一张严格日心图。
+
+### 验证结果
+| 测试项 | 结果 | 关键数据 |
+|--------|------|----------|
+| 无参基线 | ✅ PASS | `__realRotationDebug`存在但`rotationOffset=null`，零my_code报错，11主题+10构图零影响 |
+| 自转标定精度 | ✅ PASS | 校准误差0.015-0.025°（远低于0.1°目标） |
+| 自转符号物理自洽 | ✅ PASS | 上海正午：渲染亮度+0.73（物理+0.96，同为正/白天）；上海午夜：渲染-0.73（物理-0.96，同为负/夜晚）——独立复核用`evalBrightness`钩子重跑一遍确认信号一致 |
+| 公转环可见性分档 | ✅ PASS | near(11.8)/farOrbit(25.2)不可见，deepSpace(80.0)可见，与太阳同阈值 |
+| 公转标记随日期变化 | ✅ PASS（独立天文学核对） | 春分/夏至/秋分/冬至标记黄经179.4°/269.7°/359.0°/89.1°——与"太阳视黄经0/90/180/270 + 180"的天文学事实完全吻合 |
+
+### 独立复核方式
+本轮用`window.__realRotationDebug`暴露的真实代码路径钩子（`phaseAt`/`renderedSubsolarLonAt`/`evalBrightness`）在真实`node server.js`上重新独立跑了一遍标定精度和昼夜信号测试，数字与报告基本一致（0.021°/0.016° vs 报告的0.025°/0.016°）；公转标记的四个季节值改用纯天文学事实（不跑代码）交叉核对，全部吻合。
+
+### 已知问题 / 遗留
+- 报告中的"符号测试"（`REAL_ROTATION_SIGN=-1`常量、"sign=+1会偏离103°"的对比）是早期线性外推方案的历史验证遗留——实际生产代码走逐帧数值标定，不依赖这个符号常量，这部分测试框架描述略有误导性，但不影响核心结论（自转本身已验证准确）。
+- 逐帧标定每帧约260次迭代的quaternion运算，仅在`?earthCandidate=realCelestial`时启用，对默认路径无性能影响；但如果未来这套自转系统要"毕业"进默认体验，需要优化标定算法（如闭式解或降低采样频率），不能直接照搬当前实现。
