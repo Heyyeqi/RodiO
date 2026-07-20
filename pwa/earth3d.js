@@ -591,6 +591,11 @@
     window.earth3d = earth3dApi
     console.log('[earth3d] api object assigned to window.earth3d:', typeof window.earth3d)
 
+    // ── #52 Phase 1：最小只读钩子（纯新增，不修改任何现有 mesh/theme/sunDirection 逻辑）──
+    // getScene/getCamera/getEarth 的赋值放在 scene/camera/earth 声明之后（见 createEarth3D 内部），
+    // 因为它们仅在 createEarth3D 的局部作用域内可见；lonLatToVector3 为顶层函数，此处即可赋值。
+    earth3dApi.lonLatToVector3 = lonLatToVector3
+
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isMobileDevice() })
       renderer.setPixelRatio(isMobileDevice() ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2))
@@ -2205,6 +2210,20 @@
       loadNormalMapTexture()
       earthGeometry = new THREE.SphereGeometry(2, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
+      // ── #52 Phase 1：最小只读钩子（纯新增，供 real-celestial.js 在 ?earthCandidate=realCelestial 下挂载天体）──
+      // 此处 scene/camera/earth 均已在 createEarth3D 局部作用域内声明，赋值安全、读取实时值。
+      earth3dApi.getScene = () => scene
+      earth3dApi.getCamera = () => camera
+      earth3dApi.getEarth = () => earth
+      // 天体方向（真实天文，earth3d 权威来源）：供 ?earthCandidate=realCelestial
+      // 摆放太阳/月亮使用。nowMs 透传测试时刻；缺省当前时刻。
+      earth3dApi.getSubsolarPoint = (nowMs) => _computeSubsolarPoint(nowMs)
+      earth3dApi.getSublunarPoint = (nowMs) => _computeSublunarPoint(nowMs)
+      // 天体摆放参照系：地球中心（世界坐标）+ 相机到地心的实际直线距离。
+      // real-celestial.js 用这两个量做"距离分档可见性"和"相对地球的摆放"，
+      // 不依赖构图名字，新构图（如 #40 Flight View）只要算出的距离落在区间就自动生效。
+      earth3dApi.getEarthCenter = () => earth.getWorldPosition(new THREE.Vector3())
+      earth3dApi.getCameraDistanceToEarth = () => camera.position.distanceTo(earth.getWorldPosition(new THREE.Vector3()))
       // Fresnel-based atmosphere shader: opacity = pow(1 - |dot(N,V)|, power) * scale
       // Produces a natural limb glow — transparent at center, bright only at the edge.
       // uSunDir (world-space) makes the glow brighter on the sunlit hemisphere and nearly
@@ -6539,8 +6558,11 @@
       // ── Real solar position ──────────────────────────────────────────────────
       // Returns the subsolar point (lat/lon in degrees) for the current instant
       // using the J2000 epoch algorithm (~0.1° accuracy, sufficient for rendering).
-      function _computeSubsolarPoint() {
-        const now = new Date()
+      // nowMs 可选：传入则计算该时刻（用于 ?now= 验证）；缺省用当前时刻。
+      // 这是 3D 摆放太阳/月亮的"唯一权威来源"（?earthCandidate=realCelestial 使用），
+      // 后端 core/astronomy.js 的 subSolarPoint() 仅服务于 /api/celestial-positions。
+      function _computeSubsolarPoint(nowMs) {
+        const now = (nowMs === undefined || nowMs === null) ? new Date() : new Date(nowMs)
         const JD = now.getTime() / 86400000 + 2440587.5   // Julian date
         const n  = JD - 2451545.0                          // days since J2000.0
 
@@ -6577,6 +6599,53 @@
         else if (subLon > 180) subLon -= 360
 
         return { lat: decl * 180 / Math.PI, lon: subLon }
+      }
+
+      // 月球直射点（与 _computeSubsolarPoint 同精度/同风格）。
+      // 移植自 core/astronomy.js 的 lunarEquatorialPosition()+siderealTime()
+      // （Lowe 月球位置算法 + 格林尼治恒星时），保留同等精度，仅改为 earth3d 的
+      // J2000 角度风格。返回 { lat, lon }（度，lon∈[-180,180]）。
+      // nowMs 可选：传入则计算该时刻（用于 ?now= 验证）；缺省用当前时刻。
+      function _computeSublunarPoint(nowMs) {
+        const now = (nowMs === undefined || nowMs === null) ? new Date() : new Date(nowMs)
+        const JD = now.getTime() / 86400000 + 2440587.5   // Julian date
+        const n = JD - 2451545.0                           // days since J2000.0
+        const d = JD - 2451543.5
+        // 全部以弧度运算，逐式对应 backend lunarEquatorialPosition()+siderealTime()
+        // （保留同等精度；唯一差异是黄赤交角用均值近似，与 backend apparentObliquity 差 <0.005°）。
+        const _2pi = Math.PI * 2
+        const norm2pi = (a) => ((a % _2pi) + _2pi) % _2pi
+        const node = norm2pi((125.1228 - 0.0529538083 * d) * Math.PI / 180)
+        const incl = 5.1454 * Math.PI / 180
+        const w = norm2pi((318.0634 + 0.1643573223 * d) * Math.PI / 180)
+        const a = 60.2666
+        const e = 0.0549
+        const M = norm2pi((115.3654 + 13.0649929509 * d) * Math.PI / 180)
+        const eAnomaly = M + e * Math.sin(M) * (1 + e * Math.cos(M))
+        const xv = a * (Math.cos(eAnomaly) - e)
+        const yv = a * (Math.sqrt(1 - e * e) * Math.sin(eAnomaly))
+        const v = Math.atan2(yv, xv)
+        const r = Math.sqrt(xv * xv + yv * yv)
+        const xh = r * (Math.cos(node) * Math.cos(v + w) - Math.sin(node) * Math.sin(v + w) * Math.cos(incl))
+        const yh = r * (Math.sin(node) * Math.cos(v + w) + Math.cos(node) * Math.sin(v + w) * Math.cos(incl))
+        const zh = r * Math.sin(v + w) * Math.sin(incl)
+        const lonEcl = Math.atan2(yh, xh)
+        const latEcl = Math.atan2(zh, Math.sqrt(xh * xh + yh * yh))
+        // 黄道 → 赤道（J2000 平黄赤交角）
+        const eps = (23.439291 - 0.013004 * n / 36525) * Math.PI / 180
+        const ra = Math.atan2(
+          Math.sin(lonEcl) * Math.cos(eps) - Math.tan(latEcl) * Math.sin(eps),
+          Math.cos(lonEcl)
+        )
+        const dec = Math.asin(
+          Math.sin(latEcl) * Math.cos(eps) + Math.cos(latEcl) * Math.sin(eps) * Math.sin(lonEcl)
+        )
+        // 月球直射经度 = 赤经 − 格林尼治恒星时
+        const t = n / 36525
+        const theta = 280.46061837 + 360.98564736629 * n + 0.000387933 * t * t - (t * t * t) / 38710000
+        const gst = norm2pi(theta * Math.PI / 180)   // 弧度 [0,2π)
+        const lon = (ra - gst) * 180 / Math.PI
+        return { lat: dec * 180 / Math.PI, lon: normalizeLon(lon) }
       }
 
       // Maps subsolar (lat, lon) to a Three.js direction vector.

@@ -455,6 +455,30 @@ function lunarAltitude(lat, lon, nowMs) {
   return altitude * RAD
 }
 
+// 太阳直射点：此刻太阳垂直照射地球表面的经纬度（纯由时间决定，与相机朝向无关）。
+// 纬度 = 太阳赤纬；经度由"世界时正午太阳在 Greenwich 子午线"推导（每 1 分钟 = 0.25°）。
+// 可直接喂给 earth3d.js 的 lonLatToVector3() 得到 3D 方向，与城市标记同一坐标系。
+function subSolarPoint(nowMs) {
+  const jd = toJulianDay(nowMs)
+  const dec = solarDeclination(jd) * RAD // 直射纬度 = 太阳赤纬（弧度 → 度）
+  const eqTime = equationOfTime(jd) // 分钟
+  const utc = new Date(nowMs)
+  const utcMinutes = utc.getUTCHours() * 60 + utc.getUTCMinutes() + utc.getUTCSeconds() / 60
+  // 世界时正午(UTC 12:00)时太阳直射经度 = 0°；每偏离 1 分钟，经度偏移 0.25°（= 360°/1440 分钟）
+  const lon = -((utcMinutes - 720 + eqTime) * 0.25)
+  return { lat: dec, lon: normalizeAngle(lon + 180) - 180 }
+}
+
+// 月球直射点：此刻月亮垂直照射地球表面的经纬度。
+// 由月球赤道坐标(赤经 RA / 赤纬 Dec)与格林尼治恒星时推出，同样是纯时间函数。
+function subLunarPoint(nowMs) {
+  const eq = lunarEquatorialPosition(nowMs) // { ra, dec } 弧度
+  const jd = toJulianDay(nowMs)
+  const gst = siderealTime(jd, 0) * RAD // 格林尼治恒星时（弧度 → 度）
+  const lon = (eq.ra * RAD) - gst
+  return { lat: eq.dec * RAD, lon: normalizeAngle(lon + 180) - 180 }
+}
+
 function lunarRiseSet(lat, lon, dateMs) {
   const midnight = utcMiddayForShanghaiDate(dateMs) - 12 * 60 * 60 * 1000
   const samples = []
@@ -861,4 +885,14 @@ module.exports = {
   detectCulturalZone,
   findGregorianDateForLunar,
   solarEvents,
+  // ── 天体位置（Horizon/Celestial 系统 Phase 1，原仅内部使用，现补齐导出）──
+  subSolarPoint,
+  subLunarPoint,
+  sunAltitude,
+  sunAzimuth,
+  lunarEquatorialPosition,
+  lunarAltitude,
+  lunarPhase,
+  lunarIllumination,
+  lunarPhaseName,
 }

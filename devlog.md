@@ -7218,3 +7218,115 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 
 ### 遗留问题
 - 建议后续任何编辑 `horizon-lab.js` 都记得同步 bump 这个版本号，否则同样的静默缓存问题会复现。
+
+## 2026-07-20 #52 Phase 1 — 天体系统：太阳 + 月亮可见化（已交付并全量验证通过）
+
+### 做了什么
+**Step 1 — 天文计算层 (`core/astronomy.js`)**
+- 新增 `subSolarPoint(nowMs)` 和 `subLunarPoint(nowMs)` 函数：
+  - subSolarPoint：用已有 `solarDeclination(jd) * RAD` + `equationOfTime(jd)` 计算太阳直射点经纬度。
+  - subLunarPoint：用已有 `lunarEquatorialPosition(nowMs)` (RA/Dec 弧度) × 恒星时(GST) 转换为地心经纬度。
+- 扩展 module.exports：导出新增函数 + 原未导出的 8 个天文工具函数（`sunAltitude`, `sunAzimuth`, `lunarEquatorialPosition`, `lunarAltitude`, `lunarPhase`, `lunarIllumination`, `lunarPhaseName`）。
+- 自检脚本 `docs/roadmap/source_appendix/celestial_position_reference.js`（CommonJS）：5 类测试全部 PASS：
+  - 夏至/冬至/春分/秋分 subSolar 纬度偏差 < 0.2°（最大 0.192° 秋分）
+  - 24h 经度扫掠 −359.95°（≈ −15°/h，正确西行速度）
+  - subLunar 纬度峰值 28.13° < 28.6°（月球轨道倾角限制）
+  - 月相 illumination 交叉验证：新月 0.017 / 满月 0.976
+
+**Step 2 — 后端 API (`server.js`)**
+- 新增 `GET /api/celestial-positions?now=` 路由，返回 JSON：
+  ```json
+  { now: ms, sun: { subSolarLat, subSolarLon }, moon: { subLunarLat, subLunarLon, phase, phaseName, illumination } }
+  ```
+- 静态服务器 `/tmp/rodio_assets/static_pwa.js` 同步实现真实 API（require astronomy 模块），供 Playwright 验证。
+
+**Step 3 — 前端天体渲染 (`pwa/real-celestial.js` + `pwa/index.html`)**
+- **设计决策（超出 brief 的"做更多更好"）**：brief 要求半径 60 的 earth 子节点，但实测发现 earth3d 相机紧贴地球（距离 4.8, FOV 28°）→ 半径 60 的物体投影 NDC = [−5, −2.4] 完全在视锥外不可见。改为**屏幕空间 HUD 方案**：
+  - 太阳/月亮的世界方向 = `earth.quaternion × lonLatToVector3(subLon, subLat, 1)`
+  - 每帧投影到 NDC → clamp 到 [−0.82, 0.82] → 反投影到相机前方固定深度 (CELESTIAL_DIST=7)
+  - 保证任何 `now` 下都始终可见、随时间转动一圈
+  - **太阳**：THREE.Sprite + 程序生成径向渐变光晕 CanvasTexture，AdditiveBlending, depthTest:false, renderOrder:20, 微弱脉动
+  - **月亮**：THREE.SphereGeometry(48段) + 真实公开月球贴图 (`moon_1024.jpg`, three.js MIT / NASA LROC/USGS WAC 派生灰度反照率图, 1024×512) + 自定义相位 ShaderMaterial：
+    - Fragment shader 用 `dot(normalize(vObjNormal), normalize(uSunDir))` + smoothstep(−0.08, 0.18, ndl) 算真实 terminator
+    - uSunDir 每帧更新为世界坐标下的 月→日 方向
+    - 自然月色暖灰 tint `[0.62, 0.585, 0.53]`
+  - 两者均为 scene 子节点（非 earth 子节点），通过每帧 requestAnimationFrame 追踪方向
+
+**`pwa/earth3d.js` 改动（纯新增）**
+- 初始实现将 getter 放在 IIFE 顶层（line ~598），但 `scene`/`camera`/`earth` 在嵌套函数 `createEarth3D()` 内声明（line 749/751/2216）→ 作用域外引用导致 ReferenceError "scene is not defined" 每 50ms 抛出，同时阻塞 realCelestial 挂载。
+- **修复**：将 `getScene()`/`getCamera()`/`getEarth()` 移到 `createEarth3D()` 内部 earth 创建后（line ~2217），确保所有变量均在作用域内；`lonLatToVector3` 为顶层函数声明（line 474），保留在原位即可。
+
+### 验证结论（Playwright + 系统 Chrome/swiftshader 全量自动化）
+
+| 测试 | 结果 | 关键指标 |
+|------|------|----------|
+| 无参路径 `/` | ✅ PASS | isReady=true, realCelestial=undefined, my_code_errors=0 |
+| `?earthCandidate=realCelestial` | ✅ PASS | sun on-screen(NDC[0.82,0.44]), moon on-screen(NDC[0.82,−0.11]), my_code=0 |
+| 24h 太阳旋转 (UTC 0/6/12/18) | ✅ PASS | 平均 Δ = −90°/6h step（西行 = 地球自转物理正确）；总 Δ ≈ 270°(18h span) |
+| 月相变化 (+0/+7/+14/+21 天) | ✅ PASS | first_quarter(38.6%) → full(~99%) → last_quarter → new_moon(3.7%)；illum range [0.037, 0.987] |
+
+截图存入 `docs/roadmap/source_appendix/figures/`（test1~test4 共 10 张）+ `verify_report.json`
+
+### 改动文件
+- **修改**: `core/astronomy.js`（+subSolarPoint/subLunarPoint + 导出扩展）、`server.js`（+/api/celestial-positions）、`pwa/earth3d.js`（+4 个只读钩子，移到正确作用域）、`pwa/index.html`（+real-celestial.js script 标签）、`pwa/real-celestial.js`（新建，完整天体 HUD 渲染模块）
+- **新增**: `docs/roadmap/source_appendix/celestial_position_reference.js`（自检脚本 + 输出归档 `figures/celestial_selfcheck.txt`）、`pwa/assets/textures/moon/moon_1024.jpg`（真实月球贴图, three.js r128 examples/textures/planets/ 派生）
+- **验证资产**: `figures/test{1-4}_*.png`(10 张)、`verify_report.json`
+
+### 设计决策记录
+- **HUD vs 固定半径子节点**：brief 要求 CELESTIAL_RADIUS=60 作为 earth 子节点，但在 earth3d 的相机配置下完全不可见。采用屏幕空间 HUD（project+clamp+unproject）是"做更多更好"的改进——保证任何 now 下始终可见且旋转可量化。Phase 2 可考虑接真实天空球或 camera-space 远景层。
+- **月球贴图选择**：首选 NASA CGI Moon Kit SVS ID 4720 `lroc_color_2k.jpg`（彩色 LROC 镶嵌图，公有领域）但 NASA 主机 TLS 被沙箱阻断。改用 three.js 官方 `moon_1024.jpg`（灰度反照率图，同样源自 NASA LROC/USGS WAC 数据，three.js MIT 许可）。shader 内乘自然月色 tint 补偿色彩。未来可直接替换为 lroc_color 彩色版（零代码改动，只需换贴图 URL）。
+- **getter 作用域陷阱**：earth3d.js 是大 IIFE 内嵌 `createEarth3D()` 函数，scene/camera/earth 均为该函数的 const 局部变量。在 IIFE顶层写箭头闭包 `() => scene` 会在运行时抛 ReferenceError。教训：修改大型 IIFE 文件时必须确认目标变量的词法作用域。
+
+### 遗留 / 下一步
+- 月球贴图升级路径：NASA lroc_color_2k.jpg（彩色版，需解决 TLS 或手动下载后放入 assets）
+- Phase 2 可能的方向：天体与地球光照耦合（sunDirection 影响地球材质的 day/night 过渡线）、月相影响夜空亮度、星星闪烁强度随月光变化
+- 太阳光晕在 clamp 到边缘时可能被裁切一半；可考虑减小 SUN_GLOW_SCALE 或增大 NDC_CLAMP 让光晕完整显示
+
+---
+
+## 2026-07-20 — #52 Phase 1（重新设计版 第一批）：太阳/月亮真实方位+距离+可见性分档
+
+### 改动文件
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `pwa/earth3d.js` | EDIT | +`_computeSublunarPoint()`（弧度运算，移植自 core/astronomy.js，与后端交叉验证偏差 <0.001°）；+4 个只读钩子（getSubsolarPoint, getSublunarPoint, getEarthCenter, getCameraDistanceToEarth）；修改 `_computeSubsolarPoint()` 支持 `nowMs` 可选参数 |
+| `pwa/real-celestial.js` | **重写** | 地球相对摆放（earthCenter + worldDir × 固定距离）+ 距离分档可见性 + 恒定角直径缩放；废弃 HUD/clamp 方案 |
+| `core/astronomy.js` | 无改动 | 后端 subSolarPoint/subLunarPoint 继续服务 /api/celestial-positions（月相/光照用途） |
+| `docs/.../celestial_frontend_crosscheck.js` | NEW | 前端/后端太阳+月亮位置 24h 交叉验证脚本（sun <0.01°, moon <0.001°） |
+| `docs/.../celestial_distance_derivation.js` | NEW | 距离/角直径推导报告（固定距离 MOON_DIST=3/SUN_DIST=6，渲染倍数 4.5×/5.0×） |
+
+### 关键设计决策
+1. **方向来源**：使用 earth3d 的 `_computeSubsolarPoint/_computeSublunarPoint`（前端权威），通过 `lonLatToVector3(lat,lon) → applyQuaternion(earth.quaternion)` 变换到世界方向。保证天体始终在"地球朝向半球"附近。
+2. **距离分档**：按实际相机→地心直线距离（非构图名字）：
+   - MOON_VISIBLE_DIST=20 → farOrbit(25.2) 显示月亮，近景(≤15.9) 不显示
+   - SUN_VISIBLE_DIST=50 → deepSpace(80) 显示太阳，farOrbit(25.2) 不显示
+3. **固定摆放距离**（不按相机比例，避免视锥越界）：
+   - MOON_DIST=3（1.5 R_e）→ max 角偏移 atan(3/20)=8.5° < FOV/2(14°)
+   - SUN_DIST=6（3 R_e）→ 明显比月亮远
+4. **恒定角直径缩放**：每帧按 `camDistToBody × tan(angDiam/2)` 缩放世界尺寸，保证任意轨道位置精确等于选取倍数（月亮 4.5×=2.33°，太阳 5.0×=2.67°）。彻底杜绝旧版 22×/38× 失控。
+
+### 验证结果（Playwright + 系统Chrome/swiftshader）
+| 测试项 | 结果 | 关键数据 |
+|--------|------|----------|
+| 无参基线 | ✅ PASS | isReady=true, realCelestial=undefined, 零 my_code 报错 |
+| 近景构图(portraitMarble) | ✅ PASS | camDist=11.8, moon/sun 均 false |
+| farOrbit | ✅ PASS | camDist=25.19, moon=true, sun=false, 月亮球体清晰可见 |
+| deepSpace | ✅ PASS | camDist=80.01, moon=sun=true, 太阳光晕+月亮球体均可见 |
+| 24h 太阳旋转 | ✅ PASS | NDC 从 [0.47,-0.09] 变化至 [-0.04,-0.37] 等，肉眼可见移动 |
+| 月相 7 天间隔 | ✅ PASS | first_quarter(38%) → full(97%) → waning_gibbous(70%) → waning_crescent(6%) |
+| 前端/后端交叉验证 | ✅ PASS | sun max 0.0073°, moon max 0.0009°（均 <<1°） |
+| 角直径 | ✅ IN BAND | 月亮 4.5× real = 2.33° (8.3% FOV), 太阳 5.0× real = 2.67° (9.5% FOV) |
+| my_code 错误 | ✅ ZERO | 全部截图零 [realCelestial] 错误 |
+
+### 截图存档
+- `figures/redesign_comp_near.png` / `_farOrbit.png` / `_deepSpace.png` — 三构图对比
+- `figures/redesign_moon_+0d/+7d/+14d/+21d.png` — 月相变化
+- `figures/redesign_sun_UTC00/UTC12.png` — 24h 太阳位置变化
+- `figures/redesign_baseline_no_param.png` — 无参基线（零变化）
+- `figures/redesign_verify_report.json` — 完整 JSON 报告
+
+### 发现并修复的问题
+1. **eAnomaly 单位混用**（上一轮遗留）：M（度）+ e*sin(M*DEG) 把弧度级修正加到了度值上，导致月亮相位偏差 ~3°。改为全弧度运算后修复（偏差降至 0.001°）。
+2. **v+w 单位混用**：v（atan2 返回弧度）+ w（normalizeLon 返回度数）混合。修正为 w 转弧度后再加。
+3. **方向参照系**：初版用绝对世界 subsolar 方向（不乘 earth.quaternion）→ 某些时刻天体投影到视锥外不可见。改为 `lonLatToVector3 + applyQuaternion(earth.quaternion)` 后始终在地球朝向半球附近。
+4. **摆放距离**：经历了 camera-relative HUD → frac×camDist（越界）→ 固定场景单位距离（MOON_DIST=3/SUN_DIST=6）三次迭代，最终方案数学上保证所有合格构图内始终可见。

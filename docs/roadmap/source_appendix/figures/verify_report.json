@@ -1,0 +1,202 @@
+{
+  "timestamp": "2026-07-20T02:33:42.603Z",
+  "tests": {
+    "noParam": {
+      "isReady": true,
+      "realCelestialLoaded": false,
+      "myCodeCount": 0,
+      "otherErrorCount": 13,
+      "PASS": true
+    },
+    "realCelestialCurrent": {
+      "mounted": true,
+      "subSolar": [
+        20.674,
+        143.125
+      ],
+      "subLunar": [
+        -7.192,
+        -147.885
+      ],
+      "phase": "first_quarter",
+      "illum": 0.3873,
+      "sunScreenNDC": [
+        0.764,
+        0.443
+      ],
+      "moonScreenNDC": [
+        0.82,
+        -0.104
+      ],
+      "sunOnScreen": true,
+      "moonOnScreen": true,
+      "sunVisible": true,
+      "moonVisible": true,
+      "myCodeCount": 0,
+      "PASS": true
+    },
+    "sun24h": {
+      "entries": [
+        {
+          "label": "UTC00",
+          "ms": 1784505600000,
+          "subSolar": [
+            20.694,
+            -178.406
+          ],
+          "sunScreenNDC": [
+            0.82,
+            0.362
+          ],
+          "phase": "first_quarter",
+          "illum": 0.3762,
+          "localLonDeg": -178.406,
+          "sunOnScreen": true
+        },
+        {
+          "label": "UTC06",
+          "ms": 1784527200000,
+          "subSolar": [
+            20.647,
+            91.598
+          ],
+          "sunScreenNDC": [
+            -0.792,
+            0.436
+          ],
+          "phase": "first_quarter",
+          "illum": 0.4021,
+          "localLonDeg": 91.598,
+          "sunOnScreen": true,
+          "lonDeltaDeg": -90
+        },
+        {
+          "label": "UTC12",
+          "ms": 1784548800000,
+          "subSolar": [
+            20.6,
+            1.601
+          ],
+          "sunScreenNDC": [
+            -0.82,
+            0.231
+          ],
+          "phase": "first_quarter",
+          "illum": 0.4283,
+          "localLonDeg": 1.601,
+          "sunOnScreen": true,
+          "lonDeltaDeg": -90
+        },
+        {
+          "label": "UTC18",
+          "ms": 1784570400000,
+          "subSolar": [
+            20.552,
+            -88.395
+          ],
+          "sunScreenNDC": [
+            0.552,
+            0.188
+          ],
+          "phase": "first_quarter",
+          "illum": 0.4548,
+          "localLonDeg": -88.395,
+          "sunOnScreen": true,
+          "lonDeltaDeg": -90
+        }
+      ],
+      "hourlyDeltas_deg": [
+        -90,
+        -90,
+        -90
+      ],
+      "avgDelta_deg": -90,
+      "totalDelta24h_deg": 90,
+      "expectedPer6h": "~90°",
+      "expectedTotal24h": "~360°",
+      "PASS": true
+    },
+    "moonPhase7d": {
+      "entries": [
+        {
+          "label": "+0d",
+          "dateStr": "2026-07-20",
+          "phase": "first_quarter",
+          "illumination": 0.4283,
+          "subLunar": [
+            -9.461,
+            74.721
+          ],
+          "moonScreenNDC": [
+            -0.82,
+            -0.092
+          ],
+          "moonOnScreen": true
+        },
+        {
+          "label": "+7d",
+          "dateStr": "2026-07-27",
+          "phase": "full",
+          "illumination": 0.9874,
+          "subLunar": [
+            -27.01,
+            156.471
+          ],
+          "moonScreenNDC": [
+            0.82,
+            -0.372
+          ],
+          "moonOnScreen": true
+        },
+        {
+          "label": "+14d",
+          "dateStr": "2026-08-03",
+          "phase": "last_quarter",
+          "illumination": 0.6509,
+          "subLunar": [
+            6.09,
+            -125.865
+          ],
+          "moonScreenNDC": [
+            0.82,
+            0.05
+          ],
+          "moonOnScreen": true
+        },
+        {
+          "label": "+21d",
+          "dateStr": "2026-08-10",
+          "phase": "new",
+          "illumination": 0.0372,
+          "subLunar": [
+            25.466,
+            -27.873
+          ],
+          "moonScreenNDC": [
+            -0.703,
+            0.25
+          ],
+          "moonOnScreen": true
+        }
+      ],
+      "illuminations": [
+        0.4283,
+        0.9874,
+        0.6509,
+        0.0372
+      ],
+      "phases": [
+        "first_quarter",
+        "full",
+        "last_quarter",
+        "new"
+      ],
+      "illuminationRange": [
+        0.0372,
+        0.9874
+      ],
+      "phasesVary": true,
+      "PASS": true
+    }
+  }
+}

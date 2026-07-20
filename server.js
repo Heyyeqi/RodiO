@@ -2139,6 +2139,46 @@ app.get('/api/astronomy-debug', async (req, res) => {
   }
 })
 
+// GET /api/celestial-positions — #52 Phase 1 太阳/月球直射点 + 月相
+// 返回 subSolarPoint/subLunarPoint（由时间决定的纯物理量，与相机朝向无关）及月相/光照。
+// 前端 real-celestial.js 用 lonLatToVector3() 把经纬度转成 3D 方向。
+app.get('/api/celestial-positions', async (req, res) => {
+  try {
+    const nowMs = req.query.now ? Number(req.query.now) : Date.now()
+    if (!Number.isFinite(nowMs)) {
+      return res.status(400).json({ error: 'invalid ?now' })
+    }
+    const {
+      subSolarPoint,
+      subLunarPoint,
+      lunarPhase,
+      lunarIllumination,
+      lunarPhaseName,
+    } = require('./core/astronomy')
+    const sun = subSolarPoint(nowMs)
+    const moon = subLunarPoint(nowMs)
+    const phase = lunarPhase(nowMs)
+    const illumination = lunarIllumination(phase)
+    return res.json({
+      now: nowMs,
+      sun: {
+        subSolarLat: Number(sun.lat.toFixed(4)),
+        subSolarLon: Number(sun.lon.toFixed(4)),
+      },
+      moon: {
+        subLunarLat: Number(moon.lat.toFixed(4)),
+        subLunarLon: Number(moon.lon.toFixed(4)),
+        phase: Number(phase.toFixed(4)),
+        phaseName: lunarPhaseName(phase),
+        illumination: Number(illumination.toFixed(4)),
+      },
+    })
+  } catch (error) {
+    console.error('[/api/celestial-positions]', error)
+    return res.status(500).json({ error: error.message })
+  }
+})
+
 // GET /api/taste
 app.get('/api/taste', (req, res) => {
   const taste = fs.readFileSync(path.join(__dirname, 'user/taste.md'), 'utf8')
