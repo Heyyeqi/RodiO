@@ -7420,3 +7420,21 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 
 ### 遗留
 - 未在这轮做：地球材质其他远景相关效果（大气/云层等）目前不受影响，只有表面反照率被替换；如果后续觉得远景大气/云也需要跟行星风格统一，需要单独评估。
+
+---
+
+## 2026-07-20 — 环境问题排查：误判"调色消失"实为端口被桩服务器占用 + Node ABI 漂移
+
+### 发生了什么
+RW反馈截图显示Earth贴图大量404（2702个console错误）、画面色彩明显变差，怀疑是当天#52/#53改动导致的regression。排查后确认**跟当天任何功能改动都无关**：
+
+1. **根因**：端口8080当时被workbuddy自己验证用的临时桩服务器`/tmp/rodio_assets/static_pwa.js`占用（已运行32分钟）。该服务器只忠实复刻了`express.static(pwa)`这一条，没有实现`server.js`里专门给大瓦片缓存目录做的映射（`app.use('/assets/earth/bmng21k', express.static('d5b_processor_v3/source_cache/...'))`），导致所有16k瓦片请求404，画面退化成占位图，肉眼看起来像"调色丢失"。
+2. **顺带发现的独立问题**：`/opt/homebrew/bin/node`在本次session期间被homebrew自动升级到v26.0.0，与项目`better-sqlite3`编译时的ABI（Node 22.x, MODULE_VERSION 127）不匹配，导致`node server.js`直接崩溃（`ERR_DLOPEN_FAILED`）。`/Users/rw-mac/.local/bin/node`（v22.23.0）ABI匹配，已验证`require('better-sqlite3')`正常。
+
+### 处理
+- kill掉占用8080端口的`static_pwa.js`进程
+- `.claude/launch.json`的`rodio`配置`runtimeExecutable`从`/opt/homebrew/bin/node`改为`/Users/rw-mac/.local/bin/node`
+- 重新起真实`server.js`，确认16k瓦片全部200、贴图/云层/夜灯细节恢复正常，截图与RW记忆中的效果一致
+
+### 遗留
+- 如果`/opt/homebrew/bin/node`后续又被homebrew升级，`.local/bin/node`的版本也可能过期，届时需要重新核对`NODE_MODULE_VERSION`是否匹配（`better-sqlite3`编译时的版本 vs 当前node要求的版本），不要假设一次修复长期有效。

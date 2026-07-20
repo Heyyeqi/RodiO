@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "rodio",
-      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeExecutable": "/Users/rw-mac/.local/bin/node",
       "runtimeArgs": ["server.js"],
       "port": 8080
     },
