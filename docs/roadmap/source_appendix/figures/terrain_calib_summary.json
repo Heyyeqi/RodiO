@@ -1,0 +1,21 @@
+{
+  "land": {
+    "H": 0.6076105689589301,
+    "rms40": 11.25150254136163,
+    "peak": 16.877253812042444,
+    "native_std": 116.4783191015454,
+    "frac": 0.9378204345703125,
+    "lat_c": 36.10625076293945
+  },
+  "seabed": {
+    "H": 0.8629741918354804,
+    "rms40": 1.2659245459753756,
+    "peak": 1.8988868189630634,
+    "native_std": 30.136068197835957,
+    "frac": 1.0,
+    "lat_c": 32.006248474121094
+  },
+  "doc_guess_land": "15-45m",
+  "doc_guess_seabed": "3-12m",
+  "method": "variogram/RMS-at-scale; H from fit; baseAmplitude=peak~1.5x RMS@40m; extrapolation not a direct 30m-ref measure"
+}

@@ -1,0 +1,53 @@
+{
+  "errors": [
+    "CONSOLE: Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "horizon": {
+    "yaw0": {
+      "W": 1100,
+      "H": 720,
+      "cloudPx": 22850,
+      "wsum": 464707,
+      "centroidX": 538.9,
+      "centroidY": 316,
+      "meanLum": 20.3
+    },
+    "yaw25": {
+      "W": 1100,
+      "H": 720,
+      "cloudPx": 23068,
+      "wsum": 471977,
+      "centroidX": 561.2,
+      "centroidY": 315.6,
+      "meanLum": 20.5
+    },
+    "parallaxShiftPx": 22.3
+  },
+  "mountain": {
+    "yaw0": {
+      "W": 1100,
+      "H": 720,
+      "cloudPx": 122782,
+      "wsum": 3761974,
+      "centroidX": 470.8,
+      "centroidY": 197.7,
+      "meanLum": 30.6
+    },
+    "yaw25": {
+      "W": 1100,
+      "H": 720,
+      "cloudPx": 113593,
+      "wsum": 3495744,
+      "centroidX": 613.3,
+      "centroidY": 211.8,
+      "meanLum": 30.8
+    },
+    "parallaxShiftPx": 142.5
+  },
+  "identity": {
+    "subsystem": "Horizon up-looking cloud layer",
+    "independentFrom": "E1 globe cloud shell (cloudMesh r=2.04, cloudAlphaMap)",
+    "reuseCloudAlphaMap": false,
+    "generation": "procedural fBm (no photo texture)"
+  }
+}

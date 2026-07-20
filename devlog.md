@@ -7121,3 +7121,43 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - 云层原型当前是全屏四边形+shader 方案；Phase 2 天空穹顶实现时需将此 GLSL 逻辑迁移到球面几何上（UV 映射从平面直角坐标转为球面经纬度或 cube map）。
 - 水质系统的 substrateColor 当前假设全局统一值；如果有全球底质分类数据（如 GEOSEABED），可实现 per-pixel substrateColor —— 会显著增强 P1 vs P8 等依赖底质差异的预设表现力。
 - waternormals.jpg 已就位但尚未接入任何水面 shader（Phase 3/#44 时集成 THREE.Water 或自定义水面材质时使用）。
+
+## 2026-07-20 00:40 HZ #41 细化：地形GEBCO校准 + 云层穹顶化 + 身份声明
+
+### 做了什么
+- **地形近景噪声真值校准（GEBCO 2026）**: 用日本子集 NetCDF（6720×7680, 15arc-sec）实测陆地/海床粗糙度，推翻初版文档的拍脑袋振幅。改用 variogram/RMS-at-scale 法（gaussian_filter 低通取各尺度残差 RMS → 拟合 Hurst H → 外推到 40m）。实测：陆地 H=0.61、RMS@40m=11.3m、baseAmplitude≈17m；海床 H=0.86、RMS@40m=1.3m、baseAmplitude≈1.9m。land 初版 15-45m 偏保守、seabed 3-12m 偏宽松，已校准为 land 场景化 10-30m / seabed 2-6m。文档升级到 `horizon_terrain_detail_noise_v1.1.md`，附 `figures/terrain_spectrum_gebco_japan.png` + `terrain_calib_summary.json`。诚实标注：外推非直接 30m 测量。
+- **云层穹顶化（dome 化）原型 v2**: 把 Phase 0.5 的全屏四边形 fBm 原型升级为**真实天空穹顶**——skyDome(BackSide 球 r=2000) + 3 层同心云壳(r=1975/1985/1995) + 占位海面。HorizonCamera 严格按 Vision：FOV 38、eyeHeight 2.2、pitch −1.5°、yaw 可控。每层用不同 `uShell*13.7` 噪声种子 + 不同 scale/scroll → 真实 3D 视差。原型 `horizon_cloud_layer_v1.md` 第 6 节。
+- **身份声明（独立子系统）**: 明确 Horizon 仰视云层独立于 E1 globe cloud shell——不复用 cloudAlphaMap、程序化 fBm、3 壳视差。同时写入原型 `HORIZON_CLOUD` 对象与信息面板，并落成独立设计文档 `horizon_cloud_layer_v1.md`。
+- **像素级验证（Playwright + 系统 Chrome，swiftshader）**: 修复了 `preserveDrawingBuffer:true` 缺失导致的 readback 全零问题。实测：地平线落在画面 46.4% 高度（与 pitch/FOV 理论值一致）；25° 偏航下 horizon 预设质心位移 +22.3px、mountain 预设 +142.5px——**两预设位移量不同 = 壳几何驱动的真实体积视差（非伪屏幕滚动）**。无 shader 报错（唯一 404 是 favicon 自动请求，无害）。截图 + `cloud_dome_report.json` 入 `figures/`。
+
+### 改动文件
+- 新增 `docs/roadmap/source_appendix/horizon_cloud_layer_v1.md`
+- 升级 `docs/roadmap/source_appendix/horizon_terrain_detail_noise_v1.md` → v1.1
+- 新增 `docs/roadmap/source_appendix/figures/terrain_spectrum_gebco_japan.png` + `terrain_calib_summary.json`
+- 新增 `docs/roadmap/source_appendix/figures/cloud_horizon_dome.png` / `cloud_horizon_yaw25.png` / `cloud_mountain_dome.png` / `cloud_mountain_yaw25.png` / `cloud_dome_report.json`
+- 原型测试页 `cloud_proto_dome.html` + `cloud_dome_run.js` 存放于 `/tmp/rodio_assets/`（临时产物，不纳入源码）
+
+### 遗留问题
+- 待接入主 app：把 `CloudLayer` 作为 `HorizonScene` 内独立模块实现（场景 A/B/C 分别用 horizon/mountain/land 预设），不污染 E1 的 cloudMesh 路径。
+- mountain 预设当前「铺满全天」而非「缠绕山腰」：`bandFeather=0.14` 使远离带中心仍保留 86% band。集成时收紧 feather（→0.05）或抬高 uBandCenter 让云带贴山地轮廓线（调参，不改架构）。
+- 颜色空间：原型 sRGB 直渲；集成时需与 C_Sky_Design 天色 LUT / D 路线图色彩管理统一，避免云色与天空「不在一个色温」。
+- 视差方向符号：实测偏航增大→云向右，集成时需确认与相机 yaw 约定/用户转头方向感一致（审美向，非 bug）。
+
+## 2026-07-20 00:56 HZ #41 细化：水质系统单独立项升级（v1→v2 数据驱动 + 审计）
+
+### 做了什么
+- **数据驱动管线落地**：`water_params_reference.js`（CommonJS 无依赖）。(CHL, SPM, ZSD/KD490, CDM, wind) → 4 项 IOPs（a_w+a_phy+a_cdom+a_det, b_bw+b_bp）→ 9 维。物理反演用 Bricaud 1998(CHL^0.65)、Morel/Maritorena 量级(SPM)。深水色相由 IOP 光谱比物理决定（清澈→蓝/浮游植物→绿/CDOM碎屑→棕），亮度用艺术曲线。
+- **系统性审计**：① 色彩空间强制 OKLab 路径（sRGB 存储→linear→OKLab；D6 深度渐变必须在 OKLab 内插值，避免蓝→白发紫的色相漂移）；② 标量维锚定物理量（clarity←ZSD、turbidity←SPM、falloff←KD490、rough/foam←风速）；③ 每维硬范围约束。修复了 v1 "颜色未声明色空间/标量无量纲" 的模糊点。
+- **跨子系统耦合规范**：foamCoverage↔海洋高光（MeshPhong+specularMap，不引入PBR roughnessMap，对齐 C_Sky_Design §10.4）；colorTint↔天色LUT反射；water↔terrain(GEBCO底质/水深，P6深渊模式由bathymetry触发)；turbidity↔散射相函数。
+- **验证**：5 个真实海洋站位（远洋寡营养/珊瑚礁/温带/长江口/波罗的海藻华）反演，标量维与 v1 手编预设高度一致，baseColorDeep 色相/亮度同族。关键：河口(S4)褐变来自碎屑物理(colorTint中性)、藻华(S5)绿推来自浮游植物主导(colorTint绿)——两者正确分化。图 `figures/water_validation.png` + `water_validation.json`。
+- **11 预设重释为数据锚点**：每个 v1 预设可表示为 (CHL,SPM,ZSD,wind,substrate) 元组，证明 v1 选点准确、v2 可由真实地理数据即时生成连续场。
+
+### 改动文件
+- 新增 `docs/roadmap/source_appendix/horizon_water_quality_system_v2.md`（升级版设计文档）
+- 新增 `docs/roadmap/source_appendix/water_params_reference.js`（参考实现，已验证）
+- 新增 `docs/roadmap/source_appendix/figures/water_validation.png` + `water_validation.json`
+
+### 遗留问题
+- 集成阶段：Copernicus-GlobColour(Earth Engine)/ERA5/GEBCO 取数接入主 app；shader 落地 OKLab 混合 + 耦合公式；per-pixel substrateColor(GEOSEABED 如有)。
+- 参考实现的 IOP 常数（b_bp 斜率、CDOM 系数）为全局经验值，集成时建议按区域标定（尤其是河口 b_bp 更高）。
+- P6 深渊近黑深蓝由 bathymetry 触发，需 HorizonScene 接入 GEBCO 水深后才能正确表现，目前 reference 仅给海洋色维度。

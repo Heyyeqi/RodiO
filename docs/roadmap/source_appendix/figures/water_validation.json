@@ -1,0 +1,192 @@
+[
+  {
+    "station": "S1 远洋寡营养(南太平洋)",
+    "v1_target": "P2",
+    "params": {
+      "clarity": 0.79,
+      "turbidity": 0.01,
+      "baseColorDeep": [
+        0,
+        0.417,
+        0.528
+      ],
+      "baseColorShallow": [
+        0.158,
+        0.582,
+        0.674
+      ],
+      "substrateColor": [
+        0.12,
+        0.14,
+        0.18
+      ],
+      "depthColorFalloff": 0.42,
+      "surfaceRoughness": 0.13,
+      "foamCoverage": 0,
+      "colorTint": [
+        1,
+        1,
+        1
+      ],
+      "_meta": {
+        "zsd": 30,
+        "kd490": 0.03,
+        "hueDeg": 214,
+        "hueChroma": 0.084,
+        "wind": 4
+      }
+    }
+  },
+  {
+    "station": "S2 热带珊瑚礁(马尔代夫)",
+    "v1_target": "P1",
+    "params": {
+      "clarity": 0.81,
+      "turbidity": 0,
+      "baseColorDeep": [
+        0,
+        0.403,
+        0.572
+      ],
+      "baseColorShallow": [
+        0.51,
+        0.868,
+        0.886
+      ],
+      "substrateColor": [
+        0.95,
+        0.88,
+        0.72
+      ],
+      "depthColorFalloff": 0.41,
+      "surfaceRoughness": 0.06,
+      "foamCoverage": 0,
+      "colorTint": [
+        1,
+        1,
+        1
+      ],
+      "_meta": {
+        "zsd": 35,
+        "kd490": 0.03,
+        "hueDeg": 223.6,
+        "hueChroma": 0.093,
+        "wind": 3
+      }
+    }
+  },
+  {
+    "station": "S3 温带开阔(北大西洋)",
+    "v1_target": "P3",
+    "params": {
+      "clarity": 0.69,
+      "turbidity": 0.02,
+      "baseColorDeep": [
+        0,
+        0.445,
+        0.402
+      ],
+      "baseColorShallow": [
+        0.25,
+        0.656,
+        0.631
+      ],
+      "substrateColor": [
+        0.2,
+        0.24,
+        0.28
+      ],
+      "depthColorFalloff": 0.54,
+      "surfaceRoughness": 0.38,
+      "foamCoverage": 0.03,
+      "colorTint": [
+        1,
+        1,
+        1
+      ],
+      "_meta": {
+        "zsd": 18,
+        "kd490": 0.08,
+        "hueDeg": 185.5,
+        "hueChroma": 0.07,
+        "wind": 8
+      }
+    }
+  },
+  {
+    "station": "S4 长江口浑浊",
+    "v1_target": "P4",
+    "params": {
+      "clarity": 0.06,
+      "turbidity": 1,
+      "baseColorDeep": [
+        0.818,
+        0.586,
+        0.319
+      ],
+      "baseColorShallow": [
+        0.985,
+        0.825,
+        0.534
+      ],
+      "substrateColor": [
+        0.5,
+        0.42,
+        0.25
+      ],
+      "depthColorFalloff": 2.5,
+      "surfaceRoughness": 0.25,
+      "foamCoverage": 0,
+      "colorTint": [
+        1,
+        1,
+        1
+      ],
+      "_meta": {
+        "zsd": 0.5,
+        "kd490": 2.5,
+        "hueDeg": 68.2,
+        "hueChroma": 0.06,
+        "wind": 6
+      }
+    }
+  },
+  {
+    "station": "S5 波罗的海藻华",
+    "v1_target": "P7/P11",
+    "params": {
+      "clarity": 0.27,
+      "turbidity": 0.11,
+      "baseColorDeep": [
+        0.568,
+        0.38,
+        0
+      ],
+      "baseColorShallow": [
+        0.843,
+        0.66,
+        0.285
+      ],
+      "substrateColor": [
+        0.38,
+        0.4,
+        0.28
+      ],
+      "depthColorFalloff": 1.79,
+      "surfaceRoughness": 0.31,
+      "foamCoverage": 0,
+      "colorTint": [
+        0.91,
+        1.3,
+        0.85
+      ],
+      "_meta": {
+        "zsd": 3,
+        "kd490": 0.6,
+        "hueDeg": 80.8,
+        "hueChroma": 0.081,
+        "wind": 7
+      }
+    }
+  }
+]
