@@ -7161,3 +7161,23 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - 集成阶段：Copernicus-GlobColour(Earth Engine)/ERA5/GEBCO 取数接入主 app；shader 落地 OKLab 混合 + 耦合公式；per-pixel substrateColor(GEOSEABED 如有)。
 - 参考实现的 IOP 常数（b_bp 斜率、CDOM 系数）为全局经验值，集成时建议按区域标定（尤其是河口 b_bp 更高）。
 - P6 深渊近黑深蓝由 bathymetry 触发，需 HorizonScene 接入 GEBCO 水深后才能正确表现，目前 reference 仅给海洋色维度。
+
+## 2026-07-20 HZ #42 Phase 1+2 合并：Horizon Mode 隔离试验场景落地（`?earthCandidate=horizonLab`）
+
+### 做了什么
+- 按 Category B 纪律，把已验证的云穹顶原型（`/tmp/rodio_assets/cloud_proto_dome.html`，视差实测 22.3px/142.5px、地平线几何 46.4%）**直接移植**进 `pwa/horizon-lab.js`，逐字节复用其 shader/uniform 代码，不重写。
+- 新文件完全独立：自己的 `THREE.Scene`/`PerspectiveCamera`/renderer/渲染循环，不 import、不复用主 `earth3d.js` 的任何 mesh/shader/相机语法系统。挂载到复用的 `#earth3d-layer` DOM 容器（尺寸约定与主管线一致：`appEl.clientWidth/Height` + `ResizeObserver`）。
+- 只对 `pwa/earth3d.js` 做一行改动：`createEarth3D()` 在 `?earthCandidate=horizonLab` 时提前 `return false`，避免两个 WebGL context 抢同一容器；`pwa/index.html` 加一行 `<script src="/horizon-lab.js">` 标签。其余现有 `?earthCandidate=` 分支、正常路径零改动。
+- 内容：skyDome（渐变天色+地平雾霾）+ 3 层同心云壳（半径 1975/1985/1995，产生真实视差）+ 占位海面，horizon/mountain 两个预设。独立的拖拽看方向交互（yaw 自由/pitch 限制 -3°~+5°，仅作用于本 canvas，不接入主 GestureRouter）。暴露 `window.horizonLab`（`setPreset/setYaw/setPitch/getState/render/destroy`）供自动化验证。
+- 验证（本地 `localhost:8080`，preview 工具）：① 无参数正常路径 `earth3dReady:true`、零 console 错误，主渲染管线完全未受影响；② `?earthCandidate=horizonLab` 时 `earth3dReady:false`（主管线正确让位）、`window.horizonLab` 正确挂载、零 console 错误；③ `setPreset('mountain')` 后截图云层明显更厚更密（对应 density 0.62 vs 0.46、layerOpacity 0.82 vs 0.55），与预设参数方向一致；④ `setYaw`/`setPreset` API 均按预期响应。
+
+### 改动文件
+- 新增 `pwa/horizon-lab.js`
+- `pwa/earth3d.js`（+3 行，`createEarth3D()` 入口守卫）
+- `pwa/index.html`（+1 行，script 标签）
+
+### 遗留问题
+- mountain 预设仍是"铺满全天"而非"缠绕山腰"（`horizon_cloud_layer_v1.md` §7 已知问题，`bandFeather` 待收紧，纯调参不改架构）。
+- 占位海面尚未替换为真实海面网格；水质系统 v2（#41）尚未接入。
+- 地形（GEBCO 校准网格）尚未接入本场景。
+- 拖拽交互的视差方向感（yaw 增大→云右移）尚未做用户体验层面的方向感校验。

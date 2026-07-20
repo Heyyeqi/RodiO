@@ -532,6 +532,9 @@
     const appEl = document.getElementById('app')
     const mountEl = document.getElementById('earth3d-layer')
     if (!appEl || !mountEl || !window.THREE) return false
+    // Horizon Mode 隔离试验场景（见 pwa/horizon-lab.js）接管 #earth3d-layer 时，
+    // 主 Earth 渲染管线不初始化，避免两个 WebGL context/渲染循环互相竞争。
+    if (new URLSearchParams(window.location.search).get('earthCandidate') === 'horizonLab') return false
 
     let renderer = null
     let observer = null
