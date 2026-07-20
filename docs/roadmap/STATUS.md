@@ -257,6 +257,14 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 12. **[#49](https://github.com/Heyyeqi/RodiO/issues/49) Phase 8：山地平线场景**（第三优先级场景）
 13. **[#50](https://github.com/Heyyeqi/RodiO/issues/50) Phase 9：陆地平视场景**（最低优先级，方案原文自己警告容易变成游戏场景）
 
+### 第一点六梯队：真实天体系统（2026-07-20 用户新提出，与Horizon Mode队列的排序关系待定）
+
+> 用户指出现有3D场景里太阳/月亮压根没有可见物体（只有`DirectionalLight`+后端月相计算，无渲染），星空是真实8K星图+程序化点缀混合。要求分阶段做完整太阳系（含冥王星+代表性卫星），标准是"天文学级别真实"，不是艺术示意。milestone "Real Celestial Bodies — Astronomically Accurate Solar System"。
+
+14. **[#52](https://github.com/Heyyeqi/RodiO/issues/52) Phase 1：太阳+月亮+星空一致性**
+15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化**（水星/金星/火星/木星/土星，把现有`rimGlow`每周色调tint升级为真实可见天体）
+16. **[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**（天王星/海王星/冥王星+代表性卫星）
+
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做，已全部完成）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — ✅已提交（`325c379`）并本地实机验证通过，已标Done。范围只做Full/Minimal，Earth Only留给#12
 6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — ✅已提交（`5f33b0f`）并本地实机验证通过，已标Done。验证时发现并修复两个真实bug：①IIFE前漏分号导致整段代码在浏览器里从未执行过（`node --check`测不出来）②pointermove过早锁定drag导致真实swipe手势永远判不出来。给#11留了提示：这轮drag只在pointerup兜底解析，#11接入真实地球旋转时大概率需要在move阶段也加实时锁定
@@ -334,6 +342,10 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#48](https://github.com/Heyyeqi/RodiO/issues/48) | Horizon Mode Phase 7：地形高度图导出管线 | Horizon Mode — Independent Scene Build | P3 | Backlog |
 | [#49](https://github.com/Heyyeqi/RodiO/issues/49) | Horizon Mode Phase 8：山地平线场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
 | [#50](https://github.com/Heyyeqi/RodiO/issues/50) | Horizon Mode Phase 9：陆地平视场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
+| [#51](https://github.com/Heyyeqi/RodiO/issues/51) | 真实天体系统总览：太阳/月亮/星空一致性 → 七曜可见化 → 完整太阳系 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog |
+| [#52](https://github.com/Heyyeqi/RodiO/issues/52) | 天体系统 Phase 1：太阳+月亮+星空一致性 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog |
+| [#53](https://github.com/Heyyeqi/RodiO/issues/53) | 天体系统 Phase 2：七曜可见化 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog |
+| [#54](https://github.com/Heyyeqi/RodiO/issues/54) | 天体系统 Phase 3：完整太阳系收尾 | Real Celestial Bodies — Astronomically Accurate Solar System | P3 | Backlog |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Done（4515ef6，端到端验证通过） |
 | [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Done（b31a024，本地实测验证通过） |
