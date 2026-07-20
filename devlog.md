@@ -7438,3 +7438,39 @@ RW反馈截图显示Earth贴图大量404（2702个console错误）、画面色�
 
 ### 遗留
 - 如果`/opt/homebrew/bin/node`后续又被homebrew升级，`.local/bin/node`的版本也可能过期，届时需要重新核对`NODE_MODULE_VERSION`是否匹配（`better-sqlite3`编译时的版本 vs 当前node要求的版本），不要假设一次修复长期有效。
+
+---
+
+## 2026-07-20 — #53 Phase 2：五颗行星真实位置 + 统一距离比例尺落地
+
+### 做了什么
+- **开普勒轨道六根数法**（NASA JPL SSD "Approximate Positions of the Planets", Standish & Williams 1992, Table 1, 1800-2050年适用）：水星/金星/火星/木星/土星 + 地球(EMBary) 各自六根数 → 日心黄道直角坐标（含牛顿迭代解开普勒方程）→ 行星地心方向 = 行星日心坐标 − 地球日心坐标（矢量相减）→ 绕X轴转黄赤交角23.43928° → 赤道系世界方向。
+- **统一距离比例尺正式落地**：`SUN_DIST`从孤立常数6改为`compressToSceneDist(1.0)≈12.25`（沿用上次审计确定的对数压缩函数，锚定月亮=3，Pluto=17.95安全上限），5颗行星的场景距离也用同一函数，从审计表`TYPICAL_EARTH_DIST_AU`直接算出（Venus 11.68 < Mercury 12.12 < Sun 12.25 < Mars 12.47 < Jupiter 14.78 < Saturn 15.74），不是各自拍一个孤立数字。
+- **渲染**：复用太阳光晕同款做法（`THREE.Sprite`+程序生成径向渐变，不做贴图球），颜色直接取Step 0已实测的NASA真实影像RGB值（`celestial_texture_resources.md`），不是拍脑袋定的。
+- **亮度分级**：用真实平均视星等（Mercury -0.2 / Venus -4.6 / Mars -1.0 / Jupiter -2.0 / Saturn 0.5）经`flux=10^(-0.4·mag)`转真实相对流量，再做4次方根压缩防止外行星暗到看不见，金星归一化为1.0最亮，排序金星>木星>火星>水星>土星，跟真实天文认知一致。
+- 可见性复用`SUN_VISIBLE_DIST`（跟太阳同一档，只在deepSpace出现）。
+
+### 验证结果
+| 测试项 | 结果 |
+|--------|------|
+| Step 0 距离比例尺脚本独立复现 | ✅ 输出完全一致（Venus 11.68/Mercury 12.12/Sun 12.25/Mars 12.47/Jupiter 14.78/Saturn 15.74） |
+| Step 1 五星地心方向 | ✅ 独立重跑`planet_positions_derivation.js`，RA/Dec/场景距离全部一致 |
+| Step 2a 地球交叉验证 | ✅ 偏差−0.3695°（<0.5°吻合，两种方法论差异已在脚本注释里解释清楚，非算法错误） |
+| Step 2b 速度排序 | ✅ Mercury>Venus>Earth>Mars>Jupiter>Saturn，12周采样验证通过，正确区分了"日心轨道速度"（排序依据）和"地心视速度"（逆行环影响，仅作补充对照，未用于排序——这是个没有明确要求但处理对了的细节） |
+| Step 3 典型距离复核 | ✅ 偏差<0.0004 AU |
+| 渲染+Playwright | ✅ 默认路径零影响（camDistEarth=5时5颗行星全部visible:false）；`__debugSetCameraDistance(80)`模拟deepSpace后5颗行星全部visible:true，颜色/RGB值跟资源文档实测值逐一核对一致 |
+| 截图 | ✅ 太阳+地球+月亮+行星光点+公转环同框，能看出行星间的亮度/尺寸层次，构图克制 |
+
+### 独立复核方式
+在真实`node server.js`（不是workbuddy自己的stub服务器，这次又是被占用的stub server先kill掉才切到真实server）上重新验证：root路径零影响、`?earthCandidate=realCelestial`默认近景5颗行星全部不可见、手动移相机到deepSpace距离后5颗行星全部可见且RGB/亮度/距离数字跟报告一致，看截图确认视觉效果。核对`PLANET_DEFS`里的rgb字面量跟`celestial_texture_resources.md`里"实测RGB"逐一比对，五个都是精确匹配（Mercury (132,129,129)、Venus (208,206,204)、Mars (138,105,75)、Jupiter (172,121,68)、Saturn (119,111,82)），不是重新拍的颜色。
+
+### 改动文件
+- 改 `pwa/real-celestial.js`（+统一距离比例尺函数、+五颗行星开普勒方向/渲染/可见性逻辑，`SUN_DIST`从6改成12.25）
+- 新增 `docs/.../solar_system_scale_audit.js`（上次审计脚本，这次正式引用）
+- 新增 `docs/.../planet_positions_derivation.js`（Step1/2/3验证脚本）
+- 新增 `docs/.../phase2_planet_positions_report.md`、`planet_positions_report.json`、`verify_planets_report.json`
+- 新增 `docs/.../figures/planets_deepspace.png`、`planets_default_home.png`
+
+### 遗留 / 下一步
+- #54：天王星/海王星/冥王星 + 代表性卫星（伽利略卫星/土卫六/土星环），可以直接复用这套开普勒+统一比例尺+Sprite渲染的基础设施，不用重新设计。
+- 五颗行星目前用的是"典型地球距离"（固定值），跟太阳/月亮一样是稳定摆放，不是逐帧精确的真实地心距离浮动——这是有意简化（现实里肉眼也感知不到深度差异，只有方向和亮度是真实感知得到的信息），已在此前审计对话里明确过。

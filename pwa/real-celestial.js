@@ -43,7 +43,27 @@
   //   月亮：阈值=20, atan(3/20)=8.5° < FOV/2(14°)。farOrbit(25): atan(3/25)=6.9°。
   //   太阳：阈值=50, atan(6/50)=6.8°。deepSpace(80): atan(6/80)=4.3°。
   const MOON_DIST = 3            // 月亮距地心 = 1.5 R_earth（真实 60R_e 的艺术压缩）
-  const SUN_DIST = 6             // 太阳距地心 = 3 R_earth（明显比月亮远，deepSpace 光晕清晰但不过大）
+
+  // ── #53 Phase 2 统一距离比例尺（审计锁定，见 solar_system_scale_audit.js）──
+  // 约束：deepSpace 相机距地心 80.01，FOV 28°，半 FOV 14°，硬上限 = 80.01*tan14° = 19.95；
+  //       安全上限 = 19.95*0.9 = 17.95（留边界）。对数压缩，锚 Moon=3（#52 已验证），
+  //       端点 Pluto=17.95。太阳位置由孤立常数 6 改为 compressToSceneDist(1.0)≈12.25 ——
+  //       这是审计后统一比例尺的有意调整（替代孤立 SUN_DIST），非失误。
+  const SCALE_MOON_DIST = 3
+  const SCALE_SAFE_MAX = 17.95
+  const SCALE_TYPICAL_AU = {
+    Moon: 0.00257, Venus: 0.6908797145583455, Mercury: 0.9220797145583455, Sun: 1.0,
+    Mars: 1.1500330430035477, Jupiter: 5.105997356051019, Saturn: 9.484427710726674,
+    Uranus: 19.16492841103248, Neptune: 30.052366978326347, Pluto: 39.4693339695516,
+  }
+  const _scaleLogMoon = Math.log10(SCALE_TYPICAL_AU.Moon)
+  const _scaleLogPluto = Math.log10(SCALE_TYPICAL_AU.Pluto)
+  const _scaleSlope = (SCALE_SAFE_MAX - SCALE_MOON_DIST) / (_scaleLogPluto - _scaleLogMoon)
+  function compressToSceneDist(au) {
+    return SCALE_MOON_DIST + _scaleSlope * (Math.log10(au) - _scaleLogMoon)
+  }
+
+  const SUN_DIST = compressToSceneDist(SCALE_TYPICAL_AU.Sun) // ≈12.25（审计后；原孤立常数=6）
   const MOON_ANG_DIAM_MULT = 4.5 // 月亮渲染角直径 = 4.5 × 真实
   const SUN_ANG_DIAM_MULT = 5.0  // 太阳渲染角直径 = 5.0 × 真实
   const MOON_TINT = [0.62, 0.585, 0.53] // 自然月色（暖灰，月球实测真色）
@@ -113,6 +133,104 @@
   `
 
   function round(n, p) { const f = Math.pow(10, p || 2); return Math.round(n * f) / f }
+
+  // ════════════════════════════════════════════════════════════════════
+  // #53 Phase 2 — 五颗行星（金星/水星/火星/木星/土星）真实方向 + Sprite 渲染
+  // 数据：NASA JPL SSD「Approximate Positions of the Planets」(Standish & Williams 1992), Table 1 (1800–2050 AD)
+  // 坐标：J2000 平黄道；黄赤交角 ε=23.43928°。方向 = 行星日心 − 地球日心（矢量相减）→ 绕X转ε → 世界方向。
+  // ════════════════════════════════════════════════════════════════════
+  const EPS = 23.43928 * DEG   // 黄赤交角（与轨道环 eclipticToEquatorialDir 一致）
+
+  // 五颗行星渲染定义：典型地球距离(审计表) / 实测RGB(资源文档) / 平均视星等(亮度分级) / 渲染角直径(风格化)
+  const PLANET_DEFS = {
+    Mercury: { typicalAU: 0.9220797145583455, rgb: [132, 129, 129], mag: -0.2, ang: 0.9 },
+    Venus:   { typicalAU: 0.6908797145583455, rgb: [208, 206, 204], mag: -4.6, ang: 1.3 },
+    Mars:    { typicalAU: 1.1500330430035477,  rgb: [138, 105, 75],  mag: -1.0, ang: 1.1 },
+    Jupiter: { typicalAU: 5.105997356051019,  rgb: [172, 121, 68],  mag: -2.0, ang: 1.25 },
+    Saturn:  { typicalAU: 9.484427710726674,  rgb: [119, 111, 82],  mag: 0.5,  ang: 1.2 },
+  }
+  const PLANET_NAMES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
+  // 亮度分级：视星等 → 相对流量 flux=10^(-0.4·mag) → 4次方根压缩（金星最亮=1.0，避免外行星过暗看不见）
+  function planetBrightness(mag) {
+    const fVenus = Math.pow(10, -0.4 * (-4.6))
+    const f = Math.pow(10, -0.4 * mag)
+    return Math.pow(f / fVenus, 0.25)
+  }
+
+  // Standish Table 1 轨道根数 [a, e, I(deg), L(deg), ϖ(deg), Ω(deg)]；[0]=J2000值 [1]=每世纪速率
+  const PLANET_ELEMENTS = {
+    Mercury: { a: [0.38709927, 0.00000037], e: [0.20563593, 0.00001906], I: [7.00497902, -0.00594749], L: [252.25032350, 149472.67411175], p: [77.45779628, 0.16047689], O: [48.33076593, -0.12534081] },
+    Venus:   { a: [0.72333566, 0.00000390], e: [0.00677672, -0.00004107], I: [3.39467605, -0.00078890], L: [181.97909950, 58517.81538729], p: [131.60246718, 0.00268329], O: [76.67984255, -0.27769418] },
+    EMBary:  { a: [1.00000261, 0.00000562], e: [0.01671123, -0.00004392], I: [-0.00001531, -0.01294668], L: [100.46457166, 35999.37244981], p: [102.93768193, 0.32327364], O: [0.0, 0.0] },
+    Mars:    { a: [1.52371034, 0.00001847], e: [0.09339410, 0.00007882], I: [1.84969142, -0.00813131], L: [-4.55343205, 19140.30268499], p: [-23.94362959, 0.44441088], O: [49.55953891, -0.29257343] },
+    Jupiter: { a: [5.20288700, -0.00011607], e: [0.04838624, -0.00013253], I: [1.30439695, -0.00183714], L: [34.39644051, 3034.74612775], p: [14.72847983, 0.21252668], O: [100.47390909, 0.20469106] },
+    Saturn:  { a: [9.53667594, -0.00125060], e: [0.05386179, -0.00050991], I: [2.48599187, 0.00193609], L: [49.95424423, 1222.49362201], p: [92.59887831, -0.41897216], O: [113.66242448, -0.28867794] },
+  }
+
+  function pNorm360(d) { return ((d % 360) + 360) % 360 }
+  function pNorm180(d) { d = pNorm360(d); return d > 180 ? d - 360 : d }
+  function pJulian(nowMs) { return nowMs / 86400000 + 2440587.5 }
+  function pCenturies(nowMs) { return (pJulian(nowMs) - 2451545.0) / 36525 }
+
+  // 开普勒求解 → 日心黄道直角坐标 (AU)
+  function keplerHelioEcl(name, nowMs) {
+    const el = PLANET_ELEMENTS[name]
+    const T = pCenturies(nowMs)
+    const a = el.a[0] + el.a[1] * T
+    const e = el.e[0] + el.e[1] * T
+    const I = (el.I[0] + el.I[1] * T) * DEG
+    const L = pNorm360(el.L[0] + el.L[1] * T)
+    const w = pNorm360(el.p[0] + el.p[1] * T)   // ϖ 近日点黄经
+    const O = pNorm360(el.O[0] + el.O[1] * T)   // Ω 升交点黄经
+    const M = pNorm180(L - w)                    // 平近点角
+    const eStar = 57.29578 * e
+    let E = M + eStar * Math.sin(M * DEG)        // 初值
+    for (let i = 0; i < 30; i++) {
+      const dM = M - (E - eStar * Math.sin(E * DEG))
+      const dE = dM / (1 - e * Math.cos(E * DEG))
+      E += dE
+      if (Math.abs(dE) < 1e-9) break
+    }
+    const x1 = a * (Math.cos(E * DEG) - e)
+    const y1 = a * Math.sqrt(1 - e * e) * Math.sin(E * DEG)
+    const cw = Math.cos(w * DEG), sw = Math.sin(w * DEG)
+    const cO = Math.cos(O * DEG), sO = Math.sin(O * DEG)
+    const cI = Math.cos(I), sI = Math.sin(I)
+    const x = (cw * cO - sw * sO * cI) * x1 + (-sw * cO - cw * sO * cI) * y1
+    const y = (cw * sO + sw * cO * cI) * x1 + (-sw * sO + cw * cO * cI) * y1
+    const z = (sw * sI) * x1 + (cw * sI) * y1
+    return { x, y, z, a, e }
+  }
+  // 黄道直角 → 赤道直角（绕X转+ε），与轨道环 eclipticToEquatorialDir 同一世界系
+  function ecl2eq(v) {
+    return { x: v.x, y: Math.cos(EPS) * v.y - Math.sin(EPS) * v.z, z: Math.sin(EPS) * v.y + Math.cos(EPS) * v.z }
+  }
+  // 行星地心方向（单位向量，世界系）：行星日心 − 地球日心，再转赤道系归一化
+  function planetGeoDir(name, nowMs) {
+    const ph = keplerHelioEcl(name, nowMs)
+    const eh = keplerHelioEcl('EMBary', nowMs)
+    const g = { x: ph.x - eh.x, y: ph.y - eh.y, z: ph.z - eh.z }
+    const q = ecl2eq(g)
+    const r = Math.hypot(q.x, q.y, q.z) || 1
+    return { x: q.x / r, y: q.y / r, z: q.z / r }
+  }
+
+  // 行星光晕贴图（程序生成径向渐变，AdditiveBlending，同太阳halo做法）；颜色=NASA实测RGB×亮度分级
+  function makePlanetGlowTexture(rgb, bright) {
+    const s = 128
+    const c = document.createElement('canvas')
+    c.width = c.height = s
+    const g = c.getContext('2d')
+    const grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2)
+    const col = `${rgb[0]},${rgb[1]},${rgb[2]}`
+    grad.addColorStop(0.00, `rgba(${col},${Math.min(1, 1.0 * bright)})`)
+    grad.addColorStop(0.30, `rgba(${col},${0.62 * bright})`)
+    grad.addColorStop(0.62, `rgba(${col},${0.16 * bright})`)
+    grad.addColorStop(1.00, `rgba(${col},0)`)
+    g.fillStyle = grad
+    g.fillRect(0, 0, s, s)
+    return new T.CanvasTexture(c)
+  }
 
   // 地球日心黄道经度（度，[0,360)）：取太阳地心视黄经（与 earth3d _computeSubsolarPoint
   // 同一权威算法）+ 180°。用于把"地球公转位置标记"摆到轨道环上真实日期对应的角度。
@@ -217,6 +335,33 @@
       function (e) { console.error('[realCelestial] 月球贴图加载失败:', e) }
     )
 
+    // ── #53 Phase 2 五颗行星（Sprite + 径向渐变，同太阳halo做法）──
+    const planets = {}
+    for (const name of PLANET_NAMES) {
+      const def = PLANET_DEFS[name]
+      const bright = planetBrightness(def.mag)
+      const mat = new T.SpriteMaterial({
+        map: makePlanetGlowTexture(def.rgb, bright),
+        color: 0xffffff,
+        transparent: true,
+        blending: T.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+      })
+      const sp = new T.Sprite(mat)
+      sp.renderOrder = 18
+      sp.frustumCulled = false
+      sp.visible = false
+      scene.add(sp)
+      planets[name] = {
+        sprite: sp,
+        dist: compressToSceneDist(def.typicalAU),  // 固定场景距离（审计对数压缩）
+        ang: def.ang,                               // 渲染角直径（风格化）
+        bright: bright, rgb: def.rgb,
+        ndc: [0, 0], visible: false,
+      }
+    }
+
     // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
     const orbitSegs = 160
     const orbitPts = []
@@ -281,6 +426,23 @@
       sun.position.copy(sunPos)
       moon.visible = showMoon
       sun.visible = showSun
+
+      // ── #53 Phase 2 行星更新：可见性同太阳档(SUN_VISIBLE_DIST)，仅 deepSpace ──
+      for (const name of PLANET_NAMES) {
+        const P = planets[name]
+        P.visible = showSun   // 与太阳同档
+        P.sprite.visible = showSun
+        if (showSun) {
+          const dir = planetGeoDir(name, nowMs)        // 真实地心方向（日心−地球日心）
+          const pos = earthCenter.clone().add(new T.Vector3(dir.x, dir.y, dir.z).multiplyScalar(P.dist))
+          P.sprite.position.copy(pos)
+          const camToP = camera.position.distanceTo(pos)
+          const d = 2 * camToP * Math.tan((P.ang * DEG) / 2)  // 恒定角直径（风格化）
+          P.sprite.scale.set(d, d, 1)
+          const ndc = pos.clone().project(camera)
+          P.ndc = [round(ndc.x, 4), round(ndc.y, 4)]
+        }
+      }
 
       // 公转轨道环 + 地球标记：仅 deepSpace（与太阳晕同阈值 SUN_VISIBLE_DIST）。
       // 与 near-field 太阳晕独立；标记角度 = 真实地球日心黄道经度（随日期变化）。
@@ -355,6 +517,8 @@
           sunMult: round(SUN_ANG_DIAM / REAL_SUN_ANG, 3),
           moonNDC: state.moonNDC,
           sunNDC: state.sunNDC,
+          sunDistFromEarth: round(sunPos.distanceTo(earthCenter), 3),
+          moonDistFromEarth: round(moonPos.distanceTo(earthCenter), 3),
           orbitVisible: state.orbitVisible,
           earthMarkerEclLonDeg: state.earthMarkerEclLonDeg,
           now: nowMs,
@@ -362,6 +526,13 @@
           subLunar: apiData ? [round(apiData.moon.subLunarLat, 3), round(apiData.moon.subLunarLon, 3)] : null,
           phase: apiData ? apiData.moon.phaseName : null,
           illumination: apiData ? apiData.moon.illumination : null,
+          planets: PLANET_NAMES.map(function (name) {
+            const P = planets[name]
+            return {
+              name: name, visible: P.visible, dist: round(P.dist, 3),
+              ang: P.ang, bright: round(P.bright, 3), rgb: P.rgb, ndc: P.ndc,
+            }
+          }),
         }
       },
     }

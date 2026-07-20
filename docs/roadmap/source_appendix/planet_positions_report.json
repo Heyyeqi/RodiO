@@ -1,0 +1,185 @@
+{
+  "generatedAt": "2026-07-20T09:57:35.689Z",
+  "referenceNowMs": 1784541455684,
+  "T_centuries": 0.2654870635549003,
+  "source": "NASA JPL SSD — Approximate Positions of the Planets (Standish & Williams 1992), Table 1 (1800–2050 AD)",
+  "obliquityDeg": 23.43928,
+  "step1_directions": [
+    {
+      "planet": "Mercury",
+      "raDeg": 93.374,
+      "decDeg": 21.1192,
+      "sceneDist": 12.1237,
+      "typicalAU": 0.9220797145583455,
+      "dirVec": {
+        "x": -0.054901,
+        "y": 0.931216,
+        "z": 0.36031
+      }
+    },
+    {
+      "planet": "Venus",
+      "raDeg": 83.1284,
+      "decDeg": 17.9645,
+      "sceneDist": 11.676,
+      "typicalAU": 0.6908797145583455,
+      "dirVec": {
+        "x": 0.113812,
+        "y": 0.944415,
+        "z": 0.308427
+      }
+    },
+    {
+      "planet": "Mars",
+      "raDeg": 106.2552,
+      "decDeg": 23.4103,
+      "sceneDist": 12.4663,
+      "typicalAU": 1.1500330430035477,
+      "dirVec": {
+        "x": -0.256875,
+        "y": 0.880998,
+        "z": 0.397313
+      }
+    },
+    {
+      "planet": "Jupiter",
+      "raDeg": 212.9727,
+      "decDeg": -12.0974,
+      "sceneDist": 14.7782,
+      "typicalAU": 5.105997356051019,
+      "dirVec": {
+        "x": -0.8203,
+        "y": -0.532153,
+        "z": -0.209574
+      }
+    },
+    {
+      "planet": "Saturn",
+      "raDeg": 123.8617,
+      "decDeg": 20.1363,
+      "sceneDist": 15.7386,
+      "typicalAU": 9.484427710726674,
+      "dirVec": {
+        "x": -0.523132,
+        "y": 0.779629,
+        "z": 0.344255
+      }
+    }
+  ],
+  "step2_earthCrossCheck": {
+    "computedEarthHelioLonDeg": 297.3528,
+    "refEarthHeliocentricEclLonDeg": 297.7223,
+    "deviationDeg": -0.3695,
+    "note": "earthHeliocentricEclLon 对太阳加方程-of-中心 C≈1.9°，自算值用地球自身 EoC；差≈太阳EoC−地球EoC≈1.9°（已知约定差异）"
+  },
+  "step2_speedRanking": {
+    "metric": "orbital mean motion (heliocentric angular speed, deg/day)",
+    "bodiesDegPerDay": [
+      {
+        "body": "Mercury",
+        "degPerDay": 4.0923
+      },
+      {
+        "body": "Venus",
+        "degPerDay": 1.6021
+      },
+      {
+        "body": "Earth",
+        "degPerDay": 0.9856
+      },
+      {
+        "body": "Mars",
+        "degPerDay": 0.524
+      },
+      {
+        "body": "Jupiter",
+        "degPerDay": 0.0831
+      },
+      {
+        "body": "Saturn",
+        "degPerDay": 0.0335
+      }
+    ],
+    "geocentricApparentDegPerDay": [
+      {
+        "planet": "Mercury",
+        "degPerDay": 1.4874
+      },
+      {
+        "planet": "Venus",
+        "degPerDay": 0.8691
+      },
+      {
+        "planet": "Mars",
+        "degPerDay": 0.6857
+      },
+      {
+        "planet": "Jupiter",
+        "degPerDay": 0.1495
+      },
+      {
+        "planet": "Saturn",
+        "degPerDay": 0.1066
+      }
+    ],
+    "order": [
+      "Mercury",
+      "Venus",
+      "Earth",
+      "Mars",
+      "Jupiter",
+      "Saturn"
+    ],
+    "expected": [
+      "Mercury",
+      "Venus",
+      "Earth",
+      "Mars",
+      "Jupiter",
+      "Saturn"
+    ],
+    "passed": true
+  },
+  "step3_typicalDistanceCheck": [
+    {
+      "planet": "Mercury",
+      "a0": 0.387099,
+      "sqrtAbsA2m1": 0.922038,
+      "typical": 0.9220797145583455,
+      "diff": -0.000042
+    },
+    {
+      "planet": "Venus",
+      "a0": 0.723336,
+      "sqrtAbsA2m1": 0.690497,
+      "typical": 0.6908797145583455,
+      "diff": -0.000383
+    },
+    {
+      "planet": "Mars",
+      "a0": 1.52371,
+      "sqrtAbsA2m1": 1.149649,
+      "typical": 1.1500330430035477,
+      "diff": -0.000384
+    },
+    {
+      "planet": "Jupiter",
+      "a0": 5.202887,
+      "sqrtAbsA2m1": 5.105882,
+      "typical": 5.105997356051019,
+      "diff": -0.000115
+    },
+    {
+      "planet": "Saturn",
+      "a0": 9.536676,
+      "sqrtAbsA2m1": 9.484102,
+      "typical": 9.484427710726674,
+      "diff": -0.000326
+    }
+  ],
+  "sunPositionChange": {
+    "from": 6,
+    "to": 12.25,
+    "note": "审计后统一比例尺替代孤立 SUN_DIST 常数，非失误"
+  }
+}

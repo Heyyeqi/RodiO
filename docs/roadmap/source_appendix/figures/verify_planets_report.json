@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-07-20T09:43:13.089Z",
+  "tests": {
+    "defaultPath": {
+      "realCelestialMounted": false,
+      "realErrors": 0,
+      "PASS": true
+    },
+    "deepSpace": {
+      "allPlanetsVisible": true,
+      "dists": {
+        "Mercury": {
+          "name": "Mercury",
+          "visible": true,
+          "dist": 12.124,
+          "ang": 0.9,
+          "bright": 0.363,
+          "rgb": [
+            132,
+            129,
+            129
+          ],
+          "ndc": [
+            -0.0671,
+            0.5987
+          ]
+        },
+        "Venus": {
+          "name": "Venus",
+          "visible": true,
+          "dist": 11.676,
+          "ang": 1.3,
+          "bright": 1,
+          "rgb": [
+            208,
+            206,
+            204
+          ],
+          "ndc": [
+            0.1331,
+            0.5789
+          ]
+        },
+        "Mars": {
+          "name": "Mars",
+          "visible": true,
+          "dist": 12.466,
+          "ang": 1.1,
+          "bright": 0.437,
+          "rgb": [
+            138,
+            105,
+            75
+          ],
+          "ndc": [
+            -0.3262,
+            0.587
+          ]
+        },
+        "Jupiter": {
+          "name": "Jupiter",
+          "visible": true,
+          "dist": 14.778,
+          "ang": 1.25,
+          "bright": 0.55,
+          "rgb": [
+            172,
+            121,
+            68
+          ],
+          "ndc": [
+            -1.1158,
+            -0.3796
+          ]
+        },
+        "Saturn": {
+          "name": "Saturn",
+          "visible": true,
+          "dist": 15.739,
+          "ang": 1.2,
+          "bright": 0.309,
+          "rgb": [
+            119,
+            111,
+            82
+          ],
+          "ndc": [
+            -0.8443,
+            0.6599
+          ]
+        }
+      },
+      "sunDist": 12.25,
+      "moonDist": 3,
+      "outerBeyondInner": true,
+      "beyondMoon": true,
+      "venusBrightest": true,
+      "sunOK": true,
+      "moonOK": true,
+      "realErrors": 0,
+      "PASS": true
+    },
+    "movement": {
+      "venusNDC_t0": [
+        0.1331,
+        0.5789
+      ],
+      "venusNDC_t30": [
+        -0.2186,
+        0.5694
+      ],
+      "deltaNDC": 0.3518,
+      "realErrors": 0,
+      "PASS": true
+    }
+  }
+}
