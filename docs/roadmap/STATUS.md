@@ -265,6 +265,12 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化** — Step 0（真实NASA影像资源，一次性覆盖#53+#54全部剩余天体：8行星+5卫星+3环系统+太阳+月球贴图升级）已完成并独立验证通过；衍生工作"地球远景NASA真彩交叉淡入"（近景地图风不变，深空远景混合Blue Marble真彩、与行星贴图风格一致，阈值绑定#52的`MOON_VISIBLE_DIST`）也已完成并独立验证通过。**当前最前面待开工**：开普勒轨道位置计算（5颗行星）+ 渲染集成（复用#52基础设施，先金星跑通再批量接其余4颗）
 16. **[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**（天王星/海王星/冥王星+代表性卫星）
 
+### 第一点七梯队：全球海水颜色物理准确性（2026-07-20 RW明确标记"需要重点解决"，非常规backlog）
+
+> 现有主场景近景全球海洋着色是基于Blue Marble亮度直方图的百分位近似映射，代码自己标注"尚未对真实BMNG tile数据做实测校准"，不是真实海洋学数据驱动。跟RDL(#23，几何清晰度问题，Mapbox精度已经够用只是冻结未接入)是两个不同的问题——这个是颜色物理准确性问题，Mapbox/BMNG卫星照片再清晰也没用，需要的是Copernicus-GlobColour这类海洋色卫星数据。
+
+17. **[#57](https://github.com/Heyyeqi/RodiO/issues/57) 全球海水颜色物理准确性** — 把#41已验证的水质科学管线（`water_params_reference.js`，Copernicus-GlobColour CHL/SPM/CDOM/KD490→IOP物理反演→颜色）从Horizon Mode几个手选站点扩展到全球覆盖，替换现有近似的百分位亮度分级。方案未细化，RW明确要求不能像#18/#23那样被动等痛点触发，需要主动推进；具体排期/跟#53的先后关系待定。
+
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做，已全部完成）
 5. **[#9](https://github.com/Heyyeqi/RodiO/issues/9) P4 Stage 1：三态UI（Full/Minimal）** — ✅已提交（`325c379`）并本地实机验证通过，已标Done。范围只做Full/Minimal，Earth Only留给#12
 6. **[#10](https://github.com/Heyyeqi/RodiO/issues/10) P4 Stage 2：GestureRouter** `[Cat A]` — ✅已提交（`5f33b0f`）并本地实机验证通过，已标Done。验证时发现并修复两个真实bug：①IIFE前漏分号导致整段代码在浏览器里从未执行过（`node --check`测不出来）②pointermove过早锁定drag导致真实swipe手势永远判不出来。给#11留了提示：这轮drag只在pointerup兜底解析，#11接入真实地球旋转时大概率需要在move阶段也加实时锁定
@@ -348,6 +354,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#52](https://github.com/Heyyeqi/RodiO/issues/52) | 天体系统 Phase 1：太阳+月亮真实轨道位置系统（自转+公转） | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Done |
 | [#53](https://github.com/Heyyeqi/RodiO/issues/53) | 天体系统 Phase 2：七曜可见化 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog（队列最前） |
 | [#54](https://github.com/Heyyeqi/RodiO/issues/54) | 天体系统 Phase 3：完整太阳系收尾 | Real Celestial Bodies — Astronomically Accurate Solar System | P3 | Backlog |
+| [#57](https://github.com/Heyyeqi/RodiO/issues/57) | 全球海水颜色物理准确性（水质科学管线扩展到全球） | Earth Visual Foundation Formal Closure | P1 | Backlog（RW标记重点，非常规排队） |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Done（4515ef6，端到端验证通过） |
 | [#34](https://github.com/Heyyeqi/RodiO/issues/34) | 天外来信/DJ播报文本长度失控 — 加硬性截断 + 防止整段外文 | Playback Reliability and Core Bug Fixes | P0 | Done（b31a024，本地实测验证通过） |
