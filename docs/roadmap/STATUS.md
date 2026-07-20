@@ -262,7 +262,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 > 用户指出现有3D场景里太阳/月亮压根没有可见物体（只有`DirectionalLight`+后端月相计算，无渲染），星空是真实8K星图+程序化点缀混合。要求分阶段做完整太阳系（含冥王星+代表性卫星），标准是"天文学级别真实"，不是艺术示意。milestone "Real Celestial Bodies — Astronomically Accurate Solar System"。
 
 14. ~~**[#52](https://github.com/Heyyeqi/RodiO/issues/52) Phase 1：太阳+月亮真实轨道位置系统（自转+公转）**~~ — **Done**（太阳/月亮真实方位+距离+可见性分档 + 地球自转[逐帧数值标定，非线性外推] + 公转可视化[deepSpace轨道环+真实日心黄经位置标记]，全部独立验证通过，见issue评论）
-15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化** — 当前最前面待开工的任务（水星/金星/火星/木星/土星，把现有`rimGlow`每周色调tint升级为真实可见天体，可复用#52沉淀的天体渲染+距离分档+恒定角直径基础设施）
+15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化** — Step 0（真实NASA影像资源，一次性覆盖#53+#54全部剩余天体：8行星+5卫星+3环系统+太阳+月球贴图升级）已完成并独立验证通过。**当前最前面待开工**：开普勒轨道位置计算（5颗行星）+ 渲染集成（复用#52基础设施，先金星跑通再批量接其余4颗）
 16. **[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**（天王星/海王星/冥王星+代表性卫星）
 
 ### 第二梯队：P4 交互闭环主线（有先后依赖，按序做，已全部完成）
