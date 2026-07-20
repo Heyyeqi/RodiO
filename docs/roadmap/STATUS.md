@@ -261,7 +261,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 
 > 用户指出现有3D场景里太阳/月亮压根没有可见物体（只有`DirectionalLight`+后端月相计算，无渲染），星空是真实8K星图+程序化点缀混合。要求分阶段做完整太阳系（含冥王星+代表性卫星），标准是"天文学级别真实"，不是艺术示意。milestone "Real Celestial Bodies — Astronomically Accurate Solar System"。
 
-14. **[#52](https://github.com/Heyyeqi/RodiO/issues/52) Phase 1：太阳+月亮+星空一致性**
+14. **[#52](https://github.com/Heyyeqi/RodiO/issues/52) Phase 1：太阳+月亮真实轨道位置系统（自转+公转）** — 2026-07-20架构返工：第一版screen-space HUD方案（天体固定摆相机前方保证永远可见）被否决，改为复用已有的`_computeSubsolarPoint()`/`updateSunPosition()`真实太阳方向系统 + `deepSpace`/`farOrbit`构图分级，太阳只在deepSpace可见、月亮只在farOrbit可见，新增地球自转（真实时间驱动）+公转（季节/轨道位置）基础设施，详见issue正文
 15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化**（水星/金星/火星/木星/土星，把现有`rimGlow`每周色调tint升级为真实可见天体）
 16. **[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**（天王星/海王星/冥王星+代表性卫星）
 
