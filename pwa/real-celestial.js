@@ -23,7 +23,7 @@
  *       月亮 = REAL_MOON_ANG × 4.5 ≈ 2.33°（垂直FOV 8.3%）、太阳 = REAL_SUN_ANG × 5.0 ≈ 2.67°（9.5%）。
  *       世界半径 = 相机距 × tan(角直径/2)。任意轨道位置都精确等于选取倍数，绝不会越界。
  *  ── 复用（不重做）：太阳光晕 shader（makeSunGlowTexture 程序生成径向渐变 + AdditiveBlending）、
- *     月亮相位 shader（MOON_VERT/MOON_FRAG 真实 terminator）、真实月球贴图 moon_1024.jpg。
+ *     月亮相位 shader（MOON_VERT/MOON_FRAG 真实 terminator）、真实月球贴图 moon_lroc_color_2k.jpg（LROC WAC 2k 自然色，2025 CGI Moon Kit）。
  *  ── 月相：uSunDir = 世界坐标 (太阳位置 − 月亮位置) 归一化，相位形状随 now 真实变化。
  */
 (function () {
@@ -208,7 +208,7 @@
     scene.add(moon)
 
     new T.TextureLoader().load(
-      '/assets/textures/moon/moon_1024.jpg',
+      '/assets/textures/moon/moon_lroc_color_2k.jpg',
       function (tex) {
         if (T.sRGBEncoding !== undefined) tex.encoding = T.sRGBEncoding
         moonUniforms.uTex.value = tex

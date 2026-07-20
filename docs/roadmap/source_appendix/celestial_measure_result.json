@@ -1,0 +1,468 @@
+{
+  "planets": [
+    {
+      "file": "callisto_pia03456.jpg",
+      "size": "740x753",
+      "body_frac": 0.577,
+      "sample_pixels": 223863,
+      "rgb": [
+        120.8,
+        106.8,
+        92.7
+      ],
+      "hex": "#786A5C",
+      "mean_abs_RG": 16.4,
+      "mean_abs_RB": 29.3,
+      "grayscale_risk": false
+    },
+    {
+      "file": "europa_pia19048.jpg",
+      "size": "2300x1700",
+      "body_frac": 0.526,
+      "sample_pixels": 1872382,
+      "rgb": [
+        120.1,
+        116.9,
+        114.8
+      ],
+      "hex": "#787472",
+      "mean_abs_RG": 11.0,
+      "mean_abs_RB": 18.4,
+      "grayscale_risk": false
+    },
+    {
+      "file": "ganymede_pia00716.jpg",
+      "size": "800x800",
+      "body_frac": 0.641,
+      "sample_pixels": 342180,
+      "rgb": [
+        136.7,
+        112.3,
+        88.2
+      ],
+      "hex": "#887058",
+      "mean_abs_RG": 24.4,
+      "mean_abs_RB": 48.5,
+      "grayscale_risk": false
+    },
+    {
+      "file": "io_pia00715.jpg",
+      "size": "2400x1900",
+      "body_frac": 0.436,
+      "sample_pixels": 1630515,
+      "rgb": [
+        144.7,
+        126.6,
+        79.6
+      ],
+      "hex": "#907E4F",
+      "mean_abs_RG": 20.0,
+      "mean_abs_RB": 67.2,
+      "grayscale_risk": false
+    },
+    {
+      "file": "io_truecolor.jpg",
+      "size": "2572x1286",
+      "body_frac": 0.778,
+      "sample_pixels": 2157764,
+      "rgb": [
+        163.4,
+        129.0,
+        76.0
+      ],
+      "hex": "#A3814C",
+      "mean_abs_RG": 34.4,
+      "mean_abs_RB": 87.4,
+      "grayscale_risk": false
+    },
+    {
+      "file": "jupiter_pia01369.jpg",
+      "size": "916x901",
+      "body_frac": 1.0,
+      "sample_pixels": 753501,
+      "rgb": [
+        172.0,
+        120.6,
+        68.4
+      ],
+      "hex": "#AB7844",
+      "mean_abs_RG": 51.4,
+      "mean_abs_RB": 103.6,
+      "grayscale_risk": false
+    },
+    {
+      "file": "mars_truecolor.jpg",
+      "size": "2560x1920",
+      "body_frac": 0.429,
+      "sample_pixels": 1477291,
+      "rgb": [
+        138.4,
+        104.5,
+        74.7
+      ],
+      "hex": "#8A684A",
+      "mean_abs_RG": 33.9,
+      "mean_abs_RB": 63.8,
+      "grayscale_risk": false
+    },
+    {
+      "file": "mercury_messenger_truecolor.jpg",
+      "size": "1040x1040",
+      "body_frac": 0.582,
+      "sample_pixels": 521560,
+      "rgb": [
+        132.0,
+        128.9,
+        128.6
+      ],
+      "hex": "#848080",
+      "mean_abs_RG": 3.1,
+      "mean_abs_RB": 3.5,
+      "grayscale_risk": true
+    },
+    {
+      "file": "neptune_pia01492.jpg",
+      "size": "2188x2185",
+      "body_frac": 0.584,
+      "sample_pixels": 2675317,
+      "rgb": [
+        50.7,
+        71.5,
+        175.4
+      ],
+      "hex": "#3247AF",
+      "mean_abs_RG": 20.8,
+      "mean_abs_RB": 124.7,
+      "grayscale_risk": false
+    },
+    {
+      "file": "pluto_pia19708.jpg",
+      "size": "1024x1024",
+      "body_frac": 0.289,
+      "sample_pixels": 290527,
+      "rgb": [
+        172.5,
+        141.0,
+        112.4
+      ],
+      "hex": "#AC8C70",
+      "mean_abs_RG": 31.5,
+      "mean_abs_RB": 60.1,
+      "grayscale_risk": false
+    },
+    {
+      "file": "saturn_truecolor.jpg",
+      "size": "1001x1628",
+      "body_frac": 0.618,
+      "sample_pixels": 920064,
+      "rgb": [
+        119.3,
+        111.4,
+        81.9
+      ],
+      "hex": "#776F51",
+      "mean_abs_RG": 8.3,
+      "mean_abs_RB": 37.4,
+      "grayscale_risk": false
+    },
+    {
+      "file": "titan_pia06230.jpg",
+      "size": "758x766",
+      "body_frac": 0.351,
+      "sample_pixels": 176962,
+      "rgb": [
+        150.7,
+        122.3,
+        51.1
+      ],
+      "hex": "#967A33",
+      "mean_abs_RG": 28.5,
+      "mean_abs_RB": 99.6,
+      "grayscale_risk": false
+    },
+    {
+      "file": "uranus_pia18182.jpg",
+      "size": "1720x1720",
+      "body_frac": 0.509,
+      "sample_pixels": 1072531,
+      "rgb": [
+        179.7,
+        217.3,
+        220.9
+      ],
+      "hex": "#B3D9DC",
+      "mean_abs_RG": 37.6,
+      "mean_abs_RB": 41.2,
+      "grayscale_risk": false
+    },
+    {
+      "file": "venus_mariner10_truecolor.jpg",
+      "size": "1000x1000",
+      "body_frac": 0.636,
+      "sample_pixels": 486546,
+      "rgb": [
+        208.1,
+        206.0,
+        204.2
+      ],
+      "hex": "#D0CECC",
+      "mean_abs_RG": 2.9,
+      "mean_abs_RB": 6.2,
+      "grayscale_risk": false
+    }
+  ],
+  "rings": [
+    {
+      "file": "saturn_rings_pia08389.jpg",
+      "size": "11298x980",
+      "bands": 24,
+      "overall_rgb": [
+        99.4,
+        88.8,
+        76.5
+      ],
+      "profile": [
+        {
+          "seg": 1,
+          "x_range": "0-470",
+          "rgb": [
+            7.5,
+            7.4,
+            7.5
+          ],
+          "lum": 7.5
+        },
+        {
+          "seg": 2,
+          "x_range": "470-941",
+          "rgb": [
+            44.4,
+            42.4,
+            41.1
+          ],
+          "lum": 42.6
+        },
+        {
+          "seg": 3,
+          "x_range": "941-1412",
+          "rgb": [
+            71.1,
+            64.9,
+            61.9
+          ],
+          "lum": 66.0
+        },
+        {
+          "seg": 4,
+          "x_range": "1412-1883",
+          "rgb": [
+            86.6,
+            77.2,
+            73.8
+          ],
+          "lum": 79.2
+        },
+        {
+          "seg": 5,
+          "x_range": "1883-2353",
+          "rgb": [
+            90.5,
+            81.4,
+            76.0
+          ],
+          "lum": 82.7
+        },
+        {
+          "seg": 6,
+          "x_range": "2353-2824",
+          "rgb": [
+            75.9,
+            69.0,
+            64.1
+          ],
+          "lum": 69.7
+        },
+        {
+          "seg": 7,
+          "x_range": "2824-3295",
+          "rgb": [
+            127.4,
+            113.6,
+            99.1
+          ],
+          "lum": 113.4
+        },
+        {
+          "seg": 8,
+          "x_range": "3295-3766",
+          "rgb": [
+            155.0,
+            135.2,
+            110.9
+          ],
+          "lum": 133.7
+        },
+        {
+          "seg": 9,
+          "x_range": "3766-4236",
+          "rgb": [
+            155.8,
+            136.4,
+            112.5
+          ],
+          "lum": 134.9
+        },
+        {
+          "seg": 10,
+          "x_range": "4236-4707",
+          "rgb": [
+            105.9,
+            93.6,
+            76.5
+          ],
+          "lum": 92.0
+        },
+        {
+          "seg": 11,
+          "x_range": "4707-5178",
+          "rgb": [
+            104.1,
+            92.6,
+            76.3
+          ],
+          "lum": 91.0
+        },
+        {
+          "seg": 12,
+          "x_range": "5178-5649",
+          "rgb": [
+            84.9,
+            75.9,
+            60.3
+          ],
+          "lum": 73.7
+        },
+        {
+          "seg": 13,
+          "x_range": "5649-6119",
+          "rgb": [
+            85.1,
+            76.0,
+            61.0
+          ],
+          "lum": 74.0
+        },
+        {
+          "seg": 14,
+          "x_range": "6119-6590",
+          "rgb": [
+            87.8,
+            78.0,
+            63.2
+          ],
+          "lum": 76.3
+        },
+        {
+          "seg": 15,
+          "x_range": "6590-7061",
+          "rgb": [
+            89.8,
+            79.6,
+            65.3
+          ],
+          "lum": 78.2
+        },
+        {
+          "seg": 16,
+          "x_range": "7061-7532",
+          "rgb": [
+            87.0,
+            79.7,
+            71.7
+          ],
+          "lum": 79.5
+        },
+        {
+          "seg": 17,
+          "x_range": "7532-8002",
+          "rgb": [
+            106.8,
+            97.8,
+            89.4
+          ],
+          "lum": 98.0
+        },
+        {
+          "seg": 18,
+          "x_range": "8002-8473",
+          "rgb": [
+            122.0,
+            108.9,
+            94.2
+          ],
+          "lum": 108.4
+        },
+        {
+          "seg": 19,
+          "x_range": "8473-8944",
+          "rgb": [
+            142.7,
+            126.3,
+            107.6
+          ],
+          "lum": 125.6
+        },
+        {
+          "seg": 20,
+          "x_range": "8944-9415",
+          "rgb": [
+            157.6,
+            140.1,
+            118.3
+          ],
+          "lum": 138.7
+        },
+        {
+          "seg": 21,
+          "x_range": "9415-9885",
+          "rgb": [
+            167.7,
+            148.1,
+            124.7
+          ],
+          "lum": 146.8
+        },
+        {
+          "seg": 22,
+          "x_range": "9885-10356",
+          "rgb": [
+            199.6,
+            176.4,
+            150.2
+          ],
+          "lum": 175.4
+        },
+        {
+          "seg": 23,
+          "x_range": "10356-10827",
+          "rgb": [
+            8.6,
+            8.6,
+            8.8
+          ],
+          "lum": 8.7
+        },
+        {
+          "seg": 24,
+          "x_range": "10827-11298",
+          "rgb": [
+            20.9,
+            20.9,
+            21.1
+          ],
+          "lum": 21.0
+        }
+      ]
+    }
+  ]
+}

@@ -7361,3 +7361,31 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 ### 已知问题 / 遗留
 - 报告中的"符号测试"（`REAL_ROTATION_SIGN=-1`常量、"sign=+1会偏离103°"的对比）是早期线性外推方案的历史验证遗留——实际生产代码走逐帧数值标定，不依赖这个符号常量，这部分测试框架描述略有误导性，但不影响核心结论（自转本身已验证准确）。
 - 逐帧标定每帧约260次迭代的quaternion运算，仅在`?earthCandidate=realCelestial`时启用，对默认路径无性能影响；但如果未来这套自转系统要"毕业"进默认体验，需要优化标定算法（如闭式解或降低采样频率），不能直接照搬当前实现。
+
+---
+
+## 2026-07-20 — #53/#54 Step 0：全部剩余天体真实影像资源采集（8行星+5卫星+3环系统+太阳+月球升级）
+
+### 做了什么
+- 为#53（水星/金星/火星/木星/土星）+#54（天王星/海王星/冥王星+代表性卫星）一次性采集真实NASA/JPL探测器影像，覆盖：8颗行星、5颗卫星（木星伽利略四卫星Io/Europa/Ganymede/Callisto + 土卫六Titan）、3个环系统纹理（木星/天王星/海王星）、太阳日面（SDO/HMI）、月球贴图从1024×512灰度升级到2048×1024真彩（LROC WAC 2k，2025 CGI Moon Kit）。
+- **过程中自己发现并修正了3个真实错误**（不是我要求复核后才发现，是他们自己的程序化校验流程主动抓到的）：
+  1. Io原图`io_pia02595.jpg`实测是灰度科学合成图伪装成RGB（三通道近似相等但色调与Io真实硫黄黄橙色不符），换成Voyager 1真彩镶嵌图`PIA00318`。
+  2. Saturn原图`saturn_pia17175.jpg`只是一张几乎全黑的新月照，非全圆盘代表色，换成Cassini全圆盘自然色`PIA12513`("Stately Saturn")。
+  3. **Callisto原文件`PIA00320`实际是Io的Loki Patera火山口特写**（文件名标错了天体），通过读取文件内嵌XMP元数据发现（元数据里写的是"Io's volcanic plains"），换成Galileo探测器真正的Callisto全局真彩图`PIA03456`。
+- 独立测色脚本（`celestial_measure_rgb.py`+`celestial_measure_additional.py`）对全部资源做统一、可复现的RGB/径向亮度实测，不是手写色值。
+- `real-celestial.js`月球贴图引用已切换到2k版本（同2:1等距柱状投影，无缝替换，已落地）。
+
+### 独立复核方式
+- `file`命令读取每个JPEG/TIFF文件内嵌的EXIF/IPTC/XMP描述文本——这些是烘焙进文件二进制内容的真实NASA图注（如saturn_truecolor.jpg读出"Saturn, stately and resplendent...taken by NASA's Cassini spacecraft, dwarfs the icy moon Rhea"，callisto_pia03456.jpg读出"testify to a long history of impacts on Jupiter's moon Callisto"，pluto_pia19708.jpg读出New Horizons 2015年7月13日拍摄的著名冥王星特写图注），精确匹配报告里的叙述，且这类图注文本不是能凭空编造嵌入真实图片二进制结构的东西，是强证据。
+- 独立重跑了`celestial_measure_rgb.py`和`celestial_measure_additional.py`两个脚本，输出跟报告贴出的数字完全一致（Mercury正确标记GRAY、天王星环钟形亮度峰值、海王星环整体极暗，均physically make sense）。
+- 起服务器验证`?earthCandidate=realCelestial`路径挂载正常、零console报错，确认月球贴图升级没有破坏现有渲染。
+
+### 改动文件
+- 新增 `pwa/assets/textures/{planets,jupiter_rings,uranus_rings,neptune_rings,sun,saturn_rings}/`（约20个文件）
+- 新增 `pwa/assets/textures/moon/moon_lroc_color_2k.jpg`（+`pia12888_wac_mosaic.jpg`探索过程中的候选，未采用）
+- 新增 `docs/.../celestial_texture_resources.md`、`celestial_measure_rgb.py`、`celestial_measure_additional.py`及对应JSON结果
+- 改 `pwa/real-celestial.js`（月球贴图路径 moon_1024.jpg → moon_lroc_color_2k.jpg）
+
+### 遗留 / 下一步
+- 这一步只做资源采集，不涉及任何渲染代码（除月球贴图这一处必然关联的路径切换）。
+- 下一步：#53开普勒轨道位置计算（5颗行星）+ 视觉渲染集成（复用#52基础设施，先金星跑通再批量接其余4颗）。
