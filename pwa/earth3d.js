@@ -585,6 +585,14 @@
     let atmosphere2 = null
     let tileManager = null
     let dayTexture = null
+    // ── #53/#54 远景地球 NASA 真彩（Blue Marble 4K）── 远景（深空）时交叉淡入，
+    // 近景（地图风）保持现状零影响。详见 docs/roadmap/source_appendix/earth_far_nasa_texture_spec.md
+    let blueMarbleTexture = null      // 远景 NASA 真彩（惰性加载，仅首次进入远带才请求）
+    let earthFarMix = 0               // 当前远景混合系数 0=近景 1=远景（平滑跟随目标）
+    let earthFarMixTarget = 0
+    let blueMarbleRequested = false   // 防止重复请求
+    let _earthWorldPos = null         // 复用：相机→地心距离计算
+    let _debugFarMixOverride = null   // #53/#54 验证用：非 null 时渲染循环直接采用该值（权威覆盖距离驱动）
     let nightTexture = null
     const nightTextureOverrides = {}
     let oceanSpecularTexture = null
@@ -1803,6 +1811,9 @@
         shader.uniforms.uAridDarken          = { value: _pv('uAridDarken', 0) }
         shader.uniforms.uAridWarmReduce      = { value: _pv('uAridWarmReduce', 0) }
         shader.uniforms.uIceNeutralize       = { value: _pv('uIceNeutralize', 0) }
+        // ── #53/#54 远景 NASA 真彩（Blue Marble）──
+        shader.uniforms.uMapFar  = { value: blueMarbleTexture ?? _maskPlaceholder }
+        shader.uniforms.uFarMix  = { value: _pv('uFarMix', 0) }
         console.log('[earth3d] onBeforeCompile — recompile#' + ((_prev ? 're' : '1st')),
           '| oceanMaskTexture:', oceanMaskTexture ? 'LOADED' : 'placeholder',
           '| uOceanMask set to:', oceanMaskTexture ? 'real texture' : '_maskPlaceholder')
@@ -1849,6 +1860,10 @@
           uniform float uOceanRawMix;
           uniform float uOceanRawExposure;
           uniform float uOceanRawBlueKeep;
+
+          // ── #53/#54 远景地球 NASA 真彩（Blue Marble）──
+          uniform sampler2D uMapFar;
+          uniform float uFarMix;
 
           vec3 rodioAdjustSaturation(vec3 color, float saturation) {
             float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -2083,6 +2098,18 @@
               }
             }
           }
+
+          // ── #53/#54 远景地球 NASA 真彩（Blue Marble）交叉淡入 ──
+          // _nearGraded = 含 mapColor + 海陆分级的近景结果（与改造前像素一致）
+          // 远景 = 纯 Blue Marble（uMapFar，色彩管理与近景 map 同源：sRGB→linear）
+          // 统一在 map_fragment 之后做一次交叉淡入：
+          //   uFarMix = 0 → 完全近景（逐像素等价，近景零影响硬红线）
+          //   uFarMix = 1 → 纯远图（既无主题色 mapColor，也无海陆分级）
+          // 二者天然同时满足，无需分别改 §3.3/§3.4（规避多注入点遗漏风险）
+          {
+            vec4 _farTexel = mapTexelToLinear(texture2D(uMapFar, vUv));
+            diffuseColor.rgb = mix(diffuseColor.rgb, _farTexel.rgb, uFarMix);
+          }
           #endif`
         )
 
@@ -2236,6 +2263,35 @@
           }`
         )
       }
+
+      // ── #53/#54 远景地球 NASA 真彩：惰性加载 Blue Marble 4K ──
+      // 仅首次进入远带（d > THRESH-LEAD）由动画循环调用，避免阻塞近景。
+      function ensureBlueMarble() {
+        if (blueMarbleRequested) return
+        blueMarbleRequested = true
+        new THREE.TextureLoader().load(
+          '/assets/textures/earth/blue_marble_4k.jpg',
+          (tex) => {
+            // 色彩管理与近景 dayTexture 保持一致（sRGB），使 shader 内
+            // mapTexelToLinear 对 uMapFar 的转换与 map 同源。
+            if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace
+            else if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding
+            tex.minFilter = THREE.LinearMipmapLinearFilter
+            tex.magFilter = THREE.LinearFilter
+            tex.generateMipmaps = true
+            if (renderer && renderer.capabilities) {
+              tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
+            }
+            blueMarbleTexture = tex
+            if (earthShaderUniforms && earthShaderUniforms.uMapFar) {
+              earthShaderUniforms.uMapFar.value = tex
+            }
+          },
+          undefined,
+          (e) => console.error('[earthFar] Blue Marble 加载失败:', e)
+        )
+      }
+
       loadNormalMapTexture()
       earthGeometry = new THREE.SphereGeometry(2, SPHERE_SEGMENTS, SPHERE_SEGMENTS)
       const earth = new THREE.Mesh(earthGeometry, earthMaterial)
@@ -2253,6 +2309,22 @@
       // 不依赖构图名字，新构图（如 #40 Flight View）只要算出的距离落在区间就自动生效。
       earth3dApi.getEarthCenter = () => earth.getWorldPosition(new THREE.Vector3())
       earth3dApi.getCameraDistanceToEarth = () => camera.position.distanceTo(earth.getWorldPosition(new THREE.Vector3()))
+      // ── #53/#54 验证用调试钩子（远景 NASA 真彩）── 均以下划线前缀，生产态不依赖。
+      earth3dApi.getEarthFarMix = () => earthFarMix
+      earth3dApi.isBlueMarbleLoaded = () => blueMarbleTexture !== null
+      earth3dApi.__debugSetFarMix = (v) => {
+        _debugFarMixOverride = (v === null) ? null : Number(v)
+        earthFarMix = earthFarMixTarget = _debugFarMixOverride
+        if (earthShaderUniforms && earthShaderUniforms.uFarMix) earthShaderUniforms.uFarMix.value = earthFarMix
+      }
+      earth3dApi.__debugSetCameraDistance = (d) => {
+        // 将相机沿 +Z 置于距地心 d 处并朝向地心，用于验证距离→uFarMix 映射（空闲构图下有效）
+        if (!_earthWorldPos) _earthWorldPos = new THREE.Vector3()
+        earth.getWorldPosition(_earthWorldPos)
+        camera.position.set(_earthWorldPos.x, _earthWorldPos.y, _earthWorldPos.z + d)
+        camera.lookAt(_earthWorldPos)
+        camera.updateProjectionMatrix()
+      }
       // Fresnel-based atmosphere shader: opacity = pow(1 - |dot(N,V)|, power) * scale
       // Produces a natural limb glow — transparent at center, bright only at the edge.
       // uSunDir (world-space) makes the glow brighter on the sunlit hemisphere and nearly
@@ -7689,6 +7761,29 @@
 
       renderer.setAnimationLoop(() => {
         if (!isReady || permanentlyUnavailable) return
+        // ── #53/#54 远景地球 NASA 真彩：每帧按相机→地心距离更新 uFarMix ──
+        {
+          const FAR_THRESH = 20   // = MOON_VISIBLE_DIST（real-celestial.js），行星出现临界 = 过渡上界
+          const FAR_LEAD   = 8    // 过渡起始提前量：d=12 起淡入，过渡带 [12,20]
+          if (!_earthWorldPos) _earthWorldPos = new THREE.Vector3()
+          earth.getWorldPosition(_earthWorldPos)
+          const _d = camera.position.distanceTo(_earthWorldPos)
+          // 验证钩子权威覆盖：__debugSetFarMix(v) 设了非 null 值时，直接采用 v，跳过距离计算
+          let _t
+          if (_debugFarMixOverride !== null) {
+            _t = _debugFarMixOverride
+            if (_t > 0) ensureBlueMarble()   // 强制远图时也触发惰性加载
+          } else {
+            if (_d > FAR_THRESH - FAR_LEAD) ensureBlueMarble()   // 进入过渡带才惰性加载 4K
+            // smoothstep(12,20,d)：d≤12→0（纯近景，与现状逐像素等价）；d≥20→1（纯 NASA 真彩）
+            _t = THREE.MathUtils.smoothstep(_d, FAR_THRESH - FAR_LEAD, FAR_THRESH)
+          }
+          earthFarMixTarget = _t
+          earthFarMix += (earthFarMixTarget - earthFarMix) * 0.15   // 平滑跟随，避免数值抖动/闪烁
+          if (earthShaderUniforms && earthShaderUniforms.uFarMix) {
+            earthShaderUniforms.uFarMix.value = earthFarMix
+          }
+        }
         _animFrameCount++
         if (starSphereMaterial && starSphereMaterial.uniforms) {
           if (_starAnimStartTime === 0) _starAnimStartTime = performance.now() / 1000

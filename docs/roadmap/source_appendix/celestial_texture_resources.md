@@ -401,9 +401,41 @@ pwa/assets/textures/
     ├── moon_lroc_color_2k.jpg         (2048×1024, 447 KB) ← ★ 升级主贴图（已启用）
     ├── moon_1024.jpg                  (1024×512, 238 KB) ← 旧（备份保留）
     └── pia12888_wac_mosaic.jpg        (1000×1000, 149 KB) ← 早期试探（低分辨率，弃用）
+└── earth/
+    └── blue_marble_4k.jpg             (4096×2048, 1.9 MB) ← ★ 远景 NASA 真彩（#53/#54 衍生，已落地）
 ```
 
 **补充总计：13 个新文件（太阳×2、木星环×3、天王星环×2、海王星环×2、月球×3 含弃用），~3.0 MB**
+**叠加地球远景：+1 文件（blue_marble_4k.jpg, 1.9 MB）→ 合计 14 个新文件，~4.9 MB**
+
+---
+
+## 11. 地球远景 NASA 真彩贴图（#53/#54 衍生 ★ 已落地）
+
+> 与 §2 行星/卫星不同：这是**地球自身**在深空远景下的表面反照率来源替换（机制 A：同球 shader blend，非硬换 `map`）。近景仍保留 RW 选定的 Mapbox topo_bathy 瓦片 + 分级着色地图风；当相机→地心距离进入过渡带 `[12,20]` 时，经 `uFarMix = smoothstep(12,20,d)` 交叉淡入到 NASA Blue Marble 真彩，d≥20（月亮出现临界）时**完全**真彩，与行星照片质感对齐。保留夜灯。
+
+### 11.1 条目
+
+| 字段 | 值 |
+|------|-----|
+| 天体 | 地球 Earth（远景表面反照率） |
+| 文件 | `pwa/assets/textures/earth/blue_marble_4k.jpg` |
+| 来源 | NASA Visible Earth — **Blue Marble** 下一代真彩等距柱状（公有领域 PD） |
+| 原始分辨率 | 5400×2700（NASA 发布 2:1 等距柱状） |
+| 落地分辨率 | **4096×2048**（2:1 等距柱状，与近景瓦片同 UV 投影，无缝混合） |
+| 色彩 | sRGB；实测均值 RGB ≈ **(63, 74, 91)**（整体偏蓝，海洋主导） |
+| 大小 | 1.9 MB |
+| 加载 | 惰性：`ensureBlueMarble()` 仅首次进入远带（`d > 12`）由渲染循环触发，近景零阻塞 |
+| 注入 | `earth3d.js`：`uMapFar`/`uFarMix` uniform + `onBeforeCompile` 混合块（L1815–1816 / L2105–2110）+ 每帧更新（L7762–7783） |
+| 验收 | Playwright swiftshader 5/5 PASS（近景零影响 / 远景真彩零主题色 / 主题一致性 / 距离映射 / realCelestial 远景）；中心像素 `far_sunset_far`(br=-11.8) 与 `far_dawn_far`(br=-12.4) 差 0.6 → 主题色完全移除 |
+| 规格 | `docs/roadmap/source_appendix/earth_far_nasa_texture_spec.md`（v1.2） |
+| 验证 | `docs/roadmap/source_appendix/figures/verify_far_report.json` + `far_*.png` |
+
+### 11.2 与行星渲染的一致性
+
+- 远景地球 = 纯 NASA 可见光真彩（同 §2 行星来源家族），与同框的 8 行星 + 5 卫星 2K 贴图风格统一。
+- 光照不变：仍共用 `sunDirection` 方向光，terminator 与行星天然对齐，无额外改动。
+- `real-celestial.js` 行星逻辑完全不碰（验收 #5 确认）。
 
 ---
 

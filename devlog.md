@@ -7389,3 +7389,34 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 ### 遗留 / 下一步
 - 这一步只做资源采集，不涉及任何渲染代码（除月球贴图这一处必然关联的路径切换）。
 - 下一步：#53开普勒轨道位置计算（5颗行星）+ 视觉渲染集成（复用#52基础设施，先金星跑通再批量接其余4颗）。
+
+---
+
+## 2026-07-20 — #53/#54 衍生：地球远景 NASA 真彩贴图（Blue Marble 交叉淡入）
+
+### 做了什么
+- 背景：地球近景贴图来自Mapbox topo_bathy瓦片+海陆分级着色，是"设计感强的地图风格"（RW喜欢，近景保留不动）；但深空远景下地球会跟新采集的NASA真彩行星（#53/#54 Step 0）同框，风格不搭。
+- 方案：`earthMaterial.onBeforeCompile`里新增`uMapFar`(NASA Blue Marble 4096×2048)+`uFarMix`两个uniform，在`#include<map_fragment>`之后做单段交叉淡入`diffuseColor.rgb = mix(diffuseColor.rgb, _farTexel.rgb, uFarMix)`。`uFarMix=0`时逐像素等价现状（近景零影响硬红线），`uFarMix=1`时完全等于纯NASA真彩像素（不含主题色mapColor、不含海陆分级）——因为是对`diffuseColor`最终结果做mix，不是分别改多处注入点，天然同时解决了"主题色残留"和"分级残留"两个问题，不用像原规格草案那样分别处理。
+- 每帧按相机→地心实际距离`d`更新：`uFarMix = smoothstep(12, 20, d)`（d≤12→0纯近景，d≥20→1纯真彩，20正好是#52定的`MOON_VISIBLE_DIST`，即月亮出现的那一刻地球已经完全是真彩，不会有"月亮已出现但地球还是半地图风"的过渡期，比规格文档原始草案的`smoothstep(16,24,d)`更贴合"行星出现时地球已一致"的设计意图）。
+- 贴图惰性加载（进入过渡带才请求4K纹理），夜灯emissiveMap不动。
+
+### 独立复核方式
+- 起`rodio-static`服务器，用暴露的调试钩子（`getEarthFarMix`/`isBlueMarbleLoaded`/`__debugSetFarMix`/`__debugSetCameraDistance`）直接测试，不只看他们的报告截图：
+  - 默认近景：`farMix=0`、`bmLoaded=false`（懒加载未触发），零console报错，截图与改造前近景基线一致。
+  - `__debugSetFarMix(1)`强制远景：截图对比显示色调明显变化（从高对比度地图风变为平实的真实卫星照片色调），同一机位同一地形，证明贴图切换生效。
+  - `__debugSetCameraDistance(16)`：`farMix`精确读到`0.5000000000000003`（smoothstep中点理论值，精确吻合）。
+  - `__debugSetCameraDistance(25)`：`farMix`精确读到`0.9999999999999997`（≈1，超出过渡带上界）。
+  - 三个数值检查点全部跟他们报告里的claim（d=16→0.50、d=25→0.999、近景→0）精确一致。
+
+### 改动文件
+- 改 `pwa/earth3d.js`（onBeforeCompile新增uMapFar/uFarMix + shader混合块 + ensureBlueMarble惰性加载 + 每帧distance-driven更新 + 4个调试钩子）
+- 新增 `pwa/assets/textures/earth/blue_marble_4k.jpg`（4096×2048，NASA Blue Marble，PD）
+- 改 `docs/.../celestial_texture_resources.md`（+§11地球远景条目）
+- 新增 `docs/.../earth_far_nasa_texture_spec.md`（方案文档，v1.2含实际行号回填）
+
+### 过程中他们自己发现并修复的两个真实bug
+1. **验证脚本假阴性**：调试钩子`__debugSetFarMix`最初只写uniform，但渲染循环每帧仍按真实距离重新计算并覆盖回去，导致强制远景测试永远读到0。修复：加`_debugFarMixOverride`权威覆盖标志，渲染循环检测到非null时直接采用，跳过距离计算——这是生产代码里的真实修复，不只是测试脚本。
+2. **验收条件写错**：最初以为d=25时太阳也该可见，实际`SUN_VISIBLE_DIST=50`（#52已定），d=25只到月亮可见的门槛，太阳按设计不可见——发现是验收标准理解错了，不是功能问题。
+
+### 遗留
+- 未在这轮做：地球材质其他远景相关效果（大气/云层等）目前不受影响，只有表面反照率被替换；如果后续觉得远景大气/云也需要跟行星风格统一，需要单独评估。

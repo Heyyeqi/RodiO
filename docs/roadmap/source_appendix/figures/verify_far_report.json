@@ -1,0 +1,121 @@
+{
+  "timestamp": "2026-07-20T08:36:57.264Z",
+  "tests": {
+    "nearZeroImpact": {
+      "homeDist": 5,
+      "farMixDefault": 0,
+      "blueMarbleLoadedAtNear": false,
+      "realErrors": 0,
+      "badResp": [],
+      "PASS": true
+    },
+    "farTrueColorWarmTheme": {
+      "blueMarbleLoaded": true,
+      "farMixNear": 0,
+      "farMixFar": 1,
+      "realErrors": 0,
+      "badResp": [],
+      "PASS": true
+    },
+    "themeConsistency": {
+      "realErrors": 0,
+      "badResp": [],
+      "PASS": true
+    },
+    "distanceMapping": {
+      "d25": 25,
+      "v25": 0.9985,
+      "loaded25": true,
+      "d16": 16,
+      "v16": 0.5032,
+      "d5": 5,
+      "v5": 0.0006,
+      "realErrors": 0,
+      "badResp": [],
+      "PASS": true
+    },
+    "realCelestialFar": {
+      "d25": {
+        "sunVisible": false,
+        "moonVisible": true,
+        "earthFarMix": 0.9944867761927646,
+        "blueMarbleLoaded": true
+      },
+      "d60": {
+        "sunVisible": true,
+        "moonVisible": true,
+        "earthFarMix": 0.9999949134955525,
+        "blueMarbleLoaded": true
+      },
+      "realErrors": 0,
+      "badResp": [],
+      "PASS": true
+    }
+  },
+  "pixelAnalysis": {
+    "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/far_near_default.png": {
+      "full": {
+        "r": 32.5,
+        "g": 37.5,
+        "b": 39.9,
+        "br": 7.4
+      },
+      "center": {
+        "r": 77.1,
+        "g": 76.1,
+        "b": 60.8,
+        "br": -16.3
+      }
+    },
+    "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/far_sunset_near.png": {
+      "full": {
+        "r": 30.3,
+        "g": 32.1,
+        "b": 32.1,
+        "br": 1.8
+      },
+      "center": {
+        "r": 71.3,
+        "g": 66.9,
+        "b": 52.4,
+        "br": -18.8
+      }
+    },
+    "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/far_sunset_far.png": {
+      "full": {
+        "r": 28.2,
+        "g": 30,
+        "b": 32.4,
+        "br": 4.2
+      },
+      "center": {
+        "r": 72.3,
+        "g": 68.7,
+        "b": 60.5,
+        "br": -11.8
+      }
+    },
+    "/Users/rw-mac/Projects/RodiO/docs/roadmap/source_appendix/figures/far_dawn_far.png": {
+      "full": {
+        "r": 30.3,
+        "g": 34.3,
+        "b": 38.2,
+        "br": 7.9
+      },
+      "center": {
+        "r": 85.2,
+        "g": 82.4,
+        "b": 72.9,
+        "br": -12.4
+      }
+    }
+  },
+  "zeroThemeColor": {
+    "sunsetNear_center_br": -18.8,
+    "sunsetFar_center_br": -11.8,
+    "dawnFar_center_br": -12.4,
+    "farLessWarmThanNear": true,
+    "dawnFarMatchesSunsetFar": true
+  },
+  "realErrorsAll": []
+}
