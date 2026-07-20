@@ -11,11 +11,17 @@
  *     的 subSolarPoint() 经交叉验证偏差 <1°）；月亮用同风格移植的 _computeSublunarPoint()。
  *     方向换算 world 单位向量时，复用 earth3d 内部 updateSunPosition 的同一公式（不乘 earth.quaternion），
  *     保证太阳天光晕正好落在受光半球正上方（与现有 FAR_VIEW 光照一致）。
- *  ── 距离分档可见性（按"相机到地心的实际直线距离"，不按构图名字，三档独立）：
+ *  ── 距离分档可见性（按"相机到地心的实际直线距离"，不按构图名字，各天体独立）：
  *       MOON_VISIBLE_DIST = 35, MOON_HIDE_DIST = 65
  *         → 相机距 ∈ [35,65) 显示月亮（moonView 48 / lunarHalo 58 在内，farOrbit 25.15 与 deepSpace 80 越过隐藏）
- *       SUN_VISIBLE_DIST  = 50  → 相机距 ≥50 显示太阳（覆盖 deepSpace 80，高于 farOrbit 25.15）
- *       PLANETS_VISIBLE_DIST = 70 → 相机距 ≥70 显示行星（独立于太阳，仅 deepSpace）
+ *       SUN_VISIBLE_DIST  = 50  → 相机距 ≥50 显示太阳（覆盖 sunView 67.5 / lunarHalo 58 / deepSpace 80，高于 farOrbit 25.15）
+ *       五颗行星（#53 天体专属远景角度）各自独立阈值，按 compressToSceneDist 场景放置距离排序，
+ *       不再共用一个 PLANETS_VISIBLE_DIST：Venus 70 / Mercury 72 / Mars 74 / Jupiter 76 / Saturn 78；
+ *       外三行星（#54 完整太阳系）继续延伸：Uranus 81 / Neptune 83 / Pluto 85。
+ *       每颗行星有自己的专属构图（venusView 70.5 … saturnView 78.5；uranusView 81.5 / neptuneView 83.5 /
+ *       plutoView 85.5）；内行星落在"自己阈值已过、下一颗还没到"的窗口内，天然只显示这一颗；
+ *       外行星因阈值密集采用"越远越叠加"设计语言（与 moonView→lunarHalo 一致）：uranusView 起内行星已在框。
+ *       deepSpace(80) ≥ 内五行星全部阈值、< Uranus(81)，故 deepSpace 仍只显示内五行星（全景效果不变）。
  *     阈值命名遵循可扩展模式 XXX_VISIBLE_DIST / XXX_HIDE_DIST：新构图/新天体只需加一对常量。
  *     这样新构图（如 #40 Flight View）只要算出的距离落在对应区间就自动生效，不用改判断逻辑。
  *  ── 压缩距离（艺术化，但自洽、可推导）：
@@ -43,11 +49,18 @@
   // 只需加一对常量 + 一行判断，无需重设计。当前各档边界（场景单位，相机距地心）：
   //   月亮 : [MOON_VISIBLE_DIST(35), MOON_HIDE_DIST(65))   → moonView 48 / lunarHalo 58 可见，farOrbit 25.15 与 deepSpace 80 越过隐藏
   //   太阳 : [SUN_VISIBLE_DIST(50),  ∞)                     → 不变（覆盖 deepSpace 80）
-  //   行星 : [PLANETS_VISIBLE_DIST(70), ∞)                  → 独立于太阳阈值，仅 deepSpace
+  //   行星 : 每颗独立阈值（按 compressToSceneDist 场景放置距离排序，越远相机距越大），
+  //          不再共用 PLANETS_VISIBLE_DIST；deepSpace(80) 仅内五行星，Uranus(81) 起为外行星专属窗口。
   const MOON_VISIBLE_DIST = 35   // 相机距地心 ≥ 此值 → 月亮可见（moonView 48 / lunarHalo 58 在内；farOrbit 25.15 与 deepSpace 80 越过 → 隐藏）
   const MOON_HIDE_DIST = 65      // 相机距地心 ≥ 此值 → 月亮隐藏（deepSpace 80 越过，避免与太阳/行星拥挤）
   const SUN_VISIBLE_DIST = 50    // 相机距地心 ≥ 此值 → 太阳可见（覆盖 deepSpace 80，高于 farOrbit 25.15）
-  const PLANETS_VISIBLE_DIST = 70 // 相机距地心 ≥ 此值 → 行星可见（不再与太阳共用阈值，仅 deepSpace）
+  // 每行星独立可见性阈值（相机距地心 ≥ 此值 → 该行星可见）。命名遵循 XXX_VISIBLE_DIST 模式。
+  // 内五行星：Venus 70 / Mercury 72 / Mars 74 / Jupiter 76 / Saturn 78（间隔 2，专属构图落在单体内）。
+  // 外三行星：Uranus 81 / Neptune 83 / Pluto 85（deepSpace=80 不触发，专属构图 uranusView 81.5 起）。
+  const PLANET_VISIBLE_DIST = {
+    Venus: 70, Mercury: 72, Mars: 74, Jupiter: 76, Saturn: 78,
+    Uranus: 81, Neptune: 83, Pluto: 85,
+  }
 
   // 固定摆放距离（场景单位，地球半径=2）。不随相机比例，保证合格构图视锥内可见：
   //   月亮：MOON_DIST=6 → 与地球(半径2)明显分离（不再贴着/穿透）。
@@ -161,13 +174,32 @@
     Mars:    { typicalAU: 1.1500330430035477,  rgb: [138, 105, 75],  mag: -1.0, ang: 1.1 },
     Jupiter: { typicalAU: 5.105997356051019,  rgb: [172, 121, 68],  mag: -2.0, ang: 1.25 },
     Saturn:  { typicalAU: 9.484427710726674,  rgb: [119, 111, 82],  mag: 0.5,  ang: 1.2 },
+    // #54 外三行星（典型距离取 SCALE_TYPICAL_AU，与压缩比例尺一致；rgb=NASA 实测近似色，mag=视星等用于亮度分级）
+    Uranus:  { typicalAU: 19.16492841103248,   rgb: [143, 196, 209], mag: 5.5,  ang: 1.10 },
+    Neptune: { typicalAU: 30.052366978326347,  rgb: [80, 120, 210],  mag: 7.8,  ang: 1.05 },
+    Pluto:   { typicalAU: 39.4693339695516,    rgb: [200, 178, 155], mag: 13.5, ang: 0.60 },
   }
-  const PLANET_NAMES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn']
+  const PLANET_NAMES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
   // 亮度分级：视星等 → 相对流量 flux=10^(-0.4·mag) → 4次方根压缩（金星最亮=1.0，避免外行星过暗看不见）
   function planetBrightness(mag) {
     const fVenus = Math.pow(10, -0.4 * (-4.6))
     const f = Math.pow(10, -0.4 * mag)
     return Math.pow(f / fVenus, 0.25)
+  }
+
+  // #54 代表性卫星（illustrative，非星历精确）：木星伽利略4卫星 + 土卫六。圆轨道、共面于黄道，
+  // 真实公转周期；相位 angle = 2π·(daysSinceJ2000/period + phase0)。仅当母行星可见时显示。
+  // sceneRadius 为风格化轨道半径（场景单位，贴近母行星）。这是"代表性"示意，不声称轨道力学精确。
+  const SATELLITE_DEFS = {
+    Jupiter: [
+      { name: 'Io',       periodDays: 1.769,  sceneRadius: 0.55, ang: 0.30, rgb: [210, 205, 190], phase0: 0.10 },
+      { name: 'Europa',   periodDays: 3.551,  sceneRadius: 0.85, ang: 0.26, rgb: [205, 195, 175], phase0: 0.42 },
+      { name: 'Ganymede', periodDays: 7.155,  sceneRadius: 1.20, ang: 0.34, rgb: [180, 172, 160], phase0: 0.71 },
+      { name: 'Callisto', periodDays: 16.689, sceneRadius: 1.60, ang: 0.32, rgb: [150, 142, 130], phase0: 0.20 },
+    ],
+    Saturn: [
+      { name: 'Titan',    periodDays: 15.945, sceneRadius: 1.35, ang: 0.36, rgb: [212, 182, 140], phase0: 0.55 },
+    ],
   }
 
   // Standish Table 1 轨道根数 [a, e, I(deg), L(deg), ϖ(deg), Ω(deg)]；[0]=J2000值 [1]=每世纪速率
@@ -178,6 +210,11 @@
     Mars:    { a: [1.52371034, 0.00001847], e: [0.09339410, 0.00007882], I: [1.84969142, -0.00813131], L: [-4.55343205, 19140.30268499], p: [-23.94362959, 0.44441088], O: [49.55953891, -0.29257343] },
     Jupiter: { a: [5.20288700, -0.00011607], e: [0.04838624, -0.00013253], I: [1.30439695, -0.00183714], L: [34.39644051, 3034.74612775], p: [14.72847983, 0.21252668], O: [100.47390909, 0.20469106] },
     Saturn:  { a: [9.53667594, -0.00125060], e: [0.05386179, -0.00050991], I: [2.48599187, 0.00193609], L: [49.95424423, 1222.49362201], p: [92.59887831, -0.41897216], O: [113.66242448, -0.28867794] },
+    // #54 外三行星（Standish Table 1 同族根数；Uranus/Neptune 经 JPL 官方核对；Pluto 用同期权威均值根数，
+    //   L 速率 = 360°/周期·世纪 ≈ +145.2，与内行星同款 Kepler 求解）。e/I/ϖ/Ω 速率极小，本历元误差可忽略。
+    Uranus:  { a: [19.18916464, -0.00196176], e: [0.04725744, -0.00004397], I: [0.77263783, -0.00242939], L: [313.23810451, 428.48202785], p: [170.95427630, 0.40805281], O: [74.01692503, 0.04240589] },
+    Neptune: { a: [30.06992276, 0.00026291], e: [0.00859048, 0.00005105], I: [1.77004347, 0.00035372], L: [-55.12002969, 218.45945325], p: [44.96476227, -0.32241464], O: [131.78422574, -0.00508664] },
+    Pluto:   { a: [39.48211675, -0.00031586], e: [0.24882730, 0.00005170], I: [17.14001206, -0.00032692], L: [238.92903833, 145.23], p: [224.06891629, -0.44018123], O: [110.30393684, -0.38632021] },
   }
 
   function pNorm360(d) { return ((d % 360) + 360) % 360 }
@@ -353,8 +390,10 @@
     for (const name of PLANET_NAMES) {
       const def = PLANET_DEFS[name]
       const bright = planetBrightness(def.mag)
+      // 亮度分级地板：外行星物理上远暗于金星，但场景需可见，故贴图亮度下限 0.22（不影响内行星，其 bright 已 >0.22）。
+      const texBright = Math.min(1, Math.max(bright, 0.22))
       const mat = new T.SpriteMaterial({
-        map: makePlanetGlowTexture(def.rgb, bright),
+        map: makePlanetGlowTexture(def.rgb, texBright),
         color: 0xffffff,
         transparent: true,
         blending: T.AdditiveBlending,
@@ -372,6 +411,25 @@
         ang: def.ang,                               // 渲染角直径（风格化）
         bright: bright, rgb: def.rgb,
         ndc: [0, 0], visible: false,
+      }
+    }
+
+    // ── #54 代表性卫星 Sprite（母行星可见时才显示）──
+    const satellites = {}   // satellites[parentName] = [{ sprite, def, ndc:[x,y], visible }]
+    for (const parentName in SATELLITE_DEFS) {
+      satellites[parentName] = []
+      for (const def of SATELLITE_DEFS[parentName]) {
+        const sMat = new T.SpriteMaterial({
+          map: makePlanetGlowTexture(def.rgb, 0.9),
+          color: 0xffffff, transparent: true,
+          blending: T.AdditiveBlending, depthWrite: false, depthTest: false,
+        })
+        const sSprite = new T.Sprite(sMat)
+        sSprite.renderOrder = 17
+        sSprite.frustumCulled = false
+        sSprite.visible = false
+        scene.add(sSprite)
+        satellites[parentName].push({ sprite: sSprite, def: def, ndc: [0, 0], visible: false })
       }
     }
 
@@ -469,10 +527,9 @@
       state.camDistEarth = round(camDistEarth, 3)
       const showMoon = camDistEarth >= MOON_VISIBLE_DIST && camDistEarth < MOON_HIDE_DIST
       const showSun = camDistEarth >= SUN_VISIBLE_DIST
-      const showPlanets = camDistEarth >= PLANETS_VISIBLE_DIST
+      // 行星可见性改为每体阈值查表（见下方循环）；state.planetsVisible 在循环后汇总
       state.moonVisible = showMoon
       state.sunVisible = showSun
-      state.planetsVisible = showPlanets
 
       // 真实方向（前端权威来源）→ 经地球朝向变换 → 世界方向
       const sp = api.getSubsolarPoint(nowMs)
@@ -489,20 +546,51 @@
       moon.visible = showMoon
       sun.visible = showSun
 
-      // ── #53 Phase 2 行星更新：独立可见性档(PLANETS_VISIBLE_DIST)，仅 deepSpace ──
+      // ── #53/#54 行星更新：每体独立可见性档(PLANET_VISIBLE_DIST) ──
       for (const name of PLANET_NAMES) {
         const P = planets[name]
-        P.visible = showPlanets   // 独立档，不再与太阳共用阈值
-        P.sprite.visible = showPlanets
-        if (showPlanets) {
+        const visible = camDistEarth >= PLANET_VISIBLE_DIST[name]
+        P.visible = visible
+        P.sprite.visible = visible
+        if (visible) {
           const dir = planetGeoDir(name, nowMs)        // 真实地心方向（日心−地球日心）
           const pos = earthCenter.clone().add(new T.Vector3(dir.x, dir.y, dir.z).multiplyScalar(P.dist))
           P.sprite.position.copy(pos)
+          P.worldPos = pos
           const camToP = camera.position.distanceTo(pos)
           const d = 2 * camToP * Math.tan((P.ang * DEG) / 2)  // 恒定角直径（风格化）
           P.sprite.scale.set(d, d, 1)
           const ndc = pos.clone().project(camera)
           P.ndc = [round(ndc.x, 4), round(ndc.y, 4)]
+        } else {
+          P.worldPos = null
+        }
+      }
+      state.planetsVisible = PLANET_NAMES.some(function (n) { return planets[n].visible })
+
+      // ── #54 代表性卫星：仅母行星可见时显示，圆轨道共面黄道（illustrative）──
+      const daysJ2000 = pJulian(nowMs) - 2451545.0
+      for (const parentName in satellites) {
+        const parent = planets[parentName]
+        const parentVisible = parent && parent.visible && parent.worldPos
+        for (const s of satellites[parentName]) {
+          if (!parentVisible) { s.visible = false; s.sprite.visible = false; continue }
+          const ang = 2 * Math.PI * (daysJ2000 / s.def.periodDays + s.def.phase0)
+          const ox = Math.cos(ang) * s.def.sceneRadius
+          const oy = Math.sin(ang) * s.def.sceneRadius
+          // 黄道平面偏移 → 赤道系（绕 X 转 +ε），与行星方向同源
+          const ex = ox
+          const ey = oy * Math.cos(EPS)
+          const ez = oy * Math.sin(EPS)
+          const sp = parent.worldPos.clone().add(new T.Vector3(ex, ey, ez))
+          s.sprite.position.copy(sp)
+          const camToS = camera.position.distanceTo(sp)
+          const sd = 2 * camToS * Math.tan((s.def.ang * DEG) / 2)
+          s.sprite.scale.set(sd, sd, 1)
+          s.sprite.visible = true
+          s.visible = true
+          const sndc = sp.clone().project(camera)
+          s.ndc = [round(sndc.x, 4), round(sndc.y, 4)]
         }
       }
 
@@ -611,6 +699,12 @@
               ang: P.ang, bright: round(P.bright, 3), rgb: P.rgb, ndc: P.ndc,
             }
           }),
+          satellites: Object.keys(satellites).reduce(function (acc, parentName) {
+            acc[parentName] = satellites[parentName].map(function (s) {
+              return { name: s.def.name, visible: s.visible, ndc: s.ndc, parent: parentName }
+            })
+            return acc
+          }, {}),
         }
       },
     }

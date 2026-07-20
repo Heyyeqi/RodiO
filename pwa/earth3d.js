@@ -673,7 +673,7 @@
 
 
       // ── 构图集合（必须在 applyTheme / transitionToComposition 定义之前）──
-      const FAR_COMPOSITIONS = new Set(['farOrbit', 'oceanExpanse', 'deepSpace', 'polarDiagonal', 'cityAnchor', 'portraitMarble', 'terminatorPortrait', 'lunarHalo', 'moonView'])
+      const FAR_COMPOSITIONS = new Set(['farOrbit', 'oceanExpanse', 'deepSpace', 'polarDiagonal', 'cityAnchor', 'portraitMarble', 'terminatorPortrait', 'lunarHalo', 'moonView', 'sunView', 'venusView', 'mercuryView', 'marsView', 'jupiterView', 'saturnView', 'uranusView', 'neptuneView', 'plutoView'])
       let _currentCompositionKey = 'homeGlobe'
       // One distance grammar for the screen-space rim stack. Theme configs
       // provide the authored color/strength; composition distance only scales
@@ -7433,6 +7433,56 @@
         lunarHalo: {
           lat: 31.23, lon: 121.47,
           cameraOffsetZ: 58.0,
+          fov: 28,
+        },
+        // ── #53 天体专属远景角度：每个天体一个专属构图 ──
+        // sunView：相机距地心 ≈67.5 ∈ [MOON_HIDE_DIST(65), VENUS_VISIBLE_DIST(70))，仅太阳(+公转环)可见。
+        sunView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 67.5,
+          fov: 28,
+        },
+        // venusView：相机距地心 ≈70.5 ∈ [VENUS_VISIBLE_DIST(70), MERCURY_VISIBLE_DIST(72))，仅金星(+太阳+公转环)可见。
+        venusView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 70.5,
+          fov: 28,
+        },
+        mercuryView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 72.5,
+          fov: 28,
+        },
+        marsView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 74.5,
+          fov: 28,
+        },
+        jupiterView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 76.5,
+          fov: 28,
+        },
+        saturnView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 78.5,
+          fov: 28,
+        },
+        // ── #54 完整太阳系：外三行星专属构图（越远越叠加设计语言，详 real-celestial.js 注释）──
+        // uranusView：相机距地心 ≈81.5 ≥ URANUS_VISIBLE_DIST(81)，天王星出现（内五行星已在框）。
+        uranusView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 81.5,
+          fov: 28,
+        },
+        neptuneView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 83.5,
+          fov: 28,
+        },
+        plutoView: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 85.5,
           fov: 28,
         },
       }

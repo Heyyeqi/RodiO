@@ -5,7 +5,7 @@
 > devlog.md 记录"做了什么"；本文件记录"现在处于什么状态、接下来该做什么"。
 > 无论在哪个分支、隔了多久回来，先读这份文件，再读 devlog.md 最近几条。
 
-最后更新：2026-07-17（第二轮补充审计：选歌模块v2 / 祈求系统 / Earth收口 / RDL细节 / 彩蛋清单）
+最后更新：2026-07-20（#53 Phase 2 七曜可见化 + #54 Phase 3 完整太阳系收尾，8行星+5卫星+9构图，Playwright 全量验证通过）
 
 ---
 
@@ -262,8 +262,8 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 > 用户指出现有3D场景里太阳/月亮压根没有可见物体（只有`DirectionalLight`+后端月相计算，无渲染），星空是真实8K星图+程序化点缀混合。要求分阶段做完整太阳系（含冥王星+代表性卫星），标准是"天文学级别真实"，不是艺术示意。milestone "Real Celestial Bodies — Astronomically Accurate Solar System"。
 
 14. ~~**[#52](https://github.com/Heyyeqi/RodiO/issues/52) Phase 1：太阳+月亮真实轨道位置系统（自转+公转）**~~ — **Done**（太阳/月亮真实方位+距离+可见性分档 + 地球自转[逐帧数值标定，非线性外推] + 公转可视化[deepSpace轨道环+真实日心黄经位置标记]，全部独立验证通过，见issue评论）
-15. **[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化** — Step 0（真实NASA影像资源，一次性覆盖#53+#54全部剩余天体：8行星+5卫星+3环系统+太阳+月球贴图升级）已完成并独立验证通过；衍生工作"地球远景NASA真彩交叉淡入"（近景地图风不变，深空远景混合Blue Marble真彩、与行星贴图风格一致，阈值绑定#52的`MOON_VISIBLE_DIST`）也已完成并独立验证通过。**当前最前面待开工**：开普勒轨道位置计算（5颗行星）+ 渲染集成（复用#52基础设施，先金星跑通再批量接其余4颗）
-16. **[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**（天王星/海王星/冥王星+代表性卫星）
+15. ~~**[#53](https://github.com/Heyyeqi/RodiO/issues/53) Phase 2：七曜可见化**~~ — **Done**（每行星独立可见性阈值对象 `PLANET_VISIBLE_DIST{Venus70/Mercury72/Mars74/Jupiter76/Saturn78}` 替代共享常量 + 内5行星开普勒轨道位置计算(JPL Table1根数→日心黄经→地心方向矢量) + 恒定角直径Sprite渲染 + 亮度分级(金星mag=-4.6基准) + 9个专用远距离构图(sunView~plutoView)注册到CAMERA_COMPOSITIONS+FAR_COMPOSITIONS+gramCompositions。Playwright验证10/10阈值矩阵PASS、默认零回归确认。见issue评论）
+16. ~~**[#54](https://github.com/Heyyeqi/RodiO/issues/54) Phase 3：完整太阳系收尾**~~ — **Done**（外3行星Uranus/Neptune/Pluto开普勒元素接入(Pluto L-rate=+145.23°/cy) + 5颗代表卫星(Io/Europa/Ganymede/Callisto/Titan)圆形黄道面公转渲染(renderOrder17) + uranusView/neptuneView/plutoView构图 + 亮度下限0.22保证外行星可辨。与#53同次交付、同批验证通过）
 
 ### 第一点七梯队：全球海水颜色物理准确性（2026-07-20 RW明确标记"需要重点解决"，非常规backlog）
 
@@ -352,8 +352,8 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#50](https://github.com/Heyyeqi/RodiO/issues/50) | Horizon Mode Phase 9：陆地平视场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
 | [#51](https://github.com/Heyyeqi/RodiO/issues/51) | 真实天体系统总览：太阳/月亮/星空一致性 → 七曜可见化 → 完整太阳系 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog |
 | [#52](https://github.com/Heyyeqi/RodiO/issues/52) | 天体系统 Phase 1：太阳+月亮真实轨道位置系统（自转+公转） | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Done |
-| [#53](https://github.com/Heyyeqi/RodiO/issues/53) | 天体系统 Phase 2：七曜可见化 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Backlog（队列最前） |
-| [#54](https://github.com/Heyyeqi/RodiO/issues/54) | 天体系统 Phase 3：完整太阳系收尾 | Real Celestial Bodies — Astronomically Accurate Solar System | P3 | Backlog |
+| [#53](https://github.com/Heyyeqi/RodiO/issues/53) | 天体系统 Phase 2：七曜可见化 | Real Celestial Bodies — Astronomically Accurate Solar System | P2 | Done（每行星独立阈值+开普勒轨道+9构图，Playwright 10/10 PASS） |
+| [#54](https://github.com/Heyyeqi/RodiO/issues/54) | 天体系统 Phase 3：完整太阳系收尾（外3行星+5卫星） | Real Celestial Bodies — Astronomically Accurate Solar System | P3 | Done（Uranus/Neptune/Pluto + Galilean 4 + Titan，与#53同批交付验证） |
 | [#57](https://github.com/Heyyeqi/RodiO/issues/57) | 全球海水颜色物理准确性（水质科学管线扩展到全球） | Earth Visual Foundation Formal Closure | P1 | Step0+阶段A完成；阶段B接入已撤回（颜色质感不过关），待色调映射设计 |
 | [#37](https://github.com/Heyyeqi/RodiO/issues/37) | 深海模式：全新独立场景，摄像机沉入水下仰望天空微光 | Living Earth — Vertical Space Journey | P3 | Backlog |
 | [#25](https://github.com/Heyyeqi/RodiO/issues/25) | Dislike评分未接入候选排序 — 反馈闭环架构性断裂 | Playback Reliability and Core Bug Fixes | P0 | Done（4515ef6，端到端验证通过） |

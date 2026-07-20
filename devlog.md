@@ -7590,3 +7590,22 @@ RW看过真机截图后判断颜色不对——近岸浑浊区是高饱和荧光
 ### 遗留问题
 - 需要先做一轮色调映射/降饱和设计（参考真实卫星true color合成图的色彩分布做校准），色调调对了再重新考虑接入`earth3d.js`。
 - 这轮的技术接入方式（uWaterColorMap/uWaterColorMix、alpha天然遮罩、默认零影响的开关模式）本身是验证过可行的，下次直接复用这套接入手法，只需要换算法出来的颜色输入。
+
+## 2026-07-20 #53 Phase 2 七曜可见化 + #54 Phase 3 完整太阳系收尾（8行星+5卫星+9专用构图）
+
+### 做了什么
+- `pwa/real-celestial.js`：将共享常量`PLANETS_VISIBLE_DIST=70`替换为每行星独立阈值对象`PLANET_VISIBLE_DIST{Venus:70, Mercury:72, Mars:74, Jupiter:76, Saturn:78, Uranus:81, Neptune:83, Pluto:85}`（"越远越叠加"设计，加新天体只需按此模式加阈值）。
+- 接入外3行星（Uranus/Neptune/Pluto）开普勒轨道元素到`PLANET_ELEMENTS`（Uranus/Neptune源自JPL Table1；Pluto L-rate=+145.23°/cy，其余元素源自权威平均根数参考），`PLANET_DEFS`/`PLANET_NAMES`扩展至8体。亮度下限`Math.max(bright,0.22)`保证外行星可见。
+- 新增5颗代表卫星：Jupiter Galilean 4（Io/Europa/Ganymede/Callisto）+ Saturn Titan。圆形黄道面公转（angle=2π(days/period+phase0)），Sprite渲染(renderOrder=17)。卫星仅在父行星可见时出现（jupiterView sats=4, saturnView/deepSpace sats=5）。
+- `pwa/earth3d.js`：新增9个专用远距离构图注册到`CAMERA_COMPOSITIONS`（sunView/venusView/mercuryView/marsView/jupiterView/saturnView/uranusView/neptuneView/plutoView，各cameraOffsetZ递增1.5单位）+ 全部加入`FAR_COMPOSITIONS` Set。
+- `pwa/index.html`：9个key追加到`gramCompositions`调试数组（Theme Tuner面板可选）。
+- Playwright全量验证（swiftshader Chromium headless）：10/10阈值矩阵PASS（每行expected/got集合完全匹配）、默认路径零回归确认（window.realCelestial undefined, earth3d.isReady true）。良性静态stub噪声（WebSocket /stream 426、favicon 404等769条）已过滤不计入失败判定。截图已保存至/tmp/rodio_assets/shots/（10张，视觉检查确认Earth居中、目标天体清晰无裁剪、渐进叠加正确）。
+
+### 改动文件
+- `pwa/real-celestial.js`（per-planet阈值、外3行星+5卫星数据与渲染逻辑）
+- `pwa/earth3d.js`（9个CAMERA_COMPOSITIONS + FAR_COMPOSITIONS）
+- `pwa/index.html`（gramCompositions调试数组）
+- `/tmp/rodio_assets/verify_celestial.js`（验证脚本，良性噪声过滤器）
+
+### 遗留问题
+- #51 总览issue仍为Backlog状态（#52/#53/#54三个子issue已完成，可考虑关闭#51或更新其描述反映完成状态）。
