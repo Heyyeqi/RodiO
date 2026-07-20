@@ -26,7 +26,7 @@
           layerOpacity: 0.55, bandCenter: 0.10, bandWidth: 0.55, bandFeather: 0.30,
           color: 0xeef2f6,
         },
-        sea: 0x16222e,
+        sea: 0x006792,  // S2 马尔代夫珊瑚礁 baseColorDeep（water_params_reference.js 实算，非拍脑袋）
       },
       mountain: {
         sky: { top: 0x3a4654, bottom: 0x9aa6b0, haze: 0xb6c0c8 },
@@ -35,7 +35,7 @@
           layerOpacity: 0.82, bandCenter: -0.06, bandWidth: 0.18, bandFeather: 0.14,
           color: 0xf2f4f6,
         },
-        sea: 0x10181f,
+        sea: 0x007167,  // S3 北大西洋温带 baseColorDeep（water_params_reference.js 实算，非拍脑袋）
       },
     }
 
@@ -137,12 +137,44 @@
       scene.add(new THREE.Mesh(new THREE.SphereGeometry(R, 64, 48), mat))
     })
 
-    // 占位海面（集成真实场景 A/B/C 时替换）
-    const seaMat = new THREE.MeshBasicMaterial({ color: 0x16222e })
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), seaMat)
-    sea.rotation.x = -Math.PI / 2
-    sea.position.y = 0
-    scene.add(sea)
+    // ── 真实反射海面（#44）：THREE.Water，复用 Phase 2 天空穹顶+云壳做倒影 ──
+    // 这是判断"真反射 vs 假水"的硬指标：水面上要能看到天空/云的倒影。
+    // 水色锚点用 water_params_reference.js 算出的真实海洋站位色值（非拍脑袋）。
+    // 固定低角度太阳（贴近地平线）留一处高光即可，不接入天文系统（后续场景打磨阶段）。
+    let water
+    const waterGeom = new THREE.PlaneGeometry(9000, 9000)
+    if (typeof THREE.Water === 'function') {
+      water = new THREE.Water(waterGeom, {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: new THREE.TextureLoader().load('/assets/textures/water/waternormals.jpg', (tex) => {
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+        }),
+        sunDirection: new THREE.Vector3(0.35, 0.22, 0.25).normalize(),
+        sunColor: 0xffffff,
+        waterColor: 0x0e2a33,   // 占位，applyPreset 会立刻用真实色值覆盖
+        distortionScale: 3.7,
+        fog: false,
+      })
+      water.rotation.x = -Math.PI / 2
+      water.position.y = 0
+      scene.add(water)
+    } else {
+      // 防御性降级：addon 未加载时也不至于整屏空白（Category B 红线保护）
+      console.warn('[horizon-lab] THREE.Water unavailable, falling back to flat sea')
+      const seaMat = new THREE.MeshBasicMaterial({ color: 0x0e2a33 })
+      water = new THREE.Mesh(waterGeom, seaMat)
+      water.rotation.x = -Math.PI / 2
+      water.position.y = 0
+      scene.add(water)
+    }
+
+    // 同时兼容 THREE.Water（uniform）与降级 MeshBasicMaterial（.color）
+    function applyWaterColor(hex) {
+      const m = water.material
+      if (m && m.uniforms && m.uniforms['waterColor']) m.uniforms['waterColor'].value.setHex(hex)
+      else if (m && m.color) m.color.setHex(hex)
+    }
 
     function applyPreset(name) {
       const P = PRESETS[name]
@@ -150,7 +182,7 @@
       skyMat.uniforms.uTop.value.setHex(P.sky.top)
       skyMat.uniforms.uBottom.value.setHex(P.sky.bottom)
       skyMat.uniforms.uHaze.value.setHex(P.sky.haze)
-      seaMat.color.setHex(P.sea)
+      applyWaterColor(P.sea)
       const c = P.clouds
       cloudMats.forEach((m, i) => {
         m.uniforms.uDensity.value = c.density
@@ -218,6 +250,9 @@
       if (destroyed) return
       const t = (performance.now() - t0) / 1000
       cloudMats.forEach((m) => { m.uniforms.uTime.value = t })
+      if (water.material && water.material.uniforms && water.material.uniforms['time']) {
+        water.material.uniforms['time'].value += 1 / 60   // 固定步长即可，lab 场景不依赖真实 delta
+      }
       renderer.render(scene, camera)
       requestAnimationFrame(loop)
     }
@@ -230,7 +265,15 @@
       getPreset: () => currentPreset,
       setYaw: (deg) => { yaw = deg * Math.PI / 180; camera.rotation.y = yaw },
       setPitch: (deg) => { pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, deg * Math.PI / 180)); camera.rotation.x = pitch },
-      getState: () => ({ preset: currentPreset, yawDeg: yaw * 180 / Math.PI, pitchDeg: pitch * 180 / Math.PI }),
+      getState: () => ({
+        preset: currentPreset,
+        yawDeg: yaw * 180 / Math.PI,
+        pitchDeg: pitch * 180 / Math.PI,
+        waterColor: water.material && water.material.uniforms && water.material.uniforms['waterColor']
+          ? '#' + water.material.uniforms['waterColor'].value.getHexString()
+          : (water.material && water.material.color ? '#' + water.material.color.getHexString() : null),
+        waterReflective: typeof THREE.Water === 'function',
+      }),
       render: () => renderer.render(scene, camera),
       destroy: () => {
         destroyed = true

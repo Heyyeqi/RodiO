@@ -1,0 +1,112 @@
+{
+  "horizonLab": {
+    "horizon": {
+      "preset": "horizon",
+      "yawDeg": 0,
+      "pitchDeg": -1.5,
+      "waterColor": "#006792",
+      "waterReflective": true
+    },
+    "mountain": {
+      "preset": "mountain",
+      "yawDeg": 0,
+      "pitchDeg": -1.5,
+      "waterColor": "#007167",
+      "waterReflective": true
+    },
+    "errors": [
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+      "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+      "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+      "[warning] [spotify] access token unavailable",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426"
+    ],
+    "errorCats": {
+      "my_code": [],
+      "backend_api_stream": [
+        "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+        "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426"
+      ],
+      "earth_tiles": [],
+      "other": [
+        "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "[warning] [.WebGL-0x10c000e2c00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+        "[warning] [spotify] access token unavailable",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  },
+  "root": {
+    "reflector": "function",
+    "water": "function",
+    "earth3dReady": true,
+    "horizonLabPresent": "undefined",
+    "errors": [
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[warning] [tile-stream] tile unavailable, retry 1 of 4 in 1000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+      "[warning] [tile-stream] tile unavailable, retry 1 of 4 in 1000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[warning] [tile-stream] tile unavailable, retry 2 of 4 in 2000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+      "[warning] [tile-stream] tile unavailable, retry 2 of 4 in 2000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+      "[warning] [spotify] access token unavailable",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[warning] [tile-stream] tile unavailable, retry 3 of 4 in 3000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+      "[warning] [tile-stream] tile unavailable, retry 3 of 4 in 3000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+      "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[warning] [tile-stream] tile unavailable, retry 4 of 4 in 4000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+      "[warning] [tile-stream] tile unavailable, retry 4 of 4 in 4000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg"
+    ],
+    "errorCats": {
+      "my_code": [],
+      "backend_api_stream": [
+        "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426",
+        "[error] WebSocket connection to 'ws://localhost:8080/stream' failed: Error during WebSocket handshake: Unexpected response code: 426"
+      ],
+      "earth_tiles": [
+        "[warning] [tile-stream] tile unavailable, retry 1 of 4 in 1000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 1 of 4 in 1000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 2 of 4 in 2000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 2 of 4 in 2000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 3 of 4 in 3000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 3 of 4 in 3000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 4 of 4 in 4000ms: nav2i_8k_0_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_0_0.jpg",
+        "[warning] [tile-stream] tile unavailable, retry 4 of 4 in 4000ms: nav2i_8k_1_0 /assets/earth/bmng21k/topo_bathy/tiles_noon_air_v2_islands/8k/tile_1_0.jpg"
+      ],
+      "other": [
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[warning] [spotify] access token unavailable",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  },
+  "checks": {
+    "horizonLabMounted": true,
+    "horizon_no_console_error": false,
+    "horizon_my_code_zero": true,
+    "root_no_fatal_from_my_scripts": true,
+    "three_addons_attached": true
+  }
+}

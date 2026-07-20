@@ -7181,3 +7181,40 @@ Phase 1 batch1-3 完成 3943 首抽样标注（batch1=200, batch2=796, batch3=29
 - 占位海面尚未替换为真实海面网格；水质系统 v2（#41）尚未接入。
 - 地形（GEBCO 校准网格）尚未接入本场景。
 - 拖拽交互的视差方向感（yaw 增大→云右移）尚未做用户体验层面的方向感校验。
+
+## 2026-07-20 01:30 HZ #44 Phase 3 — 真反射海面（pwa/horizon-lab.js）
+
+### 做了什么
+- **Vendor 官方 three.js r128 反射/水面 addon**：从官方仓库拉取 `examples/js/objects/Reflector.js` 与 `Water.js`，确认 r128 时期本就是挂全局 `THREE` 命名空间的非模块 IIFE（`THREE.Reflector = Reflector` / `THREE.Water = Water`），语法检查通过。落盘 `pwa/three-reflector.js` / `pwa/three-water.js`，加溯源 banner（含原始 URL，注明 do-not-hand-edit）。`pwa/index.html` 在 `three.min.js` 之后、`earth_modes.js` 之前插入两行 `<script src>`。
+- **替换占位海面为真实反射**：删 `horizon-lab.js` 的 `MeshBasicMaterial` 纯色平面，换成 `THREE.Water`（PlaneGeometry 9000²、waternormals 来自 `pwa/assets/textures/water/waternormals.jpg`、sunDirection 固定低角向量、sunColor 白、distortionScale 3.7、fog:false）。渲染循环加 `water.material.uniforms['time'].value += 1/60`（固定步长）。`PRESETS[].sea` 经 `applyWaterColor` 写 `water.material.uniforms['waterColor'].value.setHex()`，`window.horizonLab.getState()` 暴露 waterColor/waterReflective。
+- **水色用 data-driven 真值（非拍脑袋）**：跑 `water_params_reference.js` 取 S2 马尔代夫珊瑚礁 `baseColorDeep=[0,0.403,0.572]→#006792` 给 horizon 预设、S3 北大西洋温带 `[0,0.445,0.402]→#007167` 给 mountain 预设（git diff 可复核）。
+- **验证（Playwright + 系统 Chrome/swiftshader）**：
+  - 分类 console 报错：`my_code=[]`（three-reflector/three-water/horizon-lab 零报错）；其余 404 均为本 checkout 缺后端 `/api`、`/stream`、地球瓦片大体积资产（用户完整 `node server.js` 提供，与本次改动无关）。
+  - **root `/` 红线**：`window.earth3d.isReady===true`、`THREE.Reflector/THREE.Water` 均为 function、`root_no_fatal_from_my_scripts=true`（我的脚本未阻断主渲染管线）。
+  - **?earthCandidate=horizonLab**：`window.horizonLab.isReady===true`；两套预设 `waterColor` 真值正确、`waterReflective=true`。
+  - **倒影决定性证据（量化，优于肉眼）**：sky↔water 倒影皮尔逊相关 horizon=0.865 / mountain=0.946（旧纯色平面≈0）；两预设水面均色明显不同（horizon 偏蓝 / mountain 偏绿）。证明水里是真实倒影而非法线贴图假水。
+  - **512×512 帧率观感**：swiftshader 软件渲染 ≈3.4 fps（无 GPU 预期值；真实 GPU 设备 60fps 级）。
+  - 截图 `figures/water_reflection_horizon.png` / `water_reflection_mountain.png` + `water_reflection_report.json` + `water_ref_run.txt`（参考脚本完整终端输出）。
+
+### 改动文件
+- 新增 `pwa/three-reflector.js`、`pwa/three-water.js`
+- 改 `pwa/index.html`（插入两行 script）、`pwa/horizon-lab.js`（占位海面→THREE.Water + 真值水色 + time 增量）
+- 新增 `docs/roadmap/source_appendix/figures/water_reflection_horizon.png`、`water_reflection_mountain.png`、`water_reflection_report.json`、`water_ref_run.txt`
+
+### 遗留 / 注意
+- 本机无法跑完整 `node server.js`：项目 `better-sqlite3` 原生二进制按 NODE_MODULE_VERSION 147（Node 24.x）编译，本机只有 22.22/22.23。属环境差异，未 rebuild（避免污染用户 node_modules）。用户真实环境用 Node 24 可正常启动；红线已用忠实静态服务器 + 分类报错证明我的代码零引入错误。
+- 太阳方向为固定值（未接天文系统），后续 Phase 打磨阶段再接。
+- mountain 预设 cloud-feather 仍偏松（铺满全天而非缠山腰），集成打磨时收紧（见前序 devlog）。
+
+## 2026-07-20 HZ #44 独立复核补丁：script 标签缓存版本号未 bump
+
+### 做了什么
+- 复核 #44 交付时，在真实 `node server.js`（用 `/opt/homebrew/bin/node`，ABI 匹配 `better-sqlite3`）上用 preview 工具实测：root `/` 正常（`earth3dReady:true`，零报错），但首次导航到 `?earthCandidate=horizonLab` 后 `window.horizonLab.getState()` 缺少 `waterColor`/`waterReflective` 字段——用 cache-busted URL 单独重新加载脚本后确认新代码本身完全正确（`waterColor:"#006792", waterReflective:true`）。定位为 `pwa/index.html` 里 `<script src="/horizon-lab.js?v=horizon-lab-v1">` 版本号自 #42 起就没变过：任何已缓存旧版脚本的浏览器，这次改动会静默不生效，无任何报错提示。
+- 项目里 `earth_modes.js`/`earth3d.js` 的 script 标签都有随改动递增版本号的约定（`?v=rdl-overlay-gate-v17`、`?v=close-view-clarity-v51`），本次 brief 没提醒这条约定，属于我自己 brief 的遗漏，直接修：`?v=horizon-lab-v1` → `?v=horizon-lab-v2-water`。
+- 修复后重新验证：hard reload 无效（`location.reload(true)`已不生效，符合预期），但版本号变了之后 URL 本身不同，浏览器强制重新请求，`getState()` 正确返回 `waterColor:"#006792", waterReflective:true`，console 零报错。同时截图确认 mountain 预设水面能看到云层斑驳纹理的倒影（不只是色调统计意义上的相关，肉眼也能看出），horizon 预设水面干净、有清晰太阳高光。
+
+### 改动文件
+- `pwa/index.html`（1 行，版本号 bump）
+
+### 遗留问题
+- 建议后续任何编辑 `horizon-lab.js` 都记得同步 bump 这个版本号，否则同样的静默缓存问题会复现。
