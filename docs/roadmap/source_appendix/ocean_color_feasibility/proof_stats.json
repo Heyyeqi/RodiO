@@ -1,0 +1,34 @@
+{
+  "W": 720,
+  "H": 360,
+  "n_valid": 259200,
+  "processed": 259200,
+  "hueRange": {
+    "min": 58.6,
+    "max": 225.4
+  },
+  "clearPixels": 254099,
+  "turbidPixels": 818,
+  "hueHist": {
+    "45": 932,
+    "60": 7401,
+    "75": 7894,
+    "90": 11054,
+    "105": 16571,
+    "120": 24593,
+    "135": 34643,
+    "150": 43511,
+    "165": 45136,
+    "180": 37341,
+    "195": 22983,
+    "210": 7010,
+    "225": 131
+  },
+  "source": "REPRESENTATIVE grid (documented real-world CHL/SPM/KD490 distributions; 1:1 drop-in for Copernicus OCEANCOLOUR_GLO_BGC_L4 fields)",
+  "provenance": {
+    "chl": "synthetic: oligotrophic gyres + equatorial/high-lat upwelling + margin hotspots + lognormal noise (ranges 0.02-60 mg/m3, real-world)",
+    "spm": "synthetic: open-ocean baseline + CHL^0.4 + estuarine hotspots (0.05-250 g/m3, real-world)",
+    "kd490": "Morel & Maritorena (2001) Kd490 = 0.016 + 0.023*CHL^0.54 + turbidity term",
+    "cdm": "estimated from CHL/SPM inside water_params_reference.js"
+  }
+}

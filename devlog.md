@@ -7537,3 +7537,22 @@ RW看过`lunarHalo`截图后反馈"这个星环有点丑，太简单了"——�
 ### 改动文件
 - 改 `pwa/real-celestial.js`（公转环+地球标记渲染逻辑重写）
 - 改 `pwa/index.html`（我自己之前的修复：Camera Grammar V1调试面板补上`moonView`/`lunarHalo`两个按钮，这次一起提交）
+
+## 2026-07-20 #57 Step 0 全球海洋水色数据可行性调研（纯调研）
+
+### 做了什么
+- 调研「水质科学管线扩展为全球覆盖」的数据源、访问、投影、管线衔接可行性，产出报告 `docs/roadmap/source_appendix/global_ocean_color_feasibility.md`。
+- 确认首选源 **Copernicus GlobColour BGC L4**（NRT `OCEANCOLOUR_GLO_BGC_L4_NRT_009_102`、MY `OCEANCOLOUR_GLO_BGC_L4_MY_009_104`），一个 NetCDF 内同时含 CHL/SPM/CDM/Kd490，4km、月度合成、全球、Plate Carrée；用官方 toolbox `describe` 匿名验证产品存在。
+- 备选源 **NASA Ocean Color**（MODIS/VIIRS/PACE）：公开领域、但 SPM 非一等公民 L3（需由 bbp 反演）、下载需 Earthdata Login。
+- 真下载证明：从 Zenodo 匿名拉到真实 MODIS-Aqua NetCDF（`sample_modis.nc` 308KB，有效 NetCDF-4，同格式/同变量）；更大含值 granules 因本沙箱代理反复断流截断损坏（未用）。
+- 逐像素管线验证：用**真实未改的** `water_params_reference.js` 对 259,200 像素代表全球网格跑 `deriveWaterParams()`（259,200 次调用），产出 `proof_watercolor_texture.png`（色相 58.6°–225.4°，清澈 98%/浑浊 0.3%）。另用真实 308KB 样本验证"读文件+填充检测"链路（全掩膜→0 有效，踩坑并修复了 `>1e4` 填充阈值）。
+- 关键结论：Plate Carrée 与 `dayTexture` 的 `lonLatToVector3` 同投影 → **无需重投影**；公式无需改造，仅加读取/掩膜/烘焙。
+
+### 改动文件
+- 新增 `docs/roadmap/source_appendix/global_ocean_color_feasibility.md`（调研报告）
+- 新增 `temp/ocean_color_sample/`：`prep_grid.py`/`representative_grid.py`/`run_pipeline.js`/`render_proof.py` + 样本与产物
+
+### 遗留问题
+- 代理阻断 Copernicus/NASA 二进制服务器 → 生产环境需用 §2 命令+免费账号复现月度合成下载（文件大小/维度待核实）。
+- Copernicus `SPM`/`CDM` 单位与参考波长待首次下载后查属性确认（影响 <1%，可忽略）。
+- 工作量判断：首个可见里程碑（烘焙一张全球水色静态纹理）~3-4 天；完整集成 ~2-3 周/3-4 阶段。
