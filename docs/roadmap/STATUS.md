@@ -249,8 +249,8 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 4. ~~**[#41](https://github.com/Heyyeqi/RodiO/issues/41) Phase 0.5：资源补充**~~ — **Done**（水面法线贴图/仰视云层技术路线v2/GEBCO近景细节噪声v1.1实测校准/美学基调文字/水质系统v2数据驱动管线，全部独立验证通过，见 #41 评论）
 5. ~~**[#42](https://github.com/Heyyeqi/RodiO/issues/42) Phase 1：隔离试验场景骨架**~~ — **Done**（与Phase 2合并交付，`pwa/horizon-lab.js`，`?earthCandidate=horizonLab`，独立Scene+相机+渲染循环，本地端到端验证通过，见 #42 评论）
 6. ~~**[#43](https://github.com/Heyyeqi/RodiO/issues/43) Phase 2：天空穹顶**~~ — **Done**（随#42一并落地：skyDome渐变+3层同心云壳，已验证真实3D视差；月光方向仍是缺口，留待场景打磨阶段）
-7. **[#44](https://github.com/Heyyeqi/RodiO/issues/44) Phase 3：真反射海面** — 当前最前面待开工的任务，技术方案已在#41随水质系统v2一并完成，做完这一步海平线场景（最高优先级场景）技术上就完整
-8. **[#45](https://github.com/Heyyeqi/RodiO/issues/45) Phase 4：Orbit↔Horizon进出场过渡**
+7. ~~**[#44](https://github.com/Heyyeqi/RodiO/issues/44) Phase 3：真反射海面**~~ — **Done**（vendor官方three.js r128 Reflector/Water，水色用#41的`water_params_reference.js`实算真值而非拍脑袋，倒影真实性已用截图+反射相关性验证，见 #44 评论；海平线场景技术上已完整）
+8. **[#45](https://github.com/Heyyeqi/RodiO/issues/45) Phase 4：Orbit↔Horizon进出场过渡** — 当前最前面待开工的任务
 9. **[#46](https://github.com/Heyyeqi/RodiO/issues/46) Phase 5：海面美学打磨** — 海平线场景真正决定观感的部分，Phase 0-5做完海平线就是打磨过的完整场景，不是半成品
 10. **[#47](https://github.com/Heyyeqi/RodiO/issues/47) Phase 6：海岸与岛屿场景**（第二优先级场景）
 11. **[#48](https://github.com/Heyyeqi/RodiO/issues/48) Phase 7：地形高度图导出管线** — GEBCO数据已有，缺"原始高程转灰度PNG"这最后一步
@@ -327,7 +327,7 @@ Evan 主张"大气散射渐变+太阳方向场+高空卷云+空气颗粒"应作�
 | [#41](https://github.com/Heyyeqi/RodiO/issues/41) | Horizon Mode Phase 0.5：资源补充 | Horizon Mode — Independent Scene Build | P2 | Done |
 | [#42](https://github.com/Heyyeqi/RodiO/issues/42) | Horizon Mode Phase 1：隔离试验场景骨架 | Horizon Mode — Independent Scene Build | P2 | Done |
 | [#43](https://github.com/Heyyeqi/RodiO/issues/43) | Horizon Mode Phase 2：天空穹顶 | Horizon Mode — Independent Scene Build | P2 | Done |
-| [#44](https://github.com/Heyyeqi/RodiO/issues/44) | Horizon Mode Phase 3：真反射海面（海平线场景技术完整） | Horizon Mode — Independent Scene Build | P2 | Backlog（队列最前） |
+| [#44](https://github.com/Heyyeqi/RodiO/issues/44) | Horizon Mode Phase 3：真反射海面（海平线场景技术完整） | Horizon Mode — Independent Scene Build | P2 | Done |
 | [#45](https://github.com/Heyyeqi/RodiO/issues/45) | Horizon Mode Phase 4：Orbit↔Horizon 进出场过渡 | Horizon Mode — Independent Scene Build | P2 | Backlog |
 | [#46](https://github.com/Heyyeqi/RodiO/issues/46) | Horizon Mode Phase 5：海面美学打磨 | Horizon Mode — Independent Scene Build | P2 | Backlog |
 | [#47](https://github.com/Heyyeqi/RodiO/issues/47) | Horizon Mode Phase 6：海岸与岛屿场景 | Horizon Mode — Independent Scene Build | P3 | Backlog |
