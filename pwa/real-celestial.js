@@ -129,6 +129,33 @@
     return new T.CanvasTexture(c)
   }
 
+  // ── 天体贴图 Sprite 工厂（太阳/8行星/5卫星真实贴图专用）──
+  // 这些贴图都是探测器拍的"全圆盘照片"（近似正方形），不是月球贴图那种等距柱状全球展开图，
+  // 不能贴 SphereGeometry（会拉伸畸变+黑背景缠绕到球面各处）。
+  // 改用 Sprite（恒朝向相机）直接显示原图，AdditiveBlending 让黑色背景自然消失于深空背景。
+  function createBodyTexSprite(colorTint) {
+    const mat = new T.SpriteMaterial({
+      map: null,
+      color: colorTint || 0xffffff,
+      transparent: true,
+      blending: T.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    })
+    const sprite = new T.Sprite(mat)
+    sprite.frustumCulled = false
+    sprite.visible = false
+    return sprite
+  }
+  function loadSpriteTexture(sprite, path) {
+    new T.TextureLoader().load(path, function (tex) {
+      if (T.sRGBEncoding !== undefined) tex.encoding = T.sRGBEncoding
+      sprite.material.map = tex
+      sprite.material.needsUpdate = true
+    }, undefined, function (e) { console.error('[realCelestial] 贴图加载失败:', path, e) })
+  }
+
+
   const MOON_VERT = `
     varying vec2 vUv;
     varying vec3 vWorldNormal;
@@ -169,15 +196,18 @@
 
   // 五颗行星渲染定义：典型地球距离(审计表) / 实测RGB(资源文档) / 平均视星等(亮度分级) / 渲染角直径(风格化)
   const PLANET_DEFS = {
-    Mercury: { typicalAU: 0.9220797145583455, rgb: [132, 129, 129], mag: -0.2, ang: 0.9 },
-    Venus:   { typicalAU: 0.6908797145583455, rgb: [208, 206, 204], mag: -4.6, ang: 1.3 },
-    Mars:    { typicalAU: 1.1500330430035477,  rgb: [138, 105, 75],  mag: -1.0, ang: 1.1 },
-    Jupiter: { typicalAU: 5.105997356051019,  rgb: [172, 121, 68],  mag: -2.0, ang: 1.25 },
-    Saturn:  { typicalAU: 9.484427710726674,  rgb: [119, 111, 82],  mag: 0.5,  ang: 1.2 },
+    Mercury: { typicalAU: 0.9220797145583455, rgb: [132, 129, 129], mag: -0.2, ang: 1.2, texture: '/assets/textures/planets/mercury_messenger_truecolor.jpg' },
+    Venus:   { typicalAU: 0.6908797145583455, rgb: [208, 206, 204], mag: -4.6, ang: 1.8, texture: '/assets/textures/planets/venus_mariner10_truecolor.jpg' },
+    Mars:    { typicalAU: 1.1500330430035477,  rgb: [138, 105, 75],  mag: -1.0, ang: 1.5, texture: '/assets/textures/planets/mars_truecolor.jpg' },
+    Jupiter: { typicalAU: 5.105997356051019,  rgb: [172, 121, 68],  mag: -2.0, ang: 2.6, texture: '/assets/textures/planets/jupiter_pia01369.jpg' }
+,
+    Saturn:  { typicalAU: 9.484427710726674,  rgb: [119, 111, 82],  mag: 0.5,  ang: 2.4, texture: '/assets/textures/planets/saturn_truecolor.jpg' }
+,
     // #54 外三行星（典型距离取 SCALE_TYPICAL_AU，与压缩比例尺一致；rgb=NASA 实测近似色，mag=视星等用于亮度分级）
-    Uranus:  { typicalAU: 19.16492841103248,   rgb: [143, 196, 209], mag: 5.5,  ang: 1.10 },
-    Neptune: { typicalAU: 30.052366978326347,  rgb: [80, 120, 210],  mag: 7.8,  ang: 1.05 },
-    Pluto:   { typicalAU: 39.4693339695516,    rgb: [200, 178, 155], mag: 13.5, ang: 0.60 },
+    Uranus:  { typicalAU: 19.16492841103248,   rgb: [143, 196, 209], mag: 5.5,  ang: 1.9, texture: '/assets/textures/planets/uranus_pia18182.jpg' },
+    Neptune: { typicalAU: 30.052366978326347,  rgb: [80, 120, 210],  mag: 7.8,  ang: 1.8, texture: '/assets/textures/planets/neptune_pia01492.jpg' }
+,
+    Pluto:   { typicalAU: 39.4693339695516,    rgb: [200, 178, 155], mag: 13.5, ang: 1.0, texture: '/assets/textures/planets/pluto_pia19708.jpg' },
   }
   const PLANET_NAMES = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
   // 亮度分级：视星等 → 相对流量 flux=10^(-0.4·mag) → 4次方根压缩（金星最亮=1.0，避免外行星过暗看不见）
@@ -192,13 +222,13 @@
   // sceneRadius 为风格化轨道半径（场景单位，贴近母行星）。这是"代表性"示意，不声称轨道力学精确。
   const SATELLITE_DEFS = {
     Jupiter: [
-      { name: 'Io',       periodDays: 1.769,  sceneRadius: 0.55, ang: 0.30, rgb: [210, 205, 190], phase0: 0.10 },
-      { name: 'Europa',   periodDays: 3.551,  sceneRadius: 0.85, ang: 0.26, rgb: [205, 195, 175], phase0: 0.42 },
-      { name: 'Ganymede', periodDays: 7.155,  sceneRadius: 1.20, ang: 0.34, rgb: [180, 172, 160], phase0: 0.71 },
-      { name: 'Callisto', periodDays: 16.689, sceneRadius: 1.60, ang: 0.32, rgb: [150, 142, 130], phase0: 0.20 },
+      { name: 'Io',       periodDays: 1.769,  sceneRadius: 0.55, ang: 0.55, texture: '/assets/textures/planets/io_truecolor.jpg', rgb: [210, 205, 190], phase0: 0.10 },
+      { name: 'Europa',   periodDays: 3.551,  sceneRadius: 0.85, ang: 0.48, texture: '/assets/textures/planets/europa_pia19048.jpg', rgb: [205, 195, 175], phase0: 0.42 },
+      { name: 'Ganymede', periodDays: 7.155,  sceneRadius: 1.20, ang: 0.60, texture: '/assets/textures/planets/ganymede_pia00716.jpg', rgb: [180, 172, 160], phase0: 0.71 },
+      { name: 'Callisto', periodDays: 16.689, sceneRadius: 1.60, ang: 0.55, texture: '/assets/textures/planets/callisto_pia03456.jpg', rgb: [150, 142, 130], phase0: 0.20 },
     ],
     Saturn: [
-      { name: 'Titan',    periodDays: 15.945, sceneRadius: 1.35, ang: 0.36, rgb: [212, 182, 140], phase0: 0.55 },
+      { name: 'Titan',    periodDays: 15.945, sceneRadius: 1.35, ang: 0.65, texture: '/assets/textures/planets/titan_pia06230.jpg', rgb: [212, 182, 140], phase0: 0.55 },
     ],
   }
 
@@ -341,19 +371,26 @@
       .then(function (data) { apiData = data })
       .catch(function (e) { console.warn('[realCelestial] 取 /api/celestial-positions 失败，仅影响月相显示:', e) })
 
-    // ── 太阳：Sprite 光晕（AdditiveBlending）──
-    const sunMat = new T.SpriteMaterial({
+    // ── 太阳：光晕（保留原有渐变光斑）+ 真实贴图核心盘（新增）──
+    // sunHalo: 原有径向渐变光斑，作为外围光晕层（renderOrder 18，先画）
+    const sunHaloMat = new T.SpriteMaterial({
       map: makeSunGlowTexture(),
       color: 0xffffff,
       transparent: true,
       blending: T.AdditiveBlending,
       depthWrite: false,
-      depthTest: false,            // 天光元素，永远可见（不遮挡判定交给分层）
+      depthTest: false,
     })
-    const sun = new T.Sprite(sunMat)
+    const sunHalo = new T.Sprite(sunHaloMat)
+    sunHalo.renderOrder = 18
+    sunHalo.frustumCulled = false
+    scene.add(sunHalo)
+
+    // sun: 真实 SDO/HMI 贴图核心盘（renderOrder 20，叠在光晕上层），暖白色调
+    const sun = createBodyTexSprite(0xfff0cc)
     sun.renderOrder = 20
-    sun.frustumCulled = false
     scene.add(sun)
+    loadSpriteTexture(sun, '/assets/textures/sun/sun_sdo_hmi_luminance.jpg')
 
     // ── 月亮：Sphere + 真实贴图 + 相位 shader ──
     const moonGeo = new T.SphereGeometry(1, 48, 48) // 基准半径1，运行时按角直径缩放
@@ -391,24 +428,17 @@
       const def = PLANET_DEFS[name]
       const bright = planetBrightness(def.mag)
       // 亮度分级地板：外行星物理上远暗于金星，但场景需可见，故贴图亮度下限 0.22（不影响内行星，其 bright 已 >0.22）。
-      const texBright = Math.min(1, Math.max(bright, 0.22))
-      const mat = new T.SpriteMaterial({
-        map: makePlanetGlowTexture(def.rgb, texBright),
-        color: 0xffffff,
-        transparent: true,
-        blending: T.AdditiveBlending,
-        depthWrite: false,
-        depthTest: false,
-      })
-      const sp = new T.Sprite(mat)
+      // 真实 NASA 探测器全圆盘贴图 Sprite（AdditiveBlending 黑背景自然消失于深空）
+      const sp = createBodyTexSprite(0xffffff)
+      loadSpriteTexture(sp, def.texture)
       sp.renderOrder = 18
-      sp.frustumCulled = false
       sp.visible = false
       scene.add(sp)
       planets[name] = {
         sprite: sp,
-        dist: compressToSceneDist(def.typicalAU),  // 固定场景距离（审计对数压缩）
-        ang: def.ang,                               // 渲染角直径（风格化）
+        dist: compressToSceneDist(def.typicalAU),
+        ang: def.ang,
+        texture: def.texture,
         bright: bright, rgb: def.rgb,
         ndc: [0, 0], visible: false,
       }
@@ -419,17 +449,13 @@
     for (const parentName in SATELLITE_DEFS) {
       satellites[parentName] = []
       for (const def of SATELLITE_DEFS[parentName]) {
-        const sMat = new T.SpriteMaterial({
-          map: makePlanetGlowTexture(def.rgb, 0.9),
-          color: 0xffffff, transparent: true,
-          blending: T.AdditiveBlending, depthWrite: false, depthTest: false,
-        })
-        const sSprite = new T.Sprite(sMat)
+        // 真实贴图 Sprite（同行星做法）
+        const sSprite = createBodyTexSprite(0xffffff)
+        loadSpriteTexture(sSprite, def.texture)
         sSprite.renderOrder = 17
-        sSprite.frustumCulled = false
         sSprite.visible = false
         scene.add(sSprite)
-        satellites[parentName].push({ sprite: sSprite, def: def, ndc: [0, 0], visible: false })
+        satellites[parentName].push({ sprite: sSprite, def: def, texture: def.texture, ndc: [0, 0], visible: false })
       }
     }
 
@@ -634,7 +660,9 @@
       if (showSun) {
         const camToSun = camera.position.distanceTo(sunPos)
         const d = 2 * camToSun * Math.tan((SUN_ANG_DIAM * DEG) / 2)
-        sun.scale.set(d, d, 1)
+        sun.scale.set(d * pulse, d * pulse, 1)       // 真实贴图核心盘（含呼吸）
+        sunHalo.scale.set(d * 1.7 * pulse, d * 1.7 * pulse, 1) // 光晕稍大，柔和溢出
+        sunHalo.position.copy(sunPos)               // 光晕跟着太阳走
         state.sunWorldDiameter = round(d, 4)
         state.sunAngDiamDeg = round(SUN_ANG_DIAM, 4)
       }
@@ -642,8 +670,7 @@
       // 月相：世界坐标 (太阳 − 月亮) 方向
       moonUniforms.uSunDir.value.copy(sunPos).sub(moonPos).normalize()
 
-      // 太阳轻微脉动（与地球标记同款呼吸节奏，pulse 已在上方定义）
-      if (showSun) sun.scale.set(state.sunWorldDiameter * pulse, state.sunWorldDiameter * pulse, 1)
+// 太阳呼吸缩放已合入 showSun 分支（含光晕）
 
       // 屏幕 NDC（用于验证"随时间在动"）
       const sndc = sunPos.clone().project(camera)
@@ -696,7 +723,8 @@
             const P = planets[name]
             return {
               name: name, visible: P.visible, dist: round(P.dist, 3),
-              ang: P.ang, bright: round(P.bright, 3), rgb: P.rgb, ndc: P.ndc,
+              ang: P.ang, bright: round(P.bright, 3), rgb: P.rgb,
+              texture: P.texture || null, ndc: P.ndc,
             }
           }),
           satellites: Object.keys(satellites).reduce(function (acc, parentName) {
