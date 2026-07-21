@@ -43,6 +43,14 @@
   const params = new URLSearchParams(window.location.search)
   if (params.get('earthCandidate') !== 'realCelestial') return // 红线：不影响正常用户
 
+  // ── C1: realCelestial 全局隐藏 2D 叠加层（weather-canvas）──
+  // 避免 2D 绘制内容（天空渐变/地球贴图/Waiting 背景等）覆盖在 WebGL 场景之上，
+  // 造成左下角白块泄漏、背景不纯黑等问题。HTML UI（.panel-layer, z-index:3）不受影响。
+  ;(function hide2DOverlay () {
+    const c = document.getElementById('weather-canvas')
+    if (c) { c.style.display = 'none' }
+  })()
+
   // ── 命名常量（不散落魔法数字）──
   // 三档拆分可见性（按"相机到地心的实际直线距离"，不按构图名字）。
   // 阈值命名遵循可扩展模式 XXX_VISIBLE_DIST / XXX_HIDE_DIST：未来新增构图或新天体
