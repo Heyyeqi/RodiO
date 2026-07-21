@@ -244,6 +244,30 @@
     ],
   }
 
+  // ── Step 1 Hero 肖像：真实等距柱状全球贴图球（与轨道 Sprite 分离，独照模式）──
+  // 贴图来自 planets_equirect/（Solar System Scope 2:1 等距柱状），与行星圆盘照片 planets/ 分开存放。
+  // 先以 Mars + Saturn 验证整条管线（球体 + 月面光照着色器 + 土星环 + 专用构图），再推广到其余行星。
+  const HERO_DEFS = {
+    mars: {
+      radius: 1.0,
+      pos: new T.Vector3(0, 60, 0),
+      texture: '/assets/textures/planets_equirect/mars.jpg',
+      ambient: 0.05, tint: [1.0, 1.0, 1.0], spin: 0.0016,
+    },
+    saturn: {
+      radius: 1.4,
+      pos: new T.Vector3(0, 60, 0),
+      texture: '/assets/textures/planets_equirect/saturn.jpg',
+      ambient: 0.06, tint: [1.0, 0.98, 0.92], spin: 0.0014,
+      tiltDeg: 26.7,
+      ring: {
+        inner: 1.4 * 1.25,
+        outer: 1.4 * 2.30,
+        alphaTex: '/assets/textures/planets_equirect/saturn_ring_alpha.png',
+      },
+    },
+  }
+
   // Standish Table 1 轨道根数 [a, e, I(deg), L(deg), ϖ(deg), Ω(deg)]；[0]=J2000值 [1]=每世纪速率
   const PLANET_ELEMENTS = {
     Mercury: { a: [0.38709927, 0.00000037], e: [0.20563593, 0.00001906], I: [7.00497902, -0.00594749], L: [252.25032350, 149472.67411175], p: [77.45779628, 0.16047689], O: [48.33076593, -0.12534081] },
@@ -459,6 +483,9 @@
 
     // ── #54 代表性卫星 Sprite（母行星可见时才显示）──
     const satellites = {}   // satellites[parentName] = [{ sprite, def, ndc:[x,y], visible }]
+    const heroSpheres = {}  // Hero 肖像球体：name -> { group, mesh, mat, ringMesh, radius, spin }
+    let _heroMode = null    // null=轨道视图；'mars'/'saturn'=独照视图（由 earth3d 切换）
+    const _heroSunDir = new T.Vector3(0, 0, 1)  // 行星→太阳 世界方向（每帧更新，供 Hero 相机/光照共用）
     for (const parentName in SATELLITE_DEFS) {
       satellites[parentName] = []
       for (const def of SATELLITE_DEFS[parentName]) {
@@ -470,6 +497,75 @@
         scene.add(sSprite)
         satellites[parentName].push({ sprite: sSprite, def: def, texture: def.texture, ndc: [0, 0], visible: false })
       }
+    }
+
+    // ── Step 1 Hero 肖像球体（真实 SphereGeometry + 复用 MOON_VERT/MOON_FRAG 月面光照）──
+    // 与轨道 Sprite 完全分离：这是"独照"模式，earth3d 用专用构图把相机直接对准行星。
+    // 球体用等距柱状全球贴图（planets_equirect/），光照用世界空间太阳方向 uSunDir（与月球同款柔化 terminator）。
+    for (const name in HERO_DEFS) {
+      const def = HERO_DEFS[name]
+      const geo = new T.SphereGeometry(def.radius, 64, 48)
+      const tex = new T.TextureLoader().load(def.texture, function (t) { if (T.sRGBEncoding !== undefined) t.encoding = T.sRGBEncoding })
+      const mat = new T.ShaderMaterial({
+        uniforms: {
+          uTex: { value: tex },
+          uSunDir: { value: new T.Vector3(0, 1, 0) },   // 行星→太阳 世界方向，每帧由 tick 更新
+          uAmbient: { value: def.ambient },
+          uTint: { value: new T.Color(def.tint[0], def.tint[1], def.tint[2]) },
+        },
+        vertexShader: MOON_VERT,
+        fragmentShader: MOON_FRAG,
+      })
+      const mesh = new T.Mesh(geo, mat)
+      mesh.frustumCulled = false
+      const group = new T.Group()
+      group.position.copy(def.pos)
+      if (def.tiltDeg) group.rotation.z = def.tiltDeg * DEG   // 轴倾角（土星 26.7°）
+      group.add(mesh)
+      let ringMesh = null
+      if (def.ring) {
+        const rg = new T.RingGeometry(def.ring.inner, def.ring.outer, 128, 1)
+        const ringTex = new T.TextureLoader().load(def.ring.alphaTex, function (t) { if (T.sRGBEncoding !== undefined) t.encoding = T.sRGBEncoding })
+        const ringMat = new T.ShaderMaterial({
+          uniforms: {
+            uRingAlpha: { value: ringTex },
+            uInner: { value: def.ring.inner },
+            uOuter: { value: def.ring.outer },
+            uTint: { value: new T.Color(0.85, 0.78, 0.60) },
+          },
+          vertexShader: `
+            varying vec2 vLocal;
+            void main() {
+              vLocal = position.xy;   // 圆环在局部 XY 平面
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            precision highp float;
+            varying vec2 vLocal;
+            uniform sampler2D uRingAlpha;
+            uniform float uInner;
+            uniform float uOuter;
+            uniform vec3 uTint;
+            void main() {
+              float r = length(vLocal);
+              float rn = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);  // 0=内缘 1=外缘
+              float a = texture2D(uRingAlpha, vec2(rn, 0.5)).r;             // 环透明度随半径变化
+              gl_FragColor = vec4(uTint * a, a * 0.9);
+            }
+          `,
+          transparent: true,
+          side: T.DoubleSide,
+          depthWrite: false,
+        })
+        ringMesh = new T.Mesh(rg, ringMat)
+        ringMesh.rotation.x = Math.PI / 2   // 平躺到 XZ 平面（行星赤道面），随 group 轴倾角一起倾斜
+        ringMesh.frustumCulled = false
+        group.add(ringMesh)
+      }
+      group.visible = false
+      scene.add(group)
+      heroSpheres[name] = { group: group, mesh: mesh, mat: mat, ringMesh: ringMesh, radius: def.radius, spin: def.spin }
     }
 
     // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
@@ -582,16 +678,16 @@
       sunPos.copy(earthCenter).add(sunDir.clone().multiplyScalar(SUN_DIST))
       moon.position.copy(moonPos)
       sun.position.copy(sunPos)
-      moon.visible = showMoon
-      sun.visible = showSun
-      sunHalo.visible = showSun   // Bug 1 修复：光晕跟随真实贴图核心盘一起受 showSun 门控
+      moon.visible = showMoon && !_heroMode
+      sun.visible = showSun && !_heroMode
+      sunHalo.visible = showSun && !_heroMode   // Bug 1 修复 + Hero 模式隐藏
 
       // ── #53/#54 行星更新：每体独立可见性档(PLANET_VISIBLE_DIST) ──
       for (const name of PLANET_NAMES) {
         const P = planets[name]
         const visible = camDistEarth >= PLANET_VISIBLE_DIST[name]
         P.visible = visible
-        P.sprite.visible = visible
+        P.sprite.visible = visible && !_heroMode
         if (visible) {
           const dir = planetGeoDir(name, nowMs)        // 真实地心方向（日心−地球日心）
           const pos = earthCenter.clone().add(new T.Vector3(dir.x, dir.y, dir.z).multiplyScalar(P.dist))
@@ -627,7 +723,7 @@
           const camToS = camera.position.distanceTo(sp)
           const sd = 2 * camToS * Math.tan((s.def.ang * DEG) / 2)
           applyAspectScale(s.sprite, sd)   // Bug 2 修复
-          s.sprite.visible = true
+          s.sprite.visible = !_heroMode
           s.visible = true
           const sndc = sp.clone().project(camera)
           s.ndc = [round(sndc.x, 4), round(sndc.y, 4)]
@@ -638,8 +734,8 @@
       // 与 near-field 太阳晕独立；标记角度 = 真实地球日心黄道经度（随日期变化）。
       const showOrbit = camDistEarth >= SUN_VISIBLE_DIST
       state.orbitVisible = showOrbit
-      orbitRing.visible = showOrbit
-      earthMarker.visible = showOrbit
+      orbitRing.visible = showOrbit && !_heroMode
+      earthMarker.visible = showOrbit && !_heroMode
       // 视觉生命感（呼吸节奏，与太阳 pulse 同款）
       const t = (performance.now() - t0) / 1000
       const pulse = 1 + 0.05 * Math.sin(t * 0.8)
@@ -684,6 +780,17 @@
       // 月相：世界坐标 (太阳 − 月亮) 方向
       moonUniforms.uSunDir.value.copy(sunPos).sub(moonPos).normalize()
 
+      // ── Hero 肖像：独照模式，更新球体光照 + 缓慢自转（展示等距柱状全球贴图）──
+      if (_heroMode && heroSpheres[_heroMode]) {
+        const h = heroSpheres[_heroMode]
+        // 行星→太阳 世界方向：hero 星球远离地球中心，必须用真实太阳世界位置重算（不能复用 sunDir）
+        _heroSunDir.copy(sunPos).sub(h.group.position)
+        if (_heroSunDir.lengthSq() < 1e-6) _heroSunDir.set(0, 0, 1)
+        _heroSunDir.normalize()
+        h.mat.uniforms.uSunDir.value.copy(_heroSunDir)   // 点亮朝阳半球
+        h.mesh.rotation.y += h.spin
+      }
+
 // 太阳呼吸缩放已合入 showSun 分支（含光晕）
 
       // 屏幕 NDC（用于验证"随时间在动"）
@@ -713,6 +820,13 @@
           moonVisible: state.moonVisible,
           sunVisible: state.sunVisible,
           sunHaloVisible: sunHalo.visible,  // Bug 1 调试字段：光晕是否被 showSun 门控
+          heroMode: _heroMode,              // Step 1 调试字段：当前是否处于某行星独照视图
+          hero: {
+            mode: _heroMode,
+            marsGroupVisible: !!(heroSpheres.mars && heroSpheres.mars.group.visible),
+            saturnGroupVisible: !!(heroSpheres.saturn && heroSpheres.saturn.group.visible),
+            pose: _heroMode ? window.realCelestial.getHeroPose(_heroMode) : null,
+          },
           planetsVisible: state.planetsVisible,
           moonWorldRadius: state.moonWorldRadius,
           sunWorldDiameter: state.sunWorldDiameter,
@@ -749,6 +863,30 @@
             })
             return acc
           }, {}),
+        }
+      },
+      // ── Step 1 Hero 独照 API（供 earth3d 专用构图调用）──
+      setHeroMode: function (name) {
+        _heroMode = (name && heroSpheres[name]) ? name : null
+        // 切换可见性：仅当前 hero 球体可见，其余全部隐藏；非 hero 模式时全部隐藏
+        for (const k in heroSpheres) heroSpheres[k].group.visible = (k === _heroMode)
+        return _heroMode
+      },
+      getHeroPose: function (name) {
+        const key = name || _heroMode
+        if (!key || !heroSpheres[key]) return null
+        const h = heroSpheres[key]
+        const planetPos = h.group.position
+        // 相机放在朝阳侧（planetPos + 行星→太阳方向 × d），看回行星 → 永远看到被照亮半球
+        const fov = 28, fill = 0.62  // 行星直径占画面高度约 62%
+        const d = h.radius / (fill * Math.tan((fov * DEG) / 2))
+        const camPos = planetPos.clone().add(_heroSunDir.clone().multiplyScalar(d))
+        return {
+          target: [planetPos.x, planetPos.y, planetPos.z],
+          camera: [camPos.x, camPos.y, camPos.z],
+          fov: fov,
+          radius: h.radius,
+          sunDir: [_heroSunDir.x, _heroSunDir.y, _heroSunDir.z],
         }
       },
     }

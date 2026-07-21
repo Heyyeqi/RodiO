@@ -7485,6 +7485,19 @@
           cameraOffsetZ: 85.5,
           fov: 28,
         },
+        // ── Step 1 Hero 独照构图（行星肖像，不直接锚定地球；相机位由 realCelestial.getHeroPose 驱动）──
+        marsHero: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 60,   // 占位；进入此构图后相机每帧由 Hero 钩子接管
+          fov: 28,
+          hero: 'mars',        // 标记：进入时通知 realCelestial 进入 mars 独照
+        },
+        saturnHero: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 60,
+          fov: 28,
+          hero: 'saturn',
+        },
       }
       const FAR_VIEW_SUN_LON_OFFSET_DEG = 65   // 镜头经度 = 真实太阳直射经度 + 此偏移，已实测验证
       const MOTION_PRIMITIVES = {
@@ -7571,6 +7584,7 @@
       let _gramLastLookAtY = 0  // records last applied lookAtY, used as fromLookAtY for next transition
       let _gramSettledZ = null   // settled camera.position.z after transition ends, used by breathe primitive
       let _gramTransition = null  // { fromY, fromZ, fromFov, fromLookAtY, toY, toZ, toFov, toLookAtY, toNdcX, toNdcY, toRollDeg, toLat, toLon, startTime, duration, envelope }
+      let _heroTargetName = null  // Step 1 Hero 独照：当前 hero 行星名（mars/saturn），null 表示轨道视图
       let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
       const _GRAM_LOD_RANK = { '4k': 0, '8k': 1, '16k': 2 }
       _gramSettledZRef = _gramSettledZ
@@ -7604,6 +7618,13 @@
           ? CAMERA_PRESETS.globe
           : CAMERA_COMPOSITIONS[compositionKey]
         if (!comp) return false
+
+        // ── Step 1 Hero 独照：进入/退出时通知 realCelestial（仅 realCelestial 模式有此 API）──
+        const heroName = comp.hero || null
+        if (window.realCelestial && window.realCelestial.setHeroMode) {
+          window.realCelestial.setHeroMode(heroName)
+        }
+        _heroTargetName = heroName
 
         const usesPercentFormula = compositionKey !== 'homeGlobe' && Number.isFinite(comp.earthDiameterPct)
         const targetZ = usesPercentFormula
@@ -7887,6 +7908,16 @@
           camera.updateProjectionMatrix()
         }
         _updateGramTransition()
+        // ── Step 1 Hero 独照相机接管：每帧把相机放到朝阳侧、对准行星（恒赢于上方所有原语）──
+        if (_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) {
+          const pose = window.realCelestial.getHeroPose(_heroTargetName)
+          if (pose) {
+            camera.position.set(pose.camera[0], pose.camera[1], pose.camera[2])
+            camera.fov = pose.fov
+            camera.lookAt(pose.target[0], pose.target[1], pose.target[2])
+            camera.updateProjectionMatrix()
+          }
+        }
         const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
         const isAnimating = earth.quaternion.angleTo(target) > 0.0002
         earth.quaternion.slerp(target, 0.02)
