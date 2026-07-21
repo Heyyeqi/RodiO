@@ -152,7 +152,19 @@
       if (T.sRGBEncoding !== undefined) tex.encoding = T.sRGBEncoding
       sprite.material.map = tex
       sprite.material.needsUpdate = true
+      // Bug 2 修复：记录原始长宽比，供 tick() 缩放时使用（避免非正方形贴图被拉伸成椭圆）
+      // aspect = imgW/imgH；>1 更宽，<1 更高
+      if (tex.image && tex.image.width && tex.image.height) {
+        sprite.userData.aspect = tex.image.width / tex.image.height
+      }
     }, undefined, function (e) { console.error('[realCelestial] 贴图加载失败:', path, e) })
+  }
+  // Bug 2 修复：按贴图原始长宽比设置 Sprite 缩放（长边对齐视觉直径 d，短边按比例，圆盘不被拉伸）
+  function applyAspectScale(sprite, d) {
+    const aspect = sprite.userData.aspect || 1   // imgW/imgH
+    const sx = aspect >= 1 ? d : d * aspect
+    const sy = aspect >= 1 ? d / aspect : d
+    sprite.scale.set(sx, sy, 1)
   }
 
 
@@ -384,6 +396,7 @@
     const sunHalo = new T.Sprite(sunHaloMat)
     sunHalo.renderOrder = 18
     sunHalo.frustumCulled = false
+    sunHalo.visible = false   // Bug 1 修复：默认隐藏，只有 showSun 时才显示（否则默认近景也会出现发光球）
     scene.add(sunHalo)
 
     // sun: 真实 SDO/HMI 贴图核心盘（renderOrder 20，叠在光晕上层），暖白色调
@@ -571,6 +584,7 @@
       sun.position.copy(sunPos)
       moon.visible = showMoon
       sun.visible = showSun
+      sunHalo.visible = showSun   // Bug 1 修复：光晕跟随真实贴图核心盘一起受 showSun 门控
 
       // ── #53/#54 行星更新：每体独立可见性档(PLANET_VISIBLE_DIST) ──
       for (const name of PLANET_NAMES) {
@@ -585,7 +599,7 @@
           P.worldPos = pos
           const camToP = camera.position.distanceTo(pos)
           const d = 2 * camToP * Math.tan((P.ang * DEG) / 2)  // 恒定角直径（风格化）
-          P.sprite.scale.set(d, d, 1)
+          applyAspectScale(P.sprite, d)   // Bug 2 修复：按贴图长宽比缩放，避免非正方形被拉伸
           const ndc = pos.clone().project(camera)
           P.ndc = [round(ndc.x, 4), round(ndc.y, 4)]
         } else {
@@ -612,7 +626,7 @@
           s.sprite.position.copy(sp)
           const camToS = camera.position.distanceTo(sp)
           const sd = 2 * camToS * Math.tan((s.def.ang * DEG) / 2)
-          s.sprite.scale.set(sd, sd, 1)
+          applyAspectScale(s.sprite, sd)   // Bug 2 修复
           s.sprite.visible = true
           s.visible = true
           const sndc = sp.clone().project(camera)
@@ -698,6 +712,7 @@
           camDistEarth: state.camDistEarth,
           moonVisible: state.moonVisible,
           sunVisible: state.sunVisible,
+          sunHaloVisible: sunHalo.visible,  // Bug 1 调试字段：光晕是否被 showSun 门控
           planetsVisible: state.planetsVisible,
           moonWorldRadius: state.moonWorldRadius,
           sunWorldDiameter: state.sunWorldDiameter,
@@ -725,6 +740,7 @@
               name: name, visible: P.visible, dist: round(P.dist, 3),
               ang: P.ang, bright: round(P.bright, 3), rgb: P.rgb,
               texture: P.texture || null, ndc: P.ndc,
+              texAspect: round(P.sprite.userData.aspect || 1, 4),  // Bug 2 调试字段：贴图原始长宽比
             }
           }),
           satellites: Object.keys(satellites).reduce(function (acc, parentName) {
