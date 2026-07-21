@@ -7587,6 +7587,8 @@
       let _heroTargetName = null  // Step 1 Hero 独照：当前 hero 行星名（mars/saturn），null 表示轨道视图
       let _heroEarthHidden = false  // F1: Hero 模式下已隐藏地球系（避免泄漏进独照构图）
       let _heroSavedEarthVis = null  // F1: 进入 Hero 前地球系可见性快照，退出时恢复
+      let _heroCanvas2DHidden = false  // B1: Hero 模式下隐藏 2D 叠加层（weather-canvas），消除 Waiting/地球贴图泄漏
+      let _heroSavedCanvas2DDisplay = null
       let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
       const _GRAM_LOD_RANK = { '4k': 0, '8k': 1, '16k': 2 }
       _gramSettledZRef = _gramSettledZ
@@ -7929,6 +7931,13 @@
               if (cloudMesh) cloudMesh.visible = false
               if (skyMesh) skyMesh.visible = false
               if (starSphere) starSphere.visible = false
+              // B1: 隐藏 2D 叠加层（weather-canvas），消除 Waiting/地球贴图泄漏到画面
+              const c2d = document.getElementById('weather-canvas')
+              if (c2d) {
+                _heroSavedCanvas2DDisplay = c2d.style.display
+                c2d.style.display = 'none'
+                _heroCanvas2DHidden = true
+              }
             }
             camera.position.set(pose.camera[0], pose.camera[1], pose.camera[2])
             camera.fov = pose.fov
@@ -7943,6 +7952,12 @@
           if (cloudMesh) cloudMesh.visible = _heroSavedEarthVis.c
           if (skyMesh) skyMesh.visible = _heroSavedEarthVis.s
           if (starSphere) starSphere.visible = _heroSavedEarthVis.st
+          // B1: 恢复 2D 叠加层
+          if (_heroCanvas2DHidden) {
+            _heroCanvas2DHidden = false
+            const c2d = document.getElementById('weather-canvas')
+            if (c2d) c2d.style.display = _heroSavedCanvas2DDisplay || ''
+          }
         }
         const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
         const isAnimating = earth.quaternion.angleTo(target) > 0.0002

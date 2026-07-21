@@ -524,14 +524,13 @@
       group.add(mesh)
       let ringMesh = null
       if (def.ring) {
-        const rg = new T.RingGeometry(def.ring.inner, def.ring.outer, 128, 1)
+        const rg = new T.RingGeometry(def.ring.inner, def.ring.outer, 256, 1)
         const ringTex = new T.TextureLoader().load(def.ring.alphaTex, function (t) { if (T.sRGBEncoding !== undefined) t.encoding = T.sRGBEncoding })
         const ringMat = new T.ShaderMaterial({
           uniforms: {
             uRingAlpha: { value: ringTex },
             uInner: { value: def.ring.inner },
             uOuter: { value: def.ring.outer },
-            uTint: { value: new T.Color(0.85, 0.78, 0.60) },
           },
           vertexShader: `
             varying vec2 vLocal;
@@ -546,17 +545,29 @@
             uniform sampler2D uRingAlpha;
             uniform float uInner;
             uniform float uOuter;
-            uniform vec3 uTint;
             void main() {
               float r = length(vLocal);
               float rn = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);  // 0=内缘 1=外缘
-              float a = texture2D(uRingAlpha, vec2(rn, 0.5)).r;             // 环透明度随半径变化
-              gl_FragColor = vec4(uTint * a, a * 0.9);
+              // B3: 环透明度 = 贴图band结构 × 软边消隐（内外缘柔化，避免生硬圆环）
+              float band = texture2D(uRingAlpha, vec2(rn, 0.5)).r;
+              float edge = smoothstep(0.0, 0.05, rn) * smoothstep(1.0, 0.93, rn);
+              // Cassini 缝：rn≈0.62 处一道暗缝
+              float cassini = smoothstep(0.015, 0.05, abs(rn - 0.62));
+              float a = band * edge * cassini;
+              // B3: 金黄→琥珀色径向渐变（内C环暗淡、外A环明亮），贴近 Apple 天文壁纸
+              vec3 colC = vec3(0.62, 0.50, 0.34);   // 内缘 C 环：暗淡棕黄
+              vec3 colB = vec3(0.92, 0.76, 0.48);   // B 环：饱满金棕
+              vec3 colA = vec3(0.98, 0.86, 0.62);   // 外缘 A 环：明亮浅金
+              vec3 tint = mix(colC, colB, smoothstep(0.0, 0.5, rn));
+              tint = mix(tint, colA, smoothstep(0.66, 1.0, rn));
+              if (a < 0.01) discard;
+              gl_FragColor = vec4(tint, a * 0.95);
             }
           `,
           transparent: true,
           side: T.DoubleSide,
           depthWrite: false,
+          blending: T.NormalBlending,
         })
         ringMesh = new T.Mesh(rg, ringMat)
         ringMesh.rotation.x = Math.PI / 2   // 平躺到 XZ 平面（行星赤道面），随 group 轴倾角一起倾斜
@@ -565,7 +576,7 @@
       }
       group.visible = false
       scene.add(group)
-      heroSpheres[name] = { group: group, mesh: mesh, mat: mat, ringMesh: ringMesh, radius: def.radius, spin: def.spin }
+      heroSpheres[name] = { group: group, mesh: mesh, mat: mat, ringMesh: ringMesh, radius: def.radius, spin: def.spin, def: def }
     }
 
     // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
@@ -877,14 +888,36 @@
         if (!key || !heroSpheres[key]) return null
         const h = heroSpheres[key]
         const planetPos = h.group.position
-        // 相机放在朝阳侧（planetPos + 行星→太阳方向 × d），看回行星 → 永远看到被照亮半球
-        const fov = 28, fill = 0.40  // 行星直径占"画面较短边"的比例（参考截图3：克制留白，横竖屏均居中）
+        const fov = 28
         const vHalf = Math.tan((fov * DEG) / 2)            // 垂直半视角 (tan)
         const aspect = (camera && camera.aspect) ? camera.aspect : 1
         const hHalf = vHalf * aspect                        // 水平半视角 (tan)；竖屏 aspect<1 时更小
         const minHalf = Math.min(vHalf, hHalf)              // 取较短边对应的半视角
-        const d = h.radius / (fill * minHalf)               // 行星直径 = 短边 fill 比例，横竖屏均居中留白
-        const camPos = planetPos.clone().add(_heroSunDir.clone().multiplyScalar(d))
+        // 有环行星（土星）：以环外径为基准取景，让环系统约占短边 80%、球体约 35%，四周留白
+        // 无环行星（火星）：球体直径占短边 40%
+        const hasRing = !!(h.def && h.def.ring)
+        const refRadius = hasRing ? h.def.ring.outer : h.radius
+        const fill = hasRing ? 0.70 : 0.40
+        const d = refRadius / (fill * minHalf)
+        // 相机方向：默认沿"行星→太阳"方向（朝阳侧，永远看到被照亮半球）
+        const litDir = _heroSunDir.clone().normalize()
+        let camDir = litDir.clone()
+        // B2: 有轴倾角的行星（土星 26.7°）→ 俯视斜角相机（参考 Apple 天文壁纸）：
+        //     相机放在行星上方（Y > planetY），略偏朝阳侧。
+        //     这样看到完整球体 + 环从斜上方展开（非 edge-on），且亮半球仍占主导面。
+        if (h.def && h.def.tiltDeg) {
+          // 环法线（世界空间）：group 仅设了 rotation.z = tiltDeg，所以
+          //   ringNormal = (sin(tiltDeg), cos(tiltDeg), 0)
+          const tRad = h.def.tiltDeg * DEG
+          const ringNormal = new T.Vector3(Math.sin(tRad), Math.cos(tRad), 0).normalize()
+          // 俯仰角：从环法线向朝阳方向偏移 ~28°（相机在"环上方但略偏太阳"）
+          const elevAxis = new T.Vector3().crossVectors(ringNormal, litDir)
+          if (elevAxis.lengthSq() > 1e-6) {
+            elevAxis.normalize()
+            camDir = ringNormal.clone().applyAxisAngle(elevAxis, -18 * DEG)
+          }
+        }
+        const camPos = planetPos.clone().add(camDir.multiplyScalar(d))
         return {
           target: [planetPos.x, planetPos.y, planetPos.z],
           camera: [camPos.x, camPos.y, camPos.z],
