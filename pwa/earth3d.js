@@ -7498,6 +7498,13 @@
           fov: 28,
           hero: 'saturn',
         },
+        // ── §1 太阳系示意图：独立俯视视图，相机由 realCelestial.getDiagramPose 驱动 ──
+        solarSystemDiagram: {
+          lat: 31.23, lon: 121.47,
+          cameraOffsetZ: 60,   // 占位；进入后由 Diagram 钩子接管相机
+          fov: 35,
+          diagram: true,       // 标记：进入时通知 realCelestial 进入太阳系示意图
+        },
       }
       const FAR_VIEW_SUN_LON_OFFSET_DEG = 65   // 镜头经度 = 真实太阳直射经度 + 此偏移，已实测验证
       const MOTION_PRIMITIVES = {
@@ -7589,6 +7596,11 @@
       let _heroSavedEarthVis = null  // F1: 进入 Hero 前地球系可见性快照，退出时恢复
       let _heroCanvas2DHidden = false  // B1: Hero 模式下隐藏 2D 叠加层（weather-canvas），消除 Waiting/地球贴图泄漏
       let _heroSavedCanvas2DDisplay = null
+      let _diagramActive = false  // §1 太阳系示意图：当前是否由 solarSystemDiagram 构图激活
+      let _diagramEarthHidden = false  // §1: 示意图模式下已隐藏地球系（复用 F1 逻辑）
+      let _diagramSavedEarthVis = null
+      let _diagramCanvas2DHidden = false  // §1: 示意图模式下隐藏 2D 叠加层（复用 B1 逻辑）
+      let _diagramSavedCanvas2DDisplay = null
       let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
       const _GRAM_LOD_RANK = { '4k': 0, '8k': 1, '16k': 2 }
       _gramSettledZRef = _gramSettledZ
@@ -7629,6 +7641,13 @@
           window.realCelestial.setHeroMode(heroName)
         }
         _heroTargetName = heroName
+
+        // ── §1 太阳系示意图：进入/退出时通知 realCelestial ──
+        const diagramOn = !!(comp.diagram)
+        if (window.realCelestial && window.realCelestial.setDiagramMode) {
+          window.realCelestial.setDiagramMode(diagramOn)
+        }
+        _diagramActive = diagramOn
 
         const usesPercentFormula = compositionKey !== 'homeGlobe' && Number.isFinite(comp.earthDiameterPct)
         const targetZ = usesPercentFormula
@@ -7912,6 +7931,7 @@
           camera.updateProjectionMatrix()
         }
         _updateGramTransition()
+        let diagPose = null   // §1 太阳系示意图相机位姿（Hero 块之后计算）
         // ── Step 1 Hero 独照相机接管：每帧把相机放到朝阳侧、对准行星（恒赢于上方所有原语）──
         if (_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) {
           const pose = window.realCelestial.getHeroPose(_heroTargetName)
@@ -7959,6 +7979,51 @@
             if (c2d) c2d.style.display = _heroSavedCanvas2DDisplay || ''
           }
         }
+
+        // ── §1 太阳系示意图相机接管：固定斜上方俯视，看向示意图原点（太阳）──
+        if (!_heroTargetName && window.realCelestial && window.realCelestial.getDiagramPose) {
+          diagPose = window.realCelestial.getDiagramPose()
+        }
+        if (diagPose) {
+          if (!_diagramEarthHidden) {
+            _diagramEarthHidden = true
+            _diagramSavedEarthVis = {
+              e: earth ? earth.visible : true,
+              a: atmosphere ? atmosphere.visible : true,
+              c: cloudMesh ? cloudMesh.visible : false,
+              s: skyMesh ? skyMesh.visible : true,
+              st: starSphere ? starSphere.visible : true,
+            }
+            if (earth) earth.visible = false
+            if (atmosphere) atmosphere.visible = false
+            if (cloudMesh) cloudMesh.visible = false
+            if (skyMesh) skyMesh.visible = false
+            if (starSphere) starSphere.visible = false
+            const c2d = document.getElementById('weather-canvas')
+            if (c2d) {
+              _diagramSavedCanvas2DDisplay = c2d.style.display
+              c2d.style.display = 'none'
+              _diagramCanvas2DHidden = true
+            }
+          }
+          camera.position.set(diagPose.camera[0], diagPose.camera[1], diagPose.camera[2])
+          camera.fov = diagPose.fov
+          camera.lookAt(diagPose.target[0], diagPose.target[1], diagPose.target[2])
+          camera.updateProjectionMatrix()
+        } else if (_diagramEarthHidden) {
+          _diagramEarthHidden = false
+          if (earth) earth.visible = _diagramSavedEarthVis.e
+          if (atmosphere) atmosphere.visible = _diagramSavedEarthVis.a
+          if (cloudMesh) cloudMesh.visible = _diagramSavedEarthVis.c
+          if (skyMesh) skyMesh.visible = _diagramSavedEarthVis.s
+          if (starSphere) starSphere.visible = _diagramSavedEarthVis.st
+          if (_diagramCanvas2DHidden) {
+            _diagramCanvas2DHidden = false
+            const c2d = document.getElementById('weather-canvas')
+            if (c2d) c2d.style.display = _diagramSavedCanvas2DDisplay || ''
+          }
+        }
+
         const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
         const isAnimating = earth.quaternion.angleTo(target) > 0.0002
         earth.quaternion.slerp(target, 0.02)
@@ -7974,8 +8039,8 @@
           updateRDLOverlays()
         }
 
-        // ── F3: Hero 独照纯黑背景 —— 绕过所有天空/辉光叠加，只渲主场景到不透明黑底 ──
-        if (_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) {
+        // ── F3: Hero/示意图 纯黑背景 —— 绕过所有天空/辉光叠加，只渲主场景到不透明黑底 ──
+        if ((_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) || diagPose) {
           renderer.setClearColor(0x000000, 1)
           renderer.autoClear = true
           renderer.clear(true, true, true)

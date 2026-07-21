@@ -587,6 +587,129 @@
       heroSpheres[name] = { group: group, mesh: mesh, mat: mat, ringMesh: ringMesh, radius: def.radius, spin: def.spin, def: def }
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // 太阳系示意图视图（celestial_solar_system_diagram_v1.md §1）
+    // 独立 Group + 日心坐标俯视，与轨道视图 / Hero 独照互斥。进入时隐藏轨道视图天体。
+    // ════════════════════════════════════════════════════════════════════
+    let _diagramMode = null   // null=关闭；true=太阳系示意图激活
+    const DIAGRAM_SCALE_MIN = 2.0    // 水星（最内圈）目标场景半径
+    const DIAGRAM_SCALE_MAX = 14.0   // 冥王星（最外圈）目标场景半径（艺术化压缩，非等比例）
+    const _diagLogMin = Math.log10(0.387)   // 水星 a (AU)
+    const _diagLogMax = Math.log10(39.48)   // 冥王星 a (AU)
+    function diagramCompress(aAU) {
+      const t = (Math.log10(aAU) - _diagLogMin) / (_diagLogMax - _diagLogMin)
+      return DIAGRAM_SCALE_MIN + t * (DIAGRAM_SCALE_MAX - DIAGRAM_SCALE_MIN)
+    }
+    // 取日心轨道根数（a, e, 近日点黄经 w 弧度），用于画真实椭圆轨道环
+    function keplerElems(name, nowMsD) {
+      const el = PLANET_ELEMENTS[name]
+      const Tc = pCenturies(nowMsD)
+      const a = el.a[0] + el.a[1] * Tc
+      const e = el.e[0] + el.e[1] * Tc
+      const w = pNorm360(el.p[0] + el.p[1] * Tc) * DEG
+      return { a, e, w }
+    }
+    const diagramGroup = new T.Group()
+    diagramGroup.visible = false
+    scene.add(diagramGroup)
+    // 10 天体：太阳(原点) + 8大行星 + 地球(EMBary) + 冥王星
+    const DIAGRAM_BODY_DEFS = {
+      Sun:     { tex: '/assets/textures/sun/sun_sdo_hmi_luminance.jpg', size: 4.0 },
+      Mercury: { tex: PLANET_DEFS.Mercury.texture, size: 1.0 },
+      Venus:   { tex: PLANET_DEFS.Venus.texture,   size: 1.4 },
+      Earth:   { tex: '/assets/textures/earth/blue_marble_4k.jpg', size: 1.4 },
+      Mars:    { tex: PLANET_DEFS.Mars.texture,    size: 1.2 },
+      Jupiter: { tex: PLANET_DEFS.Jupiter.texture, size: 2.5 },
+      Saturn:  { tex: PLANET_DEFS.Saturn.texture,  size: 2.3 },
+      Uranus:  { tex: PLANET_DEFS.Uranus.texture,  size: 1.6 },
+      Neptune: { tex: PLANET_DEFS.Neptune.texture, size: 1.55 },
+      Pluto:   { tex: PLANET_DEFS.Pluto.texture,   size: 0.85 },
+    }
+    const DIAGRAM_BODY_ORDER = ['Sun', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+    const DIAGRAM_HELIO_NAME = { Sun: null, Mercury: 'Mercury', Venus: 'Venus', Earth: 'EMBary', Mars: 'Mars', Jupiter: 'Jupiter', Saturn: 'Saturn', Uranus: 'Uranus', Neptune: 'Neptune', Pluto: 'Pluto' }
+    const diagramBodies = {}
+    const diagramRings = []
+    for (const name of DIAGRAM_BODY_ORDER) {
+      const def = DIAGRAM_BODY_DEFS[name]
+      const sp = createBodyTexSprite(0xffffff)
+      loadSpriteTexture(sp, def.tex)
+      sp.renderOrder = 20
+      sp.visible = false
+      diagramGroup.add(sp)
+      diagramBodies[name] = { sprite: sp, size: def.size, helio: DIAGRAM_HELIO_NAME[name] }
+    }
+    // 9 条真实椭圆轨道环：8大行星(含地球) + 冥王星；共面黄道(I=0)，冥王星保留真实倾角(~17°)
+    const DIAGRAM_RING_NAMES = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+    const _diagramRingUniforms = { uColor: { value: new T.Color(0.55, 0.72, 1.0) } }
+    const diagramRingVert = `
+      attribute float radial;
+      varying float vR;
+      void main() {
+        vR = radial;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `
+    const diagramRingFrag = `
+      precision highp float;
+      uniform vec3 uColor;
+      varying float vR;
+      void main() {
+        float edge = smoothstep(0.0, 0.5, vR) * smoothstep(1.0, 0.5, vR);  // 带宽柔边（中间亮、内外缘消隐）
+        gl_FragColor = vec4(uColor, edge * 0.55);
+      }
+    `
+    function makeDiagramRingGeometry(a, e, wRad, ratio, width, N) {
+      const b = a * Math.sqrt(1 - e * e) * ratio
+      const ar = a * ratio
+      const cw = Math.cos(wRad), sw = Math.sin(wRad)
+      const center = []
+      for (let i = 0; i <= N; i++) {
+        const E = 2 * Math.PI * i / N
+        const x1 = ar * (Math.cos(E) - e)
+        const y1 = b * Math.sin(E)
+        const x = x1 * cw - y1 * sw
+        const y = x1 * sw + y1 * cw
+        center.push(new T.Vector2(x, y))
+      }
+      const positions = [], radials = [], indices = []
+      for (let i = 0; i <= N; i++) {
+        const p = center[i]
+        const len = Math.hypot(p.x, p.y) || 1
+        const dx = p.x / len, dy = p.y / len
+        positions.push(p.x - dx * width / 2, p.y - dy * width / 2, 0, p.x + dx * width / 2, p.y + dy * width / 2, 0)
+        radials.push(0, 1)
+      }
+      for (let i = 0; i < N; i++) {
+        const o = i * 2
+        indices.push(o, o + 1, o + 2, o + 1, o + 3, o + 2)
+      }
+      const geo = new T.BufferGeometry()
+      geo.setAttribute('position', new T.Float32BufferAttribute(positions, 3))
+      geo.setAttribute('radial', new T.Float32BufferAttribute(radials, 1))
+      geo.setIndex(indices)
+      return geo
+    }
+    for (const name of DIAGRAM_RING_NAMES) {
+      const helio = DIAGRAM_HELIO_NAME[name] || name   // Earth→EMBary（PLANET_ELEMENTS 以 EMBary 为键）
+      const el = keplerElems(helio, Date.now())
+      const ratio = diagramCompress(el.a) / el.a
+      const width = el.a * ratio * 0.05
+      const geo = makeDiagramRingGeometry(el.a, el.e, el.w, ratio, width, 256)
+      const mat = new T.ShaderMaterial({
+        uniforms: _diagramRingUniforms,
+        vertexShader: diagramRingVert,
+        fragmentShader: diagramRingFrag,
+        transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide,
+      })
+      const ring = new T.Mesh(geo, mat)
+      if (name === 'Pluto') ring.rotation.x = PLANET_ELEMENTS.Pluto.I[0] * DEG  // 保留真实轨道倾角
+      ring.renderOrder = 15
+      ring.frustumCulled = false
+      ring.visible = false
+      diagramGroup.add(ring)
+      diagramRings.push(ring)
+    }
+
     // ── 公转轨道环 + 地球位置标记（仅 deepSpace 可见，独立视觉语言）──
     // 环：RingGeometry 细圆环 mesh + ShaderMaterial（柔边光带 + 角度衰减，最亮段跟随地球黄经）
     const ringInner = ORBIT_RING_DIST - ORBIT_RING_WIDTH
@@ -697,16 +820,16 @@
       sunPos.copy(earthCenter).add(sunDir.clone().multiplyScalar(SUN_DIST))
       moon.position.copy(moonPos)
       sun.position.copy(sunPos)
-      moon.visible = showMoon && !_heroMode
-      sun.visible = showSun && !_heroMode
-      sunHalo.visible = showSun && !_heroMode   // Bug 1 修复 + Hero 模式隐藏
+      moon.visible = showMoon && !_heroMode && !_diagramMode
+      sun.visible = showSun && !_heroMode && !_diagramMode
+      sunHalo.visible = showSun && !_heroMode && !_diagramMode   // Bug 1 修复 + Hero 模式隐藏
 
       // ── #53/#54 行星更新：每体独立可见性档(PLANET_VISIBLE_DIST) ──
       for (const name of PLANET_NAMES) {
         const P = planets[name]
         const visible = camDistEarth >= PLANET_VISIBLE_DIST[name]
         P.visible = visible
-        P.sprite.visible = visible && !_heroMode
+        P.sprite.visible = visible && !_heroMode && !_diagramMode
         if (visible) {
           const dir = planetGeoDir(name, nowMs)        // 真实地心方向（日心−地球日心）
           const pos = earthCenter.clone().add(new T.Vector3(dir.x, dir.y, dir.z).multiplyScalar(P.dist))
@@ -753,8 +876,8 @@
       // 与 near-field 太阳晕独立；标记角度 = 真实地球日心黄道经度（随日期变化）。
       const showOrbit = camDistEarth >= SUN_VISIBLE_DIST
       state.orbitVisible = showOrbit
-      orbitRing.visible = showOrbit && !_heroMode
-      earthMarker.visible = showOrbit && !_heroMode
+      orbitRing.visible = showOrbit && !_heroMode && !_diagramMode
+      earthMarker.visible = showOrbit && !_heroMode && !_diagramMode
       // 视觉生命感（呼吸节奏，与太阳 pulse 同款）
       const t = (performance.now() - t0) / 1000
       const pulse = 1 + 0.05 * Math.sin(t * 0.8)
@@ -810,6 +933,22 @@
         h.mesh.rotation.y += h.spin
       }
 
+      // ── 太阳系示意图：更新 10 天体位置（日心坐标 × 统一压缩比例），每帧用真实时刻 ──
+      if (_diagramMode) {
+        const nowD = Date.now()
+        for (const name of DIAGRAM_BODY_ORDER) {
+          const b = diagramBodies[name]
+          if (b.helio) {
+            const h = keplerHelioEcl(b.helio, nowD)
+            const ratio = diagramCompress(h.a) / h.a
+            b.sprite.position.set(h.x * ratio, h.y * ratio, h.z * ratio)
+          } else {
+            b.sprite.position.set(0, 0, 0)  // 太阳固定在示意图原点
+          }
+          applyAspectScale(b.sprite, b.size)
+        }
+      }
+
 // 太阳呼吸缩放已合入 showSun 分支（含光晕）
 
       // 屏幕 NDC（用于验证"随时间在动"）
@@ -845,6 +984,13 @@
             marsGroupVisible: !!(heroSpheres.mars && heroSpheres.mars.group.visible),
             saturnGroupVisible: !!(heroSpheres.saturn && heroSpheres.saturn.group.visible),
             pose: _heroMode ? window.realCelestial.getHeroPose(_heroMode) : null,
+          },
+          diagramMode: _diagramMode,        // §1 调试字段：太阳系示意图是否激活
+          diagram: {
+            mode: _diagramMode,
+            groupVisible: diagramGroup.visible,
+            bodyCount: DIAGRAM_BODY_ORDER.length,
+            ringCount: diagramRings.length,
           },
           planetsVisible: state.planetsVisible,
           moonWorldRadius: state.moonWorldRadius,
@@ -887,9 +1033,65 @@
       // ── Step 1 Hero 独照 API（供 earth3d 专用构图调用）──
       setHeroMode: function (name) {
         _heroMode = (name && heroSpheres[name]) ? name : null
+        // 与示意图视图互斥：进入 Hero 时退出示意图
+        if (_heroMode && _diagramMode) {
+          _diagramMode = null
+          diagramGroup.visible = false
+          for (const k in diagramBodies) diagramBodies[k].sprite.visible = false
+          for (const r of diagramRings) r.visible = false
+        }
         // 切换可见性：仅当前 hero 球体可见，其余全部隐藏；非 hero 模式时全部隐藏
         for (const k in heroSpheres) heroSpheres[k].group.visible = (k === _heroMode)
         return _heroMode
+      },
+      // ── 太阳系示意图 API（供 earth3d 专用构图调用）──
+      setDiagramMode: function (on) {
+        _diagramMode = !!on
+        // 与 Hero 独照互斥：进入示意图时退出 Hero
+        if (_diagramMode && _heroMode) {
+          _heroMode = null
+          for (const k in heroSpheres) heroSpheres[k].group.visible = false
+        }
+        diagramGroup.visible = _diagramMode
+        for (const name in diagramBodies) diagramBodies[name].sprite.visible = _diagramMode
+        for (const r of diagramRings) r.visible = _diagramMode
+        return _diagramMode
+      },
+      getDiagramPose: function () {
+        if (!_diagramMode) return null
+        const center = diagramGroup.position   // 太阳在示意图原点 (0,0,0)
+        const elev = 30 * DEG   // 俯视仰角（参考图：斜上方俯视整个盘面）
+        const R = 60            // 相机距离：容纳冥王星环（外半径 14）+ 留白
+        const camPos = [
+          center.x + R * Math.cos(elev) * Math.sin(0),
+          center.y + R * Math.sin(elev),
+          center.z + R * Math.cos(elev) * Math.cos(0),
+        ]
+        return {
+          target: [center.x, center.y, center.z],
+          camera: camPos,
+          fov: 35,
+        }
+      },
+      // 临时调试：返回示意图天体状态（验证用，可后续移除）
+      _debugDiagramBodies: function () {
+        return Object.keys(diagramBodies).map(function (name) {
+          const sp = diagramBodies[name].sprite
+          return { name: name, mapLoaded: !!(sp.material.map && sp.material.map.image), vis: sp.visible, pos: [+sp.position.x.toFixed(2), +sp.position.y.toFixed(2)], scale: [+sp.scale.x.toFixed(2), +sp.scale.y.toFixed(2)] }
+        })
+      },
+      _debugDiagramRings: function () {
+        return diagramRings.map(function (r, i) { return { idx: i, vis: r.visible } })
+      },
+      _debugSetBodyScale: function (name, sx, sy) {
+        if (diagramBodies[name]) diagramBodies[name].sprite.scale.set(sx || 8, sy || 8, 1)
+      },
+      // 持久缩放覆盖（tick 中 applyAspectScale 会检查此值）
+      _debugOverrideScales: null,   // { Sun: [sx,sy], ... } 或 null=不覆盖
+      _debugSetAllBlending: function (modeStr) {
+        const bm = { normal: T.NormalBlending, additive: T.AdditiveBlending }[modeStr]
+        if (!bm) return
+        for (const k in diagramBodies) diagramBodies[k].sprite.material.blending = bm
       },
       getHeroPose: function (name) {
         const key = name || _heroMode

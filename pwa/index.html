@@ -1093,7 +1093,7 @@
 <script src="/earth_modes.js?v=rdl-overlay-gate-v17"></script>
   <script src="/earth3d.js?v=close-view-clarity-v51"></script>
 <script src="/horizon-lab.js?v=horizon-lab-v2-water"></script>
-<script src="/real-celestial.js?v=real-celestial-v5"></script>
+<script src="/real-celestial.js?v=real-celestial-v6"></script>
 <script>
 (() => {
   const errorOverlay = document.getElementById('error-overlay')
@@ -5546,33 +5546,41 @@
       fPreset.add(presetBtns, k).name('▶ ' + k)
     })
 
-    // ── Camera Grammar V1 (dev debug) ─────────────────────────────────────
-    var fGrammar = gui.addFolder('Camera Grammar V1 (debug)')
-    fGrammar.close()
-    var gramCompositions = ['homeGlobe', 'portraitMarble', 'farOrbit', 'terminatorPortrait', 'polarDiagonal', 'cityAnchor', 'oceanExpanse', 'horizonSkim', 'limbHero', 'deepSpace', 'moonView', 'lunarHalo', 'sunView', 'venusView', 'mercuryView', 'marsView', 'jupiterView', 'saturnView', 'uranusView', 'neptuneView', 'plutoView', 'marsHero', 'saturnHero']
-    var gramBtns = {}
-    gramCompositions.forEach(function (k) {
-      gramBtns[k] = function () {
-        var vs = window.__rodioVisualState
-        if (!vs) window.__rodioVisualState = vs = {}
-        if (!Number.isFinite(vs.lat)) vs.lat = 31.2304
-        if (!Number.isFinite(vs.lon)) vs.lon = 121.4737
-        e3d.transitionToComposition?.(k, { duration: 3, envelope: 'easeInOutCubic' })
-      }
-      fGrammar.add(gramBtns, k).name('▶ ' + k)
-    })
+    // ── Camera Grammar V1 (dev debug) — 拆成 Earth / Celestial 两组 ──────
+    var gramCompositionsEarth = ['homeGlobe', 'portraitMarble', 'farOrbit', 'terminatorPortrait', 'polarDiagonal', 'cityAnchor', 'oceanExpanse', 'horizonSkim', 'limbHero', 'deepSpace']
+    var gramCompositionsCelestial = ['moonView', 'lunarHalo', 'sunView', 'venusView', 'mercuryView', 'marsView', 'jupiterView', 'saturnView', 'uranusView', 'neptuneView', 'plutoView', 'marsHero', 'saturnHero', 'solarSystemDiagram']
+    function addGrammarButtons(folder, keys) {
+      var btns = {}
+      keys.forEach(function (k) {
+        btns[k] = function () {
+          var vs = window.__rodioVisualState
+          if (!vs) window.__rodioVisualState = vs = {}
+          if (!Number.isFinite(vs.lat)) vs.lat = 31.2304
+          if (!Number.isFinite(vs.lon)) vs.lon = 121.4737
+          e3d.transitionToComposition?.(k, { duration: 3, envelope: 'easeInOutCubic' })
+        }
+        folder.add(btns, k).name('▶ ' + k)
+      })
+    }
+    var fGrammarEarth = gui.addFolder('Camera Grammar V1 — Earth (debug)')
+    fGrammarEarth.close()
+    addGrammarButtons(fGrammarEarth, gramCompositionsEarth)
     var gramSequences = ['approach', 'retreat', 'flyby']
     var gramSeqBtns = {}
     gramSequences.forEach(function (k) {
       gramSeqBtns[k] = function () {
         e3d.playSequence?.(k)
       }
-      fGrammar.add(gramSeqBtns, k).name('⟳ ' + k)
+      fGrammarEarth.add(gramSeqBtns, k).name('⟳ ' + k)
     })
     var gramPrimitiveCtl = { primitive: 'latitudeDrift' }
-    fGrammar.add(gramPrimitiveCtl, 'primitive', ['hold', 'latitudeDrift', 'longitudeDrift', 'diagonalDrift', 'breathe', 'rollDrift', 'targetShift', 'orbitalArc'])
+    fGrammarEarth.add(gramPrimitiveCtl, 'primitive', ['hold', 'latitudeDrift', 'longitudeDrift', 'diagonalDrift', 'breathe', 'rollDrift', 'targetShift', 'orbitalArc'])
       .name('Motion Primitive')
       .onChange(function (v) { e3d.setGramPrimitive?.(v) })
+
+    var fGrammarCelestial = gui.addFolder('Celestial Views (debug)')
+    fGrammarCelestial.close()
+    addGrammarButtons(fGrammarCelestial, gramCompositionsCelestial)
 
     // ── Earth Only (P4 Stage 4 debug) ──────────────────────────────────────
     gui.add({
