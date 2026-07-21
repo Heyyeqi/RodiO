@@ -878,8 +878,12 @@
         const h = heroSpheres[key]
         const planetPos = h.group.position
         // 相机放在朝阳侧（planetPos + 行星→太阳方向 × d），看回行星 → 永远看到被照亮半球
-        const fov = 28, fill = 0.62  // 行星直径占画面高度约 62%
-        const d = h.radius / (fill * Math.tan((fov * DEG) / 2))
+        const fov = 28, fill = 0.40  // 行星直径占"画面较短边"的比例（参考截图3：克制留白，横竖屏均居中）
+        const vHalf = Math.tan((fov * DEG) / 2)            // 垂直半视角 (tan)
+        const aspect = (camera && camera.aspect) ? camera.aspect : 1
+        const hHalf = vHalf * aspect                        // 水平半视角 (tan)；竖屏 aspect<1 时更小
+        const minHalf = Math.min(vHalf, hHalf)              // 取较短边对应的半视角
+        const d = h.radius / (fill * minHalf)               // 行星直径 = 短边 fill 比例，横竖屏均居中留白
         const camPos = planetPos.clone().add(_heroSunDir.clone().multiplyScalar(d))
         return {
           target: [planetPos.x, planetPos.y, planetPos.z],

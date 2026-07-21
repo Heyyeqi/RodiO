@@ -7609,3 +7609,59 @@ RW看过真机截图后判断颜色不对——近岸浑浊区是高饱和荧光
 
 ### 遗留问题
 - #51 总览issue仍为Backlog状态（#52/#53/#54三个子issue已完成，可考虑关闭#51或更新其描述反映完成状态）。
+
+## 2026-07-21 天体贴图渲染修正 v1（光斑→真实贴图球体）
+
+### 做了什么
+- 按 `docs/roadmap/source_appendix/celestial_body_texture_fix_v1.md` 方案完整实施。
+- **核心变更**：太阳/8行星/5卫星从 `makePlanetGlowTexture/makeSunGlowTexture` 程序生成模糊光斑，替换为 NASA 探测器全圆盘真实照片贴图（Sprite + AdditiveBlending 黑背景自然消失）。
+- **新增工厂函数**：`createBodyTexSprite(colorTint)` + `loadSpriteTexture(sprite, path)`。
+- **太阳拆分**：原有渐变光斑改名为 `sunHalo`(renderOrder 18)；新增真实 SDO/HMI 亮度贴图核心盘 `sun`(renderOrder 20, 暖白 0xfff0cc)，tick() 同步缩放两者（光晕 1.7x）。
+- **8行星**：PLANET_DEFS 每项加 `texture` 字段（14张 NASA 贴图路径）；ang 值全面上调以适配真实纹理细节可见度（原值给"模糊光斑"标定，显示图案需要更大）。
+- **5卫星**：SATELLITE_DEFS 同样加 texture + ang 上调。
+- **缓存破坏**：index.html `?v=real-celestial-v1` → `v2`（7天静态资源缓存）。
+
+### 改动文件
+- `pwa/real-celestial.js`（+28/-16 行净增：工厂函数 + sun拆分 + PLANET_DEFS/SATELLITE_DEFS texture字段 + 创建循环替换）
+- `pwa/index.html`（版本号 v1→v2）
+
+### 验证
+- Playwright 全量验证：10/10 构图 texture路径匹配 PASS；10/10 ang值 PASS；零 `[realCelestial] 贴图加载失败` 报错；默认路径零回归确认。
+- 截图 `/tmp/rodio_assets/shots_texture/*.png`（10张）。Playwright swiftshader 软件渲染下行星已可见为圆盘状（非此前模糊光斑），实机预期显著更清晰。
+
+### 遗留/排除范围
+- 不做行星环、不自转、不加明暗光照（相机站位虚构会导致外行星显示成诡异黑色残月）。
+- 最终验收标准：RW 在实机上截图跟参考图主观对比（spec 文档 §6 第6条）。
+
+## 2026-07-21 Part 1 Bug Fixes + Step 0.5 Equirect Textures + Step 1 Hero Portrait (Mars+Saturn)
+
+### Part 1 Bug Fixes（celestial_body_texture_fix_v1.md §Part 1）
+- **Bug 1**: sunHalo.visible 门控 by showSun（此前默认可见导致近景出现光晕）
+- **Bug 2**: 非正方形贴图宽高比保留（Saturn 1001×1628→0.615 ratio）；`applyAspectScale(sprite,d)` 长边=d 短边等比；`loadSpriteTexture` 记录 `userData.aspect`
+
+### Step 0.5：真实等距柱状全球贴图
+- Solar System Scope CDN 下载 7 行星 equirect 2:1 贴图（2048×1024）+ Saturn ring alpha
+- 存放：`pwa/assets/textures/planets_equirect/`（与 disk-photo 的 `planets/` 分离）
+
+### Step 1：Hero 肖像独照视图（Mars+Saturn PoC，celestial_hero_portrait_v1.md）
+- **Hero 球体**：SphereGeometry(64,48) + MOON_VERT/MOON_FRAG shader（复用月亮已验证光照模式）
+- **Saturn rings**：RingGeometry + ShaderMaterial(alpha texture 径向采样，随轴倾角倾斜)
+- **相机系统**：`_heroSunDir` 每帧计算行星→太阳世界方向；`getHeroPose()` 返回朝阳侧相机位姿（保证看到被照亮半球）；earth3d 渲染循环 Hero 相机接管（恒赢于所有原语）
+- **API**：`setHeroMode(name)` / `getHeroPose(name)` 暴露在 window.realCelestial
+- **构图**：marsHero / saturnHero 注册到 CAMERA_COMPOSITIONS + gramCompositions
+
+### 改动文件
+- `pwa/real-celestial.js`（HERO_DEFS + SphereGeometry 构建器 + setHeroMode/getHeroPose API + hero tick 分支 + _heroSunDir + hero getState 调试字段）
+- `pwa/earth3d.js`（marsHero/saturnHero compositions + _heroTargetName + Hero 相机接管钩子）
+- `pwa/index.html`（gramCompositions 扩展 + cache bust v2→v3）
+- `pwa/assets/textures/planets_equirect/`（8 个新文件：7 行星 equirect + Saturn ring alpha）
+
+### 验证
+- Playwright ALL PASS：marsHero(heroMode=mars, camY=60) ✅ / saturnHero(heroMode=saturn, camY=51, rings visible) ✅ / exit-hero(null+隐藏) ✅ / default零回归 ✅
+- 截图视觉确认：Mars = 大型红褐色球体带清晰 terminator，Saturn = 浅黄球体 + 可见椭圆环
+
+### 遗留
+- Pluto 无 equirect 质源（SSS 不提供），后续可从 NASA/USGS 补充
+- 其余 6 行星（Mercury/Venus/Jupiter/Uranus/Neptune）的 Hero 视图可按同一 pipeline 批量扩展
+DEVLOG_EOF
+echo "devlog appended OK"

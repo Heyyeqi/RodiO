@@ -7585,6 +7585,8 @@
       let _gramSettledZ = null   // settled camera.position.z after transition ends, used by breathe primitive
       let _gramTransition = null  // { fromY, fromZ, fromFov, fromLookAtY, toY, toZ, toFov, toLookAtY, toNdcX, toNdcY, toRollDeg, toLat, toLon, startTime, duration, envelope }
       let _heroTargetName = null  // Step 1 Hero 独照：当前 hero 行星名（mars/saturn），null 表示轨道视图
+      let _heroEarthHidden = false  // F1: Hero 模式下已隐藏地球系（避免泄漏进独照构图）
+      let _heroSavedEarthVis = null  // F1: 进入 Hero 前地球系可见性快照，退出时恢复
       let _gramSequenceQueue = []  // 序列引擎排队：存放后续待播步骤，外部手动切构图时清空
       const _GRAM_LOD_RANK = { '4k': 0, '8k': 1, '16k': 2 }
       _gramSettledZRef = _gramSettledZ
@@ -7912,11 +7914,35 @@
         if (_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) {
           const pose = window.realCelestial.getHeroPose(_heroTargetName)
           if (pose) {
+            // F1: 进入 Hero 时隐藏地球本体 + 大气 + 云层 + 天空球 + 星空球（统一纯黑背景，避免泄漏进独照构图）
+            if (!_heroEarthHidden) {
+              _heroEarthHidden = true
+              _heroSavedEarthVis = {
+                e: earth ? earth.visible : true,
+                a: atmosphere ? atmosphere.visible : true,
+                c: cloudMesh ? cloudMesh.visible : false,
+                s: skyMesh ? skyMesh.visible : true,
+                st: starSphere ? starSphere.visible : true,
+              }
+              if (earth) earth.visible = false
+              if (atmosphere) atmosphere.visible = false
+              if (cloudMesh) cloudMesh.visible = false
+              if (skyMesh) skyMesh.visible = false
+              if (starSphere) starSphere.visible = false
+            }
             camera.position.set(pose.camera[0], pose.camera[1], pose.camera[2])
             camera.fov = pose.fov
             camera.lookAt(pose.target[0], pose.target[1], pose.target[2])
             camera.updateProjectionMatrix()
           }
+        } else if (_heroEarthHidden) {
+          // F1: 退出 Hero → 恢复地球系 + 天空球 + 星空球可见性
+          _heroEarthHidden = false
+          if (earth) earth.visible = _heroSavedEarthVis.e
+          if (atmosphere) atmosphere.visible = _heroSavedEarthVis.a
+          if (cloudMesh) cloudMesh.visible = _heroSavedEarthVis.c
+          if (skyMesh) skyMesh.visible = _heroSavedEarthVis.s
+          if (starSphere) starSphere.visible = _heroSavedEarthVis.st
         }
         const target = getTargetOrientation(useAuditCenterTarget ? auditCenterDir : null)
         const isAnimating = earth.quaternion.angleTo(target) > 0.0002
@@ -7933,7 +7959,13 @@
           updateRDLOverlays()
         }
 
-        if (DAY_SKY_PLANE_THEMES.has(currentTheme)) {
+        // ── F3: Hero 独照纯黑背景 —— 绕过所有天空/辉光叠加，只渲主场景到不透明黑底 ──
+        if (_heroTargetName && window.realCelestial && window.realCelestial.getHeroPose) {
+          renderer.setClearColor(0x000000, 1)
+          renderer.autoClear = true
+          renderer.clear(true, true, true)
+          renderer.render(scene, camera)
+        } else if (DAY_SKY_PLANE_THEMES.has(currentTheme)) {
           updateEarlyMorningGlowMode()
           if (skyMesh) skyMesh.visible = false
           updateEarlyMorningRimProjection()
